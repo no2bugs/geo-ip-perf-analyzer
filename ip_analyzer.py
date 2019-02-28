@@ -127,12 +127,13 @@ def download_geolite_dbs(dbs, force_dl=False):
                 continue
 
         if not file_exists(db_file):
-            print('No', db_file, 'found', '\nDownloading', db_url)
+            print('No', db_file, 'found')
         else:
             print('Forcing refresh of geolite db', db_file)
             os.remove(db_file)
 
         r = web_request(db_url)
+
         print('Downloading', db_url)
 
         db_tar = db_url.split('/')[-1]
@@ -173,20 +174,28 @@ def get_servers_list(from_file):
     servers = []
 
     if file_exists(from_file):
-        print('\nReading targets from:', from_file)
+        print('Reading targets from:', from_file)
         with open(from_file, 'r') as f:
             lines = f.readlines()
             for line in lines:
                 if len(line) > 1:
                     servers.append(line.strip().rstrip('\n'))
 
+        if len(servers) < 1:
+            format_output('bold', 'red')
+            print('Error:', from_file, 'does not have any targets\n')
+            format_output('reset')
+            sys.exit(1)
+
         servers.sort(key=lambda x: x[0])
 
-        print('\nFound total of', len(servers), 'targets\n')
+        print('\nFound total of', len(servers), 'targets')
 
         return servers
     else:
         # leaving this open for alternate ways of ingesting servers list
+        print(from_file, 'not found\n', 'Nothing to do')
+        sys.exit(0)
         pass
 
 
@@ -206,8 +215,8 @@ def scan(domains, city_db, country_db, results_json, exclude_countries, pings_nu
 
     format_output('bold')
     print('\nMeasuring latency to', len(domains), 'servers')
-    print('\nPings:', pings_num)
-    print('\nStarted:', time.strftime("%d/%m/%Y %H:%M:%S"), '\n')
+    print('Pings:', pings_num)
+    print('Started:', time.strftime("%d/%m/%Y %H:%M:%S"))
     format_output('reset')
 
     start_scan = time.time()
@@ -306,11 +315,16 @@ def scan(domains, city_db, country_db, results_json, exclude_countries, pings_nu
     for item in endpoints_list:
         endpoints_dict[item[0]] = [item[1], item[2], item[3], item[4]]
 
-    print('\nCreating json file', results_json)
-    with open(results_json, 'w') as fp:
-        dump(endpoints_dict, fp)
-    print('DONE')
-    format_output('reset')
+    if endpoints_list:
+        print('\nCreating json file', results_json)
+        with open(results_json, 'w') as fp:
+            dump(endpoints_dict, fp)
+        print('DONE')
+        format_output('reset')
+    else:
+        format_output('red')
+        print('\nFailed to ping any targets from the list\n')
+        format_output('reset')
 
     return endpoints_dict
 
@@ -615,6 +629,7 @@ if __name__ == "__main__":
 
     pings = args.scan_pings
     top_ips_limit = args.results_limit
+    targets_file = args.servers_file
 
     sort_field = args.sort_by - 1
 
@@ -632,6 +647,13 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if args.scan:
+        if not file_exists(targets_file):
+            format_output('bold', 'red')
+            print('\nError: Nothing to scan\nTargets list file "' + targets_file + '" not found')
+            print('Create "' + targets_file + '" with one domain or IP per line')
+            print('(or point to another file with --servers-file)\n')
+            format_output('reset')
+            sys.exit(1)
         exclude = exclude_countries(excl_file)
         city_db, country_db = download_geolite_dbs(geolite_dbs)
         hosts = get_servers_list(from_file=args.servers_file)
