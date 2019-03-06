@@ -341,22 +341,22 @@ def get_top_performers(res_fl, limit, country, city):
         results_json = loads(results)
 
     if country and city:
-        print('\nShowing', limit, 'servers matching', city + ',', country, '\n')
+        print('\nSearching for', limit, 'servers matching', city + ',', country, '\n')
         for server in results_json.items():
             if re.search(str(country), server[1][2], re.IGNORECASE) and re.match(str(city), server[1][3], re.IGNORECASE):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     elif country:
-        print('\nShowing', limit, 'servers matching', country, '\n')
+        print('\nSearching for', limit, 'servers matching', country, '\n')
         for server in results_json.items():
             if re.search(str(country), server[1][2], re.IGNORECASE):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     elif city:
-        print('\nShowing', limit, 'servers matching', city, '\n')
+        print('\nSearching for', limit, 'servers matching', city, '\n')
         for server in results_json.items():
             if re.search(str(city), server[1][3], re.IGNORECASE):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     else:
-        print('\nShowing', limit, 'servers\n')
+        print('\nSearching for', limit, 'servers\n')
         for i, server in enumerate(results_json.items(), 1):
             top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
 
@@ -425,9 +425,11 @@ def get_top_performers(res_fl, limit, country, city):
             format_output('reset')
 
         format_output('green')
-        print('\n{0} results'.format(limit))
+        if limit <= len(top_servers):
+            print('\nFound: {0} results'.format(limit))
+        else:
+            print('\nFound: {0} results'.format(len(top_servers)))
         format_output('reset')
-
 
     return top_servers
 
