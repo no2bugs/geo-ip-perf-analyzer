@@ -330,6 +330,9 @@ def scan(domains, city_db, country_db, results_json, exclude_countries, pings_nu
 
 
 def get_top_performers(res_fl, limit, country, city):
+    if not limit:
+        limit = 'all'
+
     top_servers = []
 
     print("\nReading file", res_fl)
@@ -371,9 +374,8 @@ def get_top_performers(res_fl, limit, country, city):
             print('Run with --city-stats to see list of all available cities')
         format_output('reset')
     else:
-        if not limit:
+        if limit == 'all':
             limit = len(top_servers)
-        print(limit)
         max_endpoint_len = max(len(l[0]) for l in top_servers[0:limit])
         max_latency_len = max(len(str(l[1])) for l in top_servers[0:limit])
         max_country_len = max(len(l[3]) for l in top_servers[0:limit])
@@ -421,6 +423,11 @@ def get_top_performers(res_fl, limit, country, city):
                                                                                       max_city=max_city_len + 2,
                                                                                       max_country=max_country_len + 2))
             format_output('reset')
+
+        format_output('green')
+        print('\n{0} results'.format(limit))
+        format_output('reset')
+
 
     return top_servers
 
@@ -629,6 +636,13 @@ if __name__ == "__main__":
 
     pings = args.scan_pings
     top_ips_limit = args.results_limit
+
+    if top_ips_limit is not None and top_ips_limit < 1:
+        format_output('bold', 'red')
+        print("\nError: limit must be > 1\n")
+        format_output('reset')
+        sys.exit(1)
+
     targets_file = args.servers_file
 
     sort_field = args.sort_by - 1
