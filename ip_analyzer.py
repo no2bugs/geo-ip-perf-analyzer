@@ -641,7 +641,7 @@ if __name__ == "__main__":
 
     if top_ips_limit is not None and top_ips_limit < 1:
         format_output('bold', 'red')
-        print("\nError: limit must be > 1\n")
+        print("Error: limit must be > 0")
         format_output('reset')
         sys.exit(1)
 
