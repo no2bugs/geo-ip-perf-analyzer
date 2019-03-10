@@ -45,13 +45,16 @@ def check_python_version(v):
     v = str(v).split('.')
     try:
         if not 1 < int(v[0]) <= 3:
-            raise ValueError('Error: You are requiring invalid Python version',v[0])
+            raise ValueError('Error: You are requiring invalid Python version', v[0])
     except ValueError as e:
         print(e)
         sys.exit(1)
     if sys.version_info[0] != int(v[0]):
         print('This script requires Python version',v[0] + '+')
-        print('You are using {0}.{1}.{2} {3}'.format(sys.version_info[0], sys.version_info[1], sys.version_info[2],sys.version_info[3]))
+        print('You are using {0}.{1}.{2} {3}'.format(sys.version_info[0],
+                                                     sys.version_info[1],
+                                                     sys.version_info[2],
+                                                     sys.version_info[3]))
         sys.exit(1)
 
 
@@ -109,10 +112,7 @@ def format_output(*options):
 
 
 def file_exists(file):
-    if os.path.isfile(file):
-        return True
-    else:
-        return False
+    return True if os.path.isfile(file) else False
 
 
 def download_geolite_dbs(dbs, force_dl=False):
@@ -171,15 +171,11 @@ def download_geolite_dbs(dbs, force_dl=False):
 
 
 def get_servers_list(from_file):
-    servers = []
-
     if file_exists(from_file):
         print('Reading targets from:', from_file)
         with open(from_file, 'r') as f:
             lines = f.readlines()
-            for line in lines:
-                if len(line) > 1:
-                    servers.append(line.strip().rstrip('\n'))
+            servers = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
 
         if len(servers) < 1:
             format_output('bold', 'red')
@@ -196,7 +192,6 @@ def get_servers_list(from_file):
         # leaving this open for alternate ways of ingesting servers list
         print(from_file, 'not found\n', 'Nothing to do')
         sys.exit(0)
-        pass
 
 
 def scan(domains, city_db, country_db, results_json, exclude_countries, pings_num=1):
@@ -271,14 +266,11 @@ def scan(domains, city_db, country_db, results_json, exclude_countries, pings_nu
         count += 1
 
         try:
-            resps = []
-
             lines = result.split('\n')
-            for line in lines:
-                if len(line) > 1:
-                    resps.append(line)
 
-            avg_latency = float(resps[-1].split('=')[1].split('/')[1])
+            response = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
+
+            avg_latency = float(response[-1].split('=')[1].split('/')[1])
         except Exception:
             format_output('red')
             print('Error: No response time received from', domain, 'Skipping...')
@@ -346,19 +338,18 @@ def get_top_performers(res_fl, limit, country, city):
             if re.search(str(country), server[1][2], re.IGNORECASE) and re.match(str(city), server[1][3], re.IGNORECASE):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     elif country:
-        print('\nSearching for', limit, 'servers matching', country, '\n')
+        print('\nSearching for', limit, 'servers matching country', country, '\n')
         for server in results_json.items():
             if re.search(str(country), server[1][2], re.IGNORECASE):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     elif city:
-        print('\nSearching for', limit, 'servers matching', city, '\n')
+        print('\nSearching for', limit, 'servers matching city', city, '\n')
         for server in results_json.items():
             if re.search(str(city), server[1][3], re.IGNORECASE):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     else:
         print('\nSearching for', limit, 'servers\n')
-        for i, server in enumerate(results_json.items(), 1):
-            top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
+        top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in results_json.items()]
 
     if not top_servers:
         format_output('yellow')
@@ -381,68 +372,65 @@ def get_top_performers(res_fl, limit, country, city):
         max_country_len = max(len(l[3]) for l in top_servers[0:limit])
         max_city_len = max(len(l[4]) for l in top_servers[0:limit])
         format_output('bold', 'reverse')
-        print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format('#',
-                                                                                      'ENDPOINT',
-                                                                                      'LATENCY',
-                                                                                      'IP',
-                                                                                      'COUNTRY',
-                                                                                      'CITY',
-                                                                                      max_latency=max_latency_len + 2,
-                                                                                      max_endpoint=max_endpoint_len + 2,
-                                                                                      max_city=max_city_len + 2,
-                                                                                      max_country=max_country_len + 2))
+        print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
+                                                                                                        '#',
+                                                                                                        'ENDPOINT',
+                                                                                                        'LATENCY',
+                                                                                                        'IP',
+                                                                                                        'COUNTRY',
+                                                                                                        'CITY',
+                                                                                                        max_latency=max_latency_len + 2,
+                                                                                                        max_endpoint=max_endpoint_len + 2,
+                                                                                                        max_city=max_city_len + 2,
+                                                                                                        max_country=max_country_len + 2))
         format_output('reset')
-        print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format('-' * 5,
-                                                                                        '-' * (max_endpoint_len + 2),
-                                                                                        '-' * 8,
-                                                                                        '-' * 16,
-                                                                                        '-' * (max_country_len + 2),
-                                                                                        '-' * (max_city_len + 2),
-                                                                                        max_latency=max_latency_len + 2,
-                                                                                        max_endpoint=max_endpoint_len + 2,
-                                                                                        max_city=max_city_len + 2,
-                                                                                        max_country=max_country_len + 2))
+        print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
+                                                                                                        '-' * 5,
+                                                                                                        '-' * (max_endpoint_len + 2),
+                                                                                                        '-' * 8,
+                                                                                                        '-' * 16,
+                                                                                                        '-' * (max_country_len + 2),
+                                                                                                        '-' * (max_city_len + 2),
+                                                                                                        max_latency=max_latency_len + 2,
+                                                                                                        max_endpoint=max_endpoint_len + 2,
+                                                                                                        max_city=max_city_len + 2,
+                                                                                                        max_country=max_country_len + 2))
 
         for i, item in enumerate(top_servers, 1):
             endpoint = item[0]
-            latency = round(item[1], 1)
+            latency = round(item[1], 2)
             ip = item[2]
             country = item[3]
             city = item[4]
             if i == limit + 1:
                 break
             format_output('bold')
-            print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(i,
-                                                                                      endpoint,
-                                                                                      latency,
-                                                                                      ip,
-                                                                                      country,
-                                                                                      city,
-                                                                                      max_latency=max_latency_len + 2,
-                                                                                      max_endpoint=max_endpoint_len + 2,
-                                                                                      max_city=max_city_len + 2,
-                                                                                      max_country=max_country_len + 2))
+            print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
+                                                                                                            i,
+                                                                                                            endpoint,
+                                                                                                            latency,
+                                                                                                            ip,
+                                                                                                            country,
+                                                                                                            city,
+                                                                                                            max_latency=max_latency_len + 2,
+                                                                                                            max_endpoint=max_endpoint_len + 2,
+                                                                                                            max_city=max_city_len + 2,
+                                                                                                            max_country=max_country_len + 2))
             format_output('reset')
 
         format_output('green')
-        if limit <= len(top_servers):
-            print('\nFound: {0} results'.format(limit))
-        else:
-            print('\nFound: {0} results'.format(len(top_servers)))
+        print('\nFound: {0} results'.format(limit)) if limit <= len(top_servers) else print('\nFound: {0} results'.format(len(top_servers)))
         format_output('reset')
 
     return top_servers
 
 
 def exclude_countries(file):
-    excludes = []
-
     try:
         with open(file, 'r') as f:
             lines = f.readlines()
-            for line in lines:
-                if len(line) > 1:
-                    excludes.append(line.rstrip('\n'))
+
+            excludes = [line.rstrip('\n') for line in lines if len(line) > 1]
     except FileNotFoundError:
         excludes = None
         format_output('yellow')
@@ -463,7 +451,7 @@ def country_stats(res_fl, sort_by=2):
         results = f.read()
         results_json = loads(results)
 
-    for i, item in enumerate(results_json.items(), 1):
+    for item in results_json.items():
         latency = item[1][0]
         country = item[1][2]
 
@@ -484,11 +472,11 @@ def country_stats(res_fl, sort_by=2):
     max_latency_len = max(len(str(l[2])) for l in country_metrics)
     format_output('bold', 'reverse')
     print('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('#',
-                                                                        'COUNTRY',
-                                                                        'SERVERS',
-                                                                        'LATENCY',
-                                                                        max_country=max_country_len + 2,
-                                                                        max_latency=max_latency_len + 2))
+                                                                       'COUNTRY',
+                                                                       'SERVERS',
+                                                                       'LATENCY',
+                                                                       max_country=max_country_len + 2,
+                                                                       max_latency=max_latency_len + 2))
     format_output('reset')
     print('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
                                                                        '-' * (max_country_len + 2),
@@ -500,14 +488,14 @@ def country_stats(res_fl, sort_by=2):
     for i, each in enumerate(country_metrics, 1):
         country = each[0]
         servers = each[1]
-        latency = round(each[2], 1)
+        latency = round(each[2], 2)
         format_output('bold')
         print('{0:<5} {1:<{max_country}} {2:<8} {3:<{max_latency}}'.format(i,
-                                                                            country,
-                                                                            servers,
-                                                                            latency,
-                                                                            max_country=max_country_len + 2,
-                                                                            max_latency=max_latency_len + 2))
+                                                                           country,
+                                                                           servers,
+                                                                           latency,
+                                                                           max_country=max_country_len + 2,
+                                                                           max_latency=max_latency_len + 2))
         format_output('reset')
 
     format_output('bold', 'green')
@@ -525,7 +513,7 @@ def city_stats(res_fl, sort_by=2):
         results = f.read()
         results_json = loads(results)
 
-    for i, item in enumerate(results_json.items(), 1):
+    for item in results_json.items():
         latency = item[1][0]
         city = item[1][3]
 
@@ -546,30 +534,30 @@ def city_stats(res_fl, sort_by=2):
     max_latency_len = max(len(str(l[2])) for l in city_metrics)
     format_output('bold', 'reverse')
     print('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('#',
-                                                                        'CITY',
-                                                                        'SERVERS',
-                                                                        'LATENCY',
-                                                                        max_city=max_city_len + 2,
-                                                                        max_latency=max_latency_len + 2))
+                                                                    'CITY',
+                                                                    'SERVERS',
+                                                                    'LATENCY',
+                                                                    max_city=max_city_len + 2,
+                                                                    max_latency=max_latency_len + 2))
     format_output('reset')
     print('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
-                                                                       '-' * (max_city_len + 2),
-                                                                       '-' * 8,
-                                                                       '-' * (max_latency_len + 2),
-                                                                       max_city=max_city_len + 2,
-                                                                       max_latency=max_latency_len + 2))
+                                                                    '-' * (max_city_len + 2),
+                                                                    '-' * 8,
+                                                                    '-' * (max_latency_len + 2),
+                                                                    max_city=max_city_len + 2,
+                                                                    max_latency=max_latency_len + 2))
 
     for i, each in enumerate(city_metrics, 1):
         city = each[0]
         servers = each[1]
-        latency = round(each[2], 1)
+        latency = round(each[2], 2)
         format_output('bold')
         print('{0:<5} {1:<{max_city}} {2:<8} {3:<{max_latency}}'.format(i,
-                                                                            city,
-                                                                            servers,
-                                                                            latency,
-                                                                            max_city=max_city_len + 2,
-                                                                            max_latency=max_latency_len + 2))
+                                                                        city,
+                                                                        servers,
+                                                                        latency,
+                                                                        max_city=max_city_len + 2,
+                                                                        max_latency=max_latency_len + 2))
         format_output('reset')
 
     format_output('bold', 'green')
@@ -614,17 +602,17 @@ if __name__ == "__main__":
                         action='store_true',
                         help='''Show stats by country
                              ''', default=False)
-    parser.add_argument('-t', '--results-country',
+    parser.add_argument('-t', '--search-country',
                         type=str,
-                        help='''Search results by country name (supports regex)                                      
+                        help='''Search results by country name                                   
                              ''', default=None)
     parser.add_argument('-i', '--city-stats',
                         action='store_true',
                         help='''Show stats by city
                              ''', default=False)
-    parser.add_argument('-y', '--results-city',
+    parser.add_argument('-y', '--search-city',
                         type=str,
-                        help='''Search results by city name (supports regex)                                      
+                        help='''Search results by city name                                     
                              ''', default=None)
     parser.add_argument('-b', '--sort-by',
                         type=int,
@@ -654,8 +642,8 @@ if __name__ == "__main__":
             and not args.download_dbs \
             and not args.country_stats \
             and not args.city_stats \
-            and not args.results_country \
-            and not args.results_city:
+            and not args.search_country \
+            and not args.search_city:
         parser.print_help()
         format_output('bold', 'red')
         print("\n*** Error: Pick one of the options ***\n")
@@ -701,6 +689,6 @@ if __name__ == "__main__":
         city_stats(res_file, sort_by=sort_field)
         sys.exit(0)
 
-    if args.results or args.results_country or args.results_city:
-        get_top_performers(res_file, limit=top_ips_limit, country=args.results_country, city=args.results_city)
+    if args.results or args.search_country or args.search_city:
+        get_top_performers(res_file, limit=top_ips_limit, country=args.search_country, city=args.search_city)
         sys.exit(0)
