@@ -31,8 +31,8 @@
 # python3 ip_analyzer.py --help
 
 Usage: ip_analyzer.py [-h] [-s] [-p SCAN_PINGS] [-f SERVERS_FILE] [-r]
-                      [-l RESULTS_LIMIT] [-c] [-t RESULTS_COUNTRY] [-i]
-                      [-y RESULTS_CITY] [-b SORT_BY] [-d]
+                      [-l RESULTS_LIMIT] [-c] [-t SEARCH_COUNTRY] [-i]
+                      [-y SEARCH_CITY] [-b SORT_BY] [-d]
 
 Performs latency scan on each domain/ip and shows top performers by location
 
@@ -53,13 +53,13 @@ optional arguments:
 
   -c, --country-stats   Show stats by country
 
-  -t RESULTS_COUNTRY, --results-country RESULTS_COUNTRY
-                        Search results by country name (supports regex)
+  -t SEARCH_COUNTRY, --search-country SEARCH_COUNTRY
+                        Search results by country name
 
   -i, --city-stats      Show stats by city
 
-  -y RESULTS_CITY, --results-city RESULTS_CITY
-                        Search results by city name (supports regex)
+  -y SEARCH_CITY, --search-city SEARCH_CITY
+                        Search results by city name
 
   -b SORT_BY, --sort-by SORT_BY
                         Sort by field/column number (fields start from 1). Default is 3
