@@ -396,14 +396,12 @@ def get_top_performers(res_fl, limit, country, city):
                                                                                                         max_city=max_city_len + 2,
                                                                                                         max_country=max_country_len + 2))
 
-        for i, item in enumerate(top_servers, 1):
+        for i, item in enumerate(top_servers[0:limit], 1):
             endpoint = item[0]
             latency = round(item[1], 2)
             ip = item[2]
             country = item[3]
             city = item[4]
-            if i == limit + 1:
-                break
             format_output('bold')
             print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
                                                                                                             i,
@@ -584,11 +582,11 @@ if __name__ == "__main__":
                              ''', default=False)
     parser.add_argument('-p', '--scan-pings',
                         type=int,
-                        help='''Number of pings to each IP during scan (increase for better accuracy). Default is 1                                        
+                        help='''Number of pings to each IP during scan (increase for better accuracy). Default is 1
                              ''', default=1)
     parser.add_argument('-f', '--servers-file',
                         type=str,
-                        help='''Read servers list from file (one domain or ip per line). Default is "servers.list"                                    
+                        help='''Read servers list from file (one domain or ip per line). Default is "servers.list"
                              ''', default='servers.list')
     parser.add_argument('-r', '--results',
                         action='store_true',
@@ -596,7 +594,7 @@ if __name__ == "__main__":
                              ''', default=False)
     parser.add_argument('-l', '--results-limit',
                         type=int,
-                        help='''Number of results to show                                       
+                        help='''Number of results to show
                              ''', default=None)
     parser.add_argument('-c', '--country-stats',
                         action='store_true',
@@ -604,7 +602,7 @@ if __name__ == "__main__":
                              ''', default=False)
     parser.add_argument('-t', '--search-country',
                         type=str,
-                        help='''Search results by country name                                   
+                        help='''Search results by country name
                              ''', default=None)
     parser.add_argument('-i', '--city-stats',
                         action='store_true',
@@ -612,11 +610,11 @@ if __name__ == "__main__":
                              ''', default=False)
     parser.add_argument('-y', '--search-city',
                         type=str,
-                        help='''Search results by city name                                     
+                        help='''Search results by city name
                              ''', default=None)
     parser.add_argument('-b', '--sort-by',
                         type=int,
-                        help='''Sort by field/column number (fields start from 1). Default is 3                                     
+                        help='''Sort by field/column number (fields start from 1). Default is 3
                              ''', default=3)
     parser.add_argument('-d', '--download-dbs',
                         action='store_true',
