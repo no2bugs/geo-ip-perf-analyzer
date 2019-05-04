@@ -217,8 +217,7 @@ def scan(domains, city_db, country_db, results_json, exclude_countries, pings_nu
     start_scan = time.time()
     start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
-    count = 0
-    for domain in domains:
+    for count, domain in enumerate(domains, 1):
         try:
             resolv = socket.gethostbyname_ex(domain)
             ip = resolv[2][0]
@@ -262,8 +261,6 @@ def scan(domains, city_db, country_db, results_json, exclude_countries, pings_nu
             continue
 
         result = run(["ping", "-c", str(pings_num), ip], stdout=PIPE).stdout.decode('UTF-8')
-
-        count += 1
 
         try:
             lines = result.split('\n')
