@@ -49,10 +49,10 @@ def crawl_nordvpn(raw_content):
 
 
 def write_to_file(path, f_name, items):
-    save_dir = ''.join((os.path.abspath(path), '/'))
+    save_dir = ''.join((os.path.abspath(path.rstrip('/') + '/'), '/'))
 
     print('Writing to file:', f_name)
-    with open(path + f_name, 'w') as f:
+    with open(save_dir + f_name, 'w') as f:
         for item in items:
             f.write(item + '\n')
     print('Created:', save_dir + f_name)
