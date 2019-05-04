@@ -14,24 +14,24 @@ import re
 
 
 class ColoredArgParser(argparse.ArgumentParser):
-    color_dict = {'RED' : '1;31', 'GREEN' : '0;32',
-                  'YELLOW' : '0;33', 'BLUE' : '0;34'}
+    color_dict = {'RED': '1;31', 'GREEN': '0;32',
+                  'YELLOW': '0;33', 'BLUE': '0;34'}
 
-    def print_usage(self, file = None):
+    def print_usage(self, file=None):
         if file is None:
             file = sys.stdout
         self._print_message(self.format_usage()[0].upper() +
                             self.format_usage()[1:],
                             file, self.color_dict['RED'])
 
-    def print_help(self, file = None):
+    def print_help(self, file=None):
         if file is None:
             file = sys.stdout
         self._print_message(self.format_help()[0].upper() +
                             self.format_help()[1:],
                             file, self.color_dict['BLUE'])
 
-    def _print_message(self, message, file = None, color = None):
+    def _print_message(self, message, file=None, color=None):
         if message:
             if file is None:
                 file = sys.stderr
@@ -50,7 +50,7 @@ def check_python_version(v):
         print(e)
         sys.exit(1)
     if sys.version_info[0] != int(v[0]):
-        print('This script requires Python version',v[0] + '+')
+        print('This script requires Python version', v[0] + '+')
         print('You are using {0}.{1}.{2} {3}'.format(sys.version_info[0],
                                                      sys.version_info[1],
                                                      sys.version_info[2],
@@ -62,7 +62,8 @@ def web_request(url, time_out=60):
     try:
         resp = requests.get(url,
                             timeout=time_out,
-                            headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'})
+                            headers={
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'})
 
         if (100 <= resp.status_code < 600) and (resp.status_code != 200):
             raise ConnectionError('Error: Bad response code')
@@ -82,15 +83,15 @@ def format_output(*options):
     choices = []
 
     formats = {
-            'WHITE': "\033[0;97m",
-            'RED': "\033[0;31m",
-            'BLUE': "\033[0;34m",
-            'CYAN': "\033[0;36m",
-            'GREEN': "\033[0;32m",
-            'YELLOW': "\033[0;33m",
-            'BOLD': "\033[;1m",
-            'REVERSE': "\033[;7m",
-            'RESET': "\033[0m"
+        'WHITE': "\033[0;97m",
+        'RED': "\033[0;31m",
+        'BLUE': "\033[0;34m",
+        'CYAN': "\033[0;36m",
+        'GREEN': "\033[0;32m",
+        'YELLOW': "\033[0;33m",
+        'BOLD': "\033[;1m",
+        'REVERSE': "\033[;7m",
+        'RESET': "\033[0m"
     }
 
     for item in options:
@@ -153,7 +154,7 @@ def download_geolite_dbs(dbs, force_dl=False):
         for root, dirs, files in os.walk('.'):
             for dir in dirs:
                 if dir.find(target_dir) != -1:
-                    db_dir_path=os.path.join(root, dir)
+                    db_dir_path = os.path.join(root, dir)
                     print('Extracted contents into', db_dir_path)
             for file in files:
                 if file.find(db_file) != -1:
@@ -346,7 +347,8 @@ def get_top_performers(res_fl, limit, country, city):
                 top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
     else:
         print('\nSearching for', limit, 'servers\n')
-        top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in results_json.items()]
+        top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in
+                       results_json.items()]
 
     if not top_servers:
         format_output('yellow')
@@ -370,28 +372,28 @@ def get_top_performers(res_fl, limit, country, city):
         max_city_len = max(len(l[4]) for l in top_servers[0:limit])
         format_output('bold', 'reverse')
         print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
-                                                                                                        '#',
-                                                                                                        'ENDPOINT',
-                                                                                                        'LATENCY',
-                                                                                                        'IP',
-                                                                                                        'COUNTRY',
-                                                                                                        'CITY',
-                                                                                                        max_latency=max_latency_len + 2,
-                                                                                                        max_endpoint=max_endpoint_len + 2,
-                                                                                                        max_city=max_city_len + 2,
-                                                                                                        max_country=max_country_len + 2))
+            '#',
+            'ENDPOINT',
+            'LATENCY',
+            'IP',
+            'COUNTRY',
+            'CITY',
+            max_latency=max_latency_len + 2,
+            max_endpoint=max_endpoint_len + 2,
+            max_city=max_city_len + 2,
+            max_country=max_country_len + 2))
         format_output('reset')
         print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
-                                                                                                        '-' * 5,
-                                                                                                        '-' * (max_endpoint_len + 2),
-                                                                                                        '-' * 8,
-                                                                                                        '-' * 16,
-                                                                                                        '-' * (max_country_len + 2),
-                                                                                                        '-' * (max_city_len + 2),
-                                                                                                        max_latency=max_latency_len + 2,
-                                                                                                        max_endpoint=max_endpoint_len + 2,
-                                                                                                        max_city=max_city_len + 2,
-                                                                                                        max_country=max_country_len + 2))
+            '-' * 5,
+            '-' * (max_endpoint_len + 2),
+            '-' * 8,
+            '-' * 16,
+            '-' * (max_country_len + 2),
+            '-' * (max_city_len + 2),
+            max_latency=max_latency_len + 2,
+            max_endpoint=max_endpoint_len + 2,
+            max_city=max_city_len + 2,
+            max_country=max_country_len + 2))
 
         for i, item in enumerate(top_servers[0:limit], 1):
             endpoint = item[0]
@@ -401,16 +403,16 @@ def get_top_performers(res_fl, limit, country, city):
             city = item[4]
             format_output('bold')
             print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
-                                                                                                            i,
-                                                                                                            endpoint,
-                                                                                                            latency,
-                                                                                                            ip,
-                                                                                                            country,
-                                                                                                            city,
-                                                                                                            max_latency=max_latency_len + 2,
-                                                                                                            max_endpoint=max_endpoint_len + 2,
-                                                                                                            max_city=max_city_len + 2,
-                                                                                                            max_country=max_country_len + 2))
+                i,
+                endpoint,
+                latency,
+                ip,
+                country,
+                city,
+                max_latency=max_latency_len + 2,
+                max_endpoint=max_endpoint_len + 2,
+                max_city=max_city_len + 2,
+                max_country=max_country_len + 2))
             format_output('reset')
 
         format_output('green')
@@ -571,8 +573,9 @@ if __name__ == "__main__":
                                ("GeoLite2-Country.mmdb",
                                 "https://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.tar.gz")])
 
-    parser = ColoredArgParser(description='Performs latency scan on each domain/ip and shows top performers by location',
-                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser = ColoredArgParser(
+        description='Performs latency scan on each domain/ip and shows top performers by location',
+        formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-s', '--scan',
                         action='store_true',
                         help='''Perform full latency scan and generate performance report
@@ -657,11 +660,11 @@ if __name__ == "__main__":
         city_db, country_db = download_geolite_dbs(geolite_dbs)
         hosts = get_servers_list(from_file=args.servers_file)
         results = scan(hosts,
-                        pings_num=pings,
-                        city_db=city_db,
-                        country_db=country_db,
-                        results_json=res_file,
-                        exclude_countries=exclude)
+                       pings_num=pings,
+                       city_db=city_db,
+                       country_db=country_db,
+                       results_json=res_file,
+                       exclude_countries=exclude)
         sys.exit(0)
 
     if args.download_dbs:
