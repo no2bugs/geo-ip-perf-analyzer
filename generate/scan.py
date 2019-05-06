@@ -1,5 +1,5 @@
 from validate.file import exists as file_exists
-from format.colors import output as format_output
+from format.colors import Format
 from datetime import timedelta
 from collections import OrderedDict
 from subprocess import run, PIPE
@@ -11,6 +11,8 @@ import time
 
 
 class Scanner:
+    formatting = Format()
+    
     def __init__(self, targets_file, city_db, country_db, results_json, excl_countries_fle):
         self.targets_file = targets_file
         self.city_db = city_db
@@ -26,9 +28,9 @@ class Scanner:
                 servers = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
 
             if len(servers) < 1:
-                format_output('bold', 'red')
+                self.formatting.output('bold', 'red')
                 print('Error:', self.targets_file, 'does not have any targets\n')
-                format_output('reset')
+                self.formatting.output('reset')
                 sys.exit(1)
 
             servers.sort(key=lambda x: x[0])
@@ -46,10 +48,10 @@ class Scanner:
                 excludes = [line.rstrip('\n') for line in lines if len(line) > 1]
         except FileNotFoundError:
             excludes = None
-            format_output('yellow')
+            self.formatting.output('yellow')
             print('INFO: No countries were excluded from scan')
             print('To exclude countries, create file "' + self.exclude_countries_fle + '" with country name per line\n')
-            format_output('reset')
+            self.formatting.output('reset')
 
         return excludes
 
@@ -70,11 +72,11 @@ class Scanner:
             excl_countries = sorted(self.exclude_countries())
             print('Excluding results from:', excl_countries)
 
-        format_output('bold')
+        self.formatting.output('bold')
         print('\nMeasuring latency to', len(domains), 'servers')
         print('Pings:', pings_num)
         print('Started:', time.strftime("%d/%m/%Y %H:%M:%S"))
-        format_output('reset')
+        self.formatting.output('reset')
 
         start_scan = time.time()
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
@@ -89,32 +91,32 @@ class Scanner:
                     if not country:
                         raise ValueError()
                 except Exception:
-                    format_output('yellow')
+                    self.formatting.output('yellow')
                     print('Unable to determine country for', ip, 'setting country to Unknown')
                     country = 'Unknown'
-                    format_output('reset')
+                    self.formatting.output('reset')
                 try:
                     city_result = city_reader.city(ip)
                     city = city_result.city.name
                     if not city:
                         raise ValueError()
                 except Exception:
-                    format_output('yellow')
+                    self.formatting.output('yellow')
                     print('Unable to determine city for', ip, 'setting city to Unknown')
                     city = 'Unknown'
-                    format_output('reset')
+                    self.formatting.output('reset')
             except socket.gaierror or socket.herror:
-                format_output('red')
+                self.formatting.output('red')
                 print('Unable to resolve', domain, 'Skipping...')
                 errors_total += 1
-                format_output('reset')
+                self.formatting.output('reset')
                 continue
             except Exception as error:
-                format_output('red')
+                self.formatting.output('red')
                 print('Error with endpoint:', domain, 'Skipping...')
                 print(error)
                 errors_total += 1
-                format_output('reset')
+                self.formatting.output('reset')
                 continue
 
             if excl_countries and country in excl_countries:
@@ -131,15 +133,15 @@ class Scanner:
 
                 avg_latency = float(response[-1].split('=')[1].split('/')[1])
             except Exception:
-                format_output('red')
+                self.formatting.output('red')
                 print('Error: No response time received from', domain, 'Skipping...')
                 errors_total += 1
-                format_output('reset')
+                self.formatting.output('reset')
                 continue
 
-            format_output('green')
+            self.formatting.output('green')
             print('(' + str(count) + "/" + str(len(domains)) + ')', domain, avg_latency, ip, country, city)
-            format_output('reset')
+            self.formatting.output('reset')
 
             endpoints_list.append((domain, avg_latency, ip, country, city))
 
@@ -152,7 +154,7 @@ class Scanner:
         t_diff = float(finish_scan) - float(start_scan)
         t_finish = timedelta(seconds=int(t_diff))
 
-        format_output('bold')
+        self.formatting.output('bold')
         print('\nStarted scan:     ', start_time)
         print('Finished scan:    ', finish_time)
         print('Scan duration:    ', t_finish)
@@ -171,10 +173,10 @@ class Scanner:
             with open(self.results_json, 'w') as fp:
                 dump(endpoints_dict, fp)
             print('DONE')
-            format_output('reset')
+            self.formatting.output('reset')
         else:
-            format_output('red')
+            self.formatting.output('red')
             print('\nFailed to ping any targets from the list\n')
-            format_output('reset')
+            self.formatting.output('reset')
 
         return endpoints_dict

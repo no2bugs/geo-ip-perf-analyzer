@@ -5,7 +5,7 @@ from validate.file import exists as file_exists
 from generate.geolite import GeoLite
 from generate.scan import Scanner
 from generate.report import Analyze
-from format.colors import output as format_output
+from format.colors import Format
 import sys
 import argparse
 
@@ -41,6 +41,8 @@ class ColoredArgParser(argparse.ArgumentParser):
 if __name__ == "__main__":
     res_file = 'results.json'
     excl_file = 'exclusions.list'
+
+    formatting = Format()
 
     geolite2 = GeoLite()
     report = Analyze(res_fl=res_file)
@@ -98,9 +100,9 @@ if __name__ == "__main__":
     top_ips_limit = args.results_limit
 
     if top_ips_limit is not None and top_ips_limit < 1:
-        format_output('bold', 'red')
+        formatting.output('bold', 'red')
         print("Error: limit must be > 0")
-        format_output('reset')
+        formatting.output('reset')
         sys.exit(1)
 
     targets_file = args.servers_file
@@ -115,18 +117,18 @@ if __name__ == "__main__":
             and not args.search_country \
             and not args.search_city:
         parser.print_help()
-        format_output('bold', 'red')
+        formatting.output('bold', 'red')
         print("\n*** Error: Pick one of the options ***\n")
-        format_output('reset')
+        formatting.output('reset')
         sys.exit(1)
 
     if args.scan:
         if not file_exists(targets_file):
-            format_output('bold', 'red')
+            formatting.output('bold', 'red')
             print('\nError: Nothing to scan\nTargets list file "' + targets_file + '" not found')
             print('Create "' + targets_file + '" with one domain or IP per line')
             print('(or point to another file with --servers-file)\n')
-            format_output('reset')
+            formatting.output('reset')
             sys.exit(1)
 
         geo_city_db, geo_country_db = geolite2.download_dbs(force_dl=False)
@@ -147,10 +149,10 @@ if __name__ == "__main__":
             sys.exit(0)
 
     if not file_exists(res_file):
-        format_output('bold', 'red')
+        formatting.output('bold', 'red')
         print('\nError: Unable to produce report. Latency scan results file "' + res_file + '" is missing')
         print('Perform --scan to generate new IP/domain performance report (' + res_file + ')')
-        format_output('reset')
+        formatting.output('reset')
         sys.exit(1)
 
     if args.country_stats:

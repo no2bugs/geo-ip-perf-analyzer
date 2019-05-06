@@ -1,7 +1,9 @@
 import sys
-from format.colors import output as format_output
+from format.colors import Format
 
 req_v = 3
+
+formatting = Format()
 
 current_ver = float(str(sys.version_info[0]) + '.' + str(sys.version_info[1]))
 try:
@@ -11,11 +13,11 @@ except ValueError as e:
     print(e)
     sys.exit(1)
 if current_ver < req_v:
-    format_output('bold', 'red')
+    formatting.output('bold', 'red')
     print('Error: This script requires Python version ' + str(req_v))
     print('You are using {0}.{1}.{2} {3}'.format(sys.version_info[0],
                                                  sys.version_info[1],
                                                  sys.version_info[2],
                                                  sys.version_info[3]))
-    format_output('reset')
+    formatting.output('reset')
     sys.exit(1)
