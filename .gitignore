@@ -1,3 +1,5 @@
 *.mmdb
 *.list
 *.json
+*.pyc
+__pycache__
