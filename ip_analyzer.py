@@ -178,7 +178,7 @@ if __name__ == "__main__":
 
     if args.download_dbs:
         geolite2.download_dbs(force_dl=True)
-        if not args.results and not args.scan:
+        if not args.scan and not args.results and not args.search_country and not args.search_city:
             sys.exit(0)
 
     if not file_exists(res_file):

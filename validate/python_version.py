@@ -14,7 +14,7 @@ except ValueError as e:
     sys.exit(1)
 if current_ver < req_v:
     formatting.output('bold', 'red')
-    print('Error: This script requires Python version ' + str(req_v))
+    print('Error: Python version ' + str(req_v) + ' is required')
     print('You are using {0}.{1}.{2} {3}'.format(sys.version_info[0],
                                                  sys.version_info[1],
                                                  sys.version_info[2],
