@@ -1,5 +1,6 @@
 from format.colors import Format
 from json import loads
+from collections import defaultdict
 import re
 
 
@@ -114,10 +115,9 @@ class Analyze:
 
         return top_servers
 
-
     def country_stats(self, sort_by=2):
         country_servers = {}
-        country_latency = {}
+        country_latency = defaultdict(list)
         country_metrics = []
 
         print("\nReading file", self.res_fl, '\n')
@@ -126,19 +126,19 @@ class Analyze:
             results_json = loads(results)
 
         for item in results_json.items():
-            latency = item[1][0]
+            server_latency = float(item[1][0])
             country = item[1][2]
+
+            country_latency[country].append(server_latency)
 
             if country in country_servers:
                 country_servers[country] += 1
-                country_latency[country] += latency
             else:
                 country_servers[country] = 1
-                country_latency[country] = latency
 
         for country, servers in country_servers.items():
-            avg_latency = round(country_latency[country] / servers, 2)
-            country_metrics.append((country, servers, avg_latency))
+            min_latency = round(min(country_latency[country]), 2)
+            country_metrics.append((country, servers, min_latency))
 
         country_metrics.sort(key=lambda x: x[sort_by])
 
@@ -176,10 +176,9 @@ class Analyze:
         print("\nTotal Countries:", len(country_metrics))
         self.formatting.output('reset')
 
-
     def city_stats(self, sort_by=2):
         city_servers = {}
-        city_latency = {}
+        city_latency = defaultdict(list)
         city_metrics = []
 
         print("\nReading file", self.res_fl, '\n')
@@ -188,19 +187,19 @@ class Analyze:
             results_json = loads(results)
 
         for item in results_json.items():
-            latency = item[1][0]
+            server_latency = item[1][0]
             city = item[1][3]
+
+            city_latency[city].append(server_latency)
 
             if city in city_servers:
                 city_servers[city] += 1
-                city_latency[city] += latency
             else:
                 city_servers[city] = 1
-                city_latency[city] = latency
 
         for city, servers in city_servers.items():
-            avg_latency = round(city_latency[city] / servers, 2)
-            city_metrics.append((city, servers, avg_latency))
+            min_latency = round(min(city_latency[city]), 2)
+            city_metrics.append((city, servers, min_latency))
 
         city_metrics.sort(key=lambda x: x[sort_by])
 
