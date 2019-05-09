@@ -1,6 +1,7 @@
 from format.colors import Format
 from json import loads
 from collections import defaultdict
+import sys
 import re
 
 
@@ -10,13 +11,13 @@ class Analyze:
     def __init__(self, res_fl):
         self.res_fl = res_fl
 
-    def get_top_performers(self, limit, country=None, city=None):
+    def get_top_performers(self, limit=None, country=None, city=None, max_latency_limit=float("inf")):
         if not limit:
             limit = 'all'
 
         top_servers = []
 
-        print("\nReading file", self.res_fl)
+        print("Reading file", self.res_fl)
         with open(self.res_fl, 'r') as f:
             results = f.read()
             results_json = loads(results)
@@ -24,22 +25,24 @@ class Analyze:
         if country and city:
             print('\nSearching for', limit, 'servers matching', city + ',', country, '\n')
             for server in results_json.items():
-                if re.search(str(country), server[1][2], re.IGNORECASE) and re.match(str(city), server[1][3], re.IGNORECASE):
+                if re.search(str(country), server[1][2], re.IGNORECASE) \
+                        and re.match(str(city), server[1][3], re.IGNORECASE) \
+                        and server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         elif country:
             print('\nSearching for', limit, 'servers matching country', country, '\n')
             for server in results_json.items():
-                if re.search(str(country), server[1][2], re.IGNORECASE):
+                if re.search(str(country), server[1][2], re.IGNORECASE) and server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         elif city:
             print('\nSearching for', limit, 'servers matching city', city, '\n')
             for server in results_json.items():
-                if re.search(str(city), server[1][3], re.IGNORECASE):
+                if re.search(str(city), server[1][3], re.IGNORECASE) and server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         else:
             print('\nSearching for', limit, 'servers\n')
             top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in
-                           results_json.items()]
+                           results_json.items() if server[1][0] <= max_latency_limit]
 
         if not top_servers:
             self.formatting.output('yellow')
@@ -50,9 +53,11 @@ class Analyze:
             elif country:
                 print('No results found for', country)
                 print('Run with --country-stats to see list of all available countries')
-            else:
+            elif city:
                 print('No results found for', city)
                 print('Run with --city-stats to see list of all available cities')
+            else:
+                print('No matching results found')
             self.formatting.output('reset')
         else:
             if limit == 'all':
@@ -115,18 +120,20 @@ class Analyze:
 
         return top_servers
 
-    def country_stats(self, sort_by=2):
+    def country_stats(self, sort_by=2, max_latency_limit=float("inf")):
         country_servers = {}
         country_latency = defaultdict(list)
         country_metrics = []
 
-        print("\nReading file", self.res_fl, '\n')
+        print("Reading file", self.res_fl, '\n')
         with open(self.res_fl, 'r') as f:
             results = f.read()
             results_json = loads(results)
 
         for item in results_json.items():
             server_latency = float(item[1][0])
+            if server_latency > max_latency_limit: continue
+
             country = item[1][2]
 
             country_latency[country].append(server_latency)
@@ -135,6 +142,12 @@ class Analyze:
                 country_servers[country] += 1
             else:
                 country_servers[country] = 1
+
+        if not country_servers:
+            self.formatting.output('bold', 'yellow')
+            print('No results found')
+            self.formatting.output('reset')
+            sys.exit(0)
 
         for country, servers in country_servers.items():
             min_latency = round(min(country_latency[country]), 2)
@@ -163,6 +176,7 @@ class Analyze:
             country = each[0]
             servers = each[1]
             latency = round(each[2], 2)
+
             self.formatting.output('bold')
             print('{0:<5} {1:<{max_country}} {2:<8} {3:<{max_latency}}'.format(i,
                                                                                country,
@@ -176,18 +190,20 @@ class Analyze:
         print("\nTotal Countries:", len(country_metrics))
         self.formatting.output('reset')
 
-    def city_stats(self, sort_by=2):
+    def city_stats(self, sort_by=2, max_latency_limit=float("inf")):
         city_servers = {}
         city_latency = defaultdict(list)
         city_metrics = []
 
-        print("\nReading file", self.res_fl, '\n')
+        print("Reading file", self.res_fl, '\n')
         with open(self.res_fl, 'r') as f:
             results = f.read()
             results_json = loads(results)
 
         for item in results_json.items():
-            server_latency = item[1][0]
+            server_latency = float(item[1][0])
+            if server_latency > max_latency_limit: continue
+
             city = item[1][3]
 
             city_latency[city].append(server_latency)
