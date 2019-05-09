@@ -121,26 +121,25 @@ if __name__ == "__main__":
 
     if args.scan and (args.results or args.search_country or args.search_city):
         formatting.output('bold', 'red')
-        print('Error: Cannot run scan and report at the same time')
+        print('\nError: Cannot run scan and report at the same time\n')
         formatting.output('reset')
         sys.exit(1)
 
     if top_ips_limit is not None and top_ips_limit < 1:
         formatting.output('bold', 'red')
-        print("Error: --results-limit must be > 0")
+        print("\nError: --results-limit must be > 0\n")
         formatting.output('reset')
         sys.exit(1)
 
     if max_latency < 0:
         formatting.output('bold', 'red')
-        print("Error: --max-latency must be => 0")
+        print("\nError: --max-latency must be => 0\n")
         formatting.output('reset')
         sys.exit(1)
 
     if max_latency != float("inf"):
         formatting.output('bold', 'yellow')
-        print('Filtered by max latency:', max_latency)
-        print()
+        print('Filtered by max latency:', str(max_latency) + 'ms\n')
         formatting.output('reset')
 
     if not args.results \
