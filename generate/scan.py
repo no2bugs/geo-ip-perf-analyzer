@@ -12,7 +12,7 @@ import time
 
 class Scanner:
     formatting = Format()
-    
+
     def __init__(self, targets_file, city_db, country_db, results_json, excl_countries_fle):
         self.targets_file = targets_file
         self.city_db = city_db
@@ -20,26 +20,33 @@ class Scanner:
         self.results_json = results_json
         self.exclude_countries_fle = excl_countries_fle
 
+    @staticmethod
+    def write_json_file(json_file, data):
+        print('\nCreating json file:', json_file)
+        with open(json_file, 'w') as outfile:
+            dump(data, outfile, indent=2)
+        print('DONE')
+
     def get_servers_list(self):
-        if file_exists(self.targets_file):
-            print('Reading targets from:', self.targets_file)
-            with open(self.targets_file, 'r') as f:
-                lines = f.readlines()
-                servers = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
-
-            if len(servers) < 1:
-                self.formatting.output('bold', 'red')
-                print('Error:', self.targets_file, 'does not have any targets\n')
-                self.formatting.output('reset')
-                sys.exit(1)
-
-            servers.sort(key=lambda x: x[0])
-
-            print('\nFound total of', len(servers), 'targets')
-
-            return servers
-        else:
+        if not file_exists(self.targets_file):
             return None
+
+        print('Reading targets from:', self.targets_file)
+        with open(self.targets_file, 'r') as f:
+            lines = f.readlines()
+            servers = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
+
+        if len(servers) < 1:
+            self.formatting.output('bold', 'red')
+            print('Error:', self.targets_file, 'does not have any targets\n')
+            self.formatting.output('reset')
+            sys.exit(1)
+
+        servers.sort(key=lambda x: x[0])
+
+        print('\nFound total of', len(servers), 'targets')
+
+        return servers
 
     def exclude_countries(self):
         try:
@@ -128,9 +135,7 @@ class Scanner:
 
             try:
                 lines = result.split('\n')
-
                 response = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
-
                 avg_latency = float(response[-1].split('=')[1].split('/')[1])
             except Exception:
                 self.formatting.output('red')
@@ -169,10 +174,7 @@ class Scanner:
             endpoints_dict[item[0]] = [item[1], item[2], item[3], item[4]]
 
         if endpoints_list:
-            print('\nCreating json file', self.results_json)
-            with open(self.results_json, 'w') as fp:
-                dump(endpoints_dict, fp)
-            print('DONE')
+            self.write_json_file(json_file=self.results_json, data=endpoints_dict)
             self.formatting.output('reset')
         else:
             self.formatting.output('red')
