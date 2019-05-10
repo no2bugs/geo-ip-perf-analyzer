@@ -32,7 +32,7 @@
 
 Usage: ip_analyzer.py [-h] [-s] [-p SCAN_PINGS] [-f SERVERS_FILE] [-r]
                       [-l RESULTS_LIMIT] [-c] [-t SEARCH_COUNTRY] [-i]
-                      [-y SEARCH_CITY] [-b SORT_BY] [-d]
+                      [-y SEARCH_CITY] [-b SORT_BY] [-d] [-m MAX_LATENCY]
 
 Performs latency scan on each domain/ip and shows top performers by location
 
@@ -65,4 +65,7 @@ optional arguments:
                         Sort by field/column number (fields start from 1). Default is 3
 
   -d, --download-dbs    Force download latest geolite dbs. Default is False
+
+  -m MAX_LATENCY, --max-latency MAX_LATENCY
+                        Filter results by maximum latency (integer/float). Default is no limit
 ```
