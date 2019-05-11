@@ -20,7 +20,7 @@ class Analyze:
 
         return json_data
 
-    def get_top_performers(self, limit=None, country=None, city=None, max_latency_limit=float("inf")):
+    def get_top_performers(self, limit=None, country=None, city=None, sort_by=1, max_latency_limit=float("inf")):
         if not limit:
             limit = 'all'
 
@@ -66,6 +66,18 @@ class Analyze:
                 print('No matching results found')
             self.formatting.output('reset')
         else:
+            top_servers.sort(key=lambda x: x[sort_by])
+
+            field = {0: 'ENDPOINT',
+                     1: 'LATENCY',
+                     2: 'IP',
+                     3: 'COUNTRY',
+                     4: 'CITY'}
+
+            self.formatting.output('bold', 'green')
+            print('Sorted by:', field[sort_by])
+            self.formatting.output('reset')
+
             if limit == 'all':
                 limit = len(top_servers)
             max_endpoint_len = max(len(l[0]) for l in top_servers[0:limit])
@@ -104,18 +116,22 @@ class Analyze:
                 country = item[3]
                 city = item[4]
                 self.formatting.output('bold')
-                print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
-                    i,
-                    endpoint,
-                    latency,
-                    ip,
-                    country,
-                    city,
-                    max_latency=max_latency_len + 2,
-                    max_endpoint=max_endpoint_len + 2,
-                    max_city=max_city_len + 2,
-                    max_country=max_country_len + 2))
+                try:
+                    print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
+                        i,
+                        endpoint,
+                        latency,
+                        ip,
+                        country,
+                        city,
+                        max_latency=max_latency_len + 2,
+                        max_endpoint=max_endpoint_len + 2,
+                        max_city=max_city_len + 2,
+                        max_country=max_country_len + 2))
+                except (BrokenPipeError, IOError):
+                    print('Caught BrokenPipeError')
                 self.formatting.output('reset')
+                sys.stderr.close()
 
             self.formatting.output('green')
             if limit <= len(top_servers):
@@ -156,7 +172,17 @@ class Analyze:
             min_latency = round(min(country_latency[country]), 2)
             country_metrics.append((country, servers, min_latency))
 
-        country_metrics.sort(key=lambda x: x[sort_by])
+        field = {0: 'COUNTRY',
+                 1: 'SERVERS',
+                 2: 'LATENCY'}
+
+        rev_sort = True if field[sort_by] == 'SERVERS' else False
+
+        country_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
+
+        self.formatting.output('bold', 'green')
+        print('Sorted by:', field[sort_by])
+        self.formatting.output('reset')
 
         max_country_len = max(len(str(l[0])) for l in country_metrics)
         max_latency_len = max(len(str(l[2])) for l in country_metrics)
@@ -218,6 +244,18 @@ class Analyze:
             city_metrics.append((city, servers, min_latency))
 
         city_metrics.sort(key=lambda x: x[sort_by])
+
+        field = {0: 'CITY',
+                 1: 'SERVERS',
+                 2: 'LATENCY'}
+
+        rev_sort = True if field[sort_by] == 'SERVERS' else False
+
+        city_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
+
+        self.formatting.output('bold', 'green')
+        print('Sorted by:', field[sort_by])
+        self.formatting.output('reset')
 
         max_city_len = max(len(str(l[0])) for l in city_metrics)
         max_latency_len = max(len(str(l[2])) for l in city_metrics)

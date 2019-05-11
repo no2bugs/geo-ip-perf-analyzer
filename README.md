@@ -44,9 +44,9 @@ optional arguments:
                         Number of pings to each IP during scan (increase for better accuracy). Default is 1
 
   -f SERVERS_FILE, --servers-file SERVERS_FILE
-                        Read servers list from file (one domain or ip per line). Default is "servers.list"
+                        Provide servers list file (one domain or ip per line). Default reads from "servers.list"
 
-  -r, --results         Show top performing endpoints
+  -r, --results         Read and display performance report
 
   -l RESULTS_LIMIT, --results-limit RESULTS_LIMIT
                         Number of results to show
@@ -62,7 +62,7 @@ optional arguments:
                         Search results by city name
 
   -b SORT_BY, --sort-by SORT_BY
-                        Sort by field/column number (fields start from 1). Default is 3
+                        Sort by field/column number (integer). Default sort is by "LATENCY"
 
   -d, --download-dbs    Force download latest geolite dbs. Default is False
 
