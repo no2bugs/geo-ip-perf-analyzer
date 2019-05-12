@@ -20,7 +20,7 @@ class Analyze:
 
         return json_data
 
-    def get_top_performers(self, limit=None, country=None, city=None, sort_by=1, max_latency_limit=float("inf")):
+    def get_top_performers(self, limit=None, country=None, city=None, sort_by=1, min_latency_limit=0, max_latency_limit=float("inf")):
         if not limit:
             limit = 'all'
 
@@ -33,22 +33,24 @@ class Analyze:
             for server in results_json.items():
                 if re.search(str(country), server[1][2], re.IGNORECASE) \
                         and re.match(str(city), server[1][3], re.IGNORECASE) \
-                        and server[1][0] <= max_latency_limit:
+                        and min_latency_limit <= server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         elif country:
             print('Searching for', limit, 'servers matching country', country.capitalize(), '\n')
             for server in results_json.items():
-                if re.search(str(country), server[1][2], re.IGNORECASE) and server[1][0] <= max_latency_limit:
+                if re.search(str(country), server[1][2], re.IGNORECASE) \
+                        and min_latency_limit <= server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         elif city:
             print('Searching for', limit, 'servers matching city', city.capitalize(), '\n')
             for server in results_json.items():
-                if re.search(str(city), server[1][3], re.IGNORECASE) and server[1][0] <= max_latency_limit:
+                if re.search(str(city), server[1][3], re.IGNORECASE) \
+                        and min_latency_limit <= server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         else:
             print('Searching for', limit, 'servers\n')
             top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in
-                           results_json.items() if server[1][0] <= max_latency_limit]
+                           results_json.items() if min_latency_limit <= server[1][0] <= max_latency_limit]
 
         if not top_servers:
             self.formatting.output('yellow')
@@ -142,7 +144,7 @@ class Analyze:
 
         return top_servers
 
-    def country_stats(self, sort_by=2, max_latency_limit=float("inf")):
+    def country_stats(self, sort_by=2, min_latency_limit=0, max_latency_limit=float("inf")):
         country_servers = {}
         country_latency = defaultdict(list)
         country_metrics = []
@@ -151,7 +153,8 @@ class Analyze:
 
         for item in results_json.items():
             server_latency = float(item[1][0])
-            if server_latency > max_latency_limit: continue
+            if server_latency < min_latency_limit or server_latency > max_latency_limit:
+                continue
 
             country = item[1][2]
 
@@ -219,7 +222,7 @@ class Analyze:
         print("\nTotal Countries:", len(country_metrics))
         self.formatting.output('reset')
 
-    def city_stats(self, sort_by=2, max_latency_limit=float("inf")):
+    def city_stats(self, sort_by=2, min_latency_limit=0, max_latency_limit=float("inf")):
         city_servers = {}
         city_latency = defaultdict(list)
         city_metrics = []
@@ -228,7 +231,8 @@ class Analyze:
 
         for item in results_json.items():
             server_latency = float(item[1][0])
-            if server_latency > max_latency_limit: continue
+            if server_latency < min_latency_limit or server_latency > max_latency_limit:
+                continue
 
             city = item[1][3]
 

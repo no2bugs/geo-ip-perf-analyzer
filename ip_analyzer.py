@@ -98,6 +98,11 @@ def options():
                         help='''Force download latest geolite dbs. Default is False
                              ''', default=False)
 
+    parser.add_argument('-n', '--min-latency',
+                        type=float,
+                        help='''Filter results by minimum latency (integer/float). Default is 0
+                             ''', default=None)
+
     parser.add_argument('-m', '--max-latency',
                         type=float,
                         help='''Filter results by maximum latency (integer/float). Default is no limit
@@ -106,7 +111,7 @@ def options():
     return parser
 
 
-def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mx_latency):
+def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_latency, mx_latency):
     if not len(sys.argv) > 1:
         options().print_help()
         formatting.output('bold', 'red')
@@ -114,7 +119,7 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mx_l
         formatting.output('reset')
         sys.exit(1)
 
-    if args.scan and report_args:
+    if args.scan and (report_args or filter_args):
         formatting.output('bold', 'red')
         print('\nError: Cannot run scan and report options at the same time\n')
         formatting.output('reset')
@@ -132,15 +137,20 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mx_l
         formatting.output('reset')
         sys.exit(1)
 
-    if mx_latency < 0:
+    if mn_latency < 0 or mx_latency < 0:
         formatting.output('bold', 'red')
-        print("\nError: --max-latency must be => 0\n")
+        print("\nError: latency must be => 0\n")
         formatting.output('reset')
         sys.exit(1)
 
+    if mn_latency != 0:
+        formatting.output('bold', 'yellow')
+        print('Filtered by min latency:', str(mn_latency) + 'ms\n')
+        formatting.output('reset')
+
     if mx_latency != float("inf"):
         formatting.output('bold', 'yellow')
-        print('Filtered by max latency:', str(max_latency) + 'ms\n')
+        print('Filtered by max latency:', str(mx_latency) + 'ms\n')
         formatting.output('reset')
 
     if sort_by and (args.city_stats or args.country_stats) and (not 0 <= sort_by <= 3):
@@ -175,7 +185,7 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, refresh_geo
     scanner.scan(pings_num=pings)
 
 
-def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_fld, mx_latency):
+def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_fld, mn_latency, mx_latency):
     if not file_exists(results_file):
         formatting.output('bold', 'red')
         print('\nError: Unable to produce report. Latency scan results file "' + results_file + '" is missing')
@@ -184,16 +194,17 @@ def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_f
         sys.exit(1)
 
     if args.country_stats:
-        report.country_stats(sort_by=stats_sort_fld, max_latency_limit=mx_latency)
+        report.country_stats(sort_by=stats_sort_fld, min_latency_limit=mn_latency, max_latency_limit=mx_latency)
 
     if args.city_stats:
-        report.city_stats(sort_by=stats_sort_fld, max_latency_limit=mx_latency)
+        report.city_stats(sort_by=stats_sort_fld, min_latency_limit=mn_latency, max_latency_limit=mx_latency)
 
     if args.results or args.search_country or args.search_city:
         report.get_top_performers(limit=records_limit,
                                   country=args.search_country,
                                   city=args.search_city,
                                   sort_by=res_sort_fld,
+                                  min_latency_limit=mn_latency,
                                   max_latency_limit=mx_latency)
 
 
@@ -214,6 +225,7 @@ if __name__ == "__main__":
     pings = selections.scan_pings
     top_ips_limit = selections.results_limit
     max_latency = float("inf") if not selections.max_latency else round(float(selections.max_latency), 2)
+    min_latency = 0 if not selections.min_latency else round(float(selections.min_latency), 2)
 
     report_selections = [selections.results,
                          selections.search_country,
@@ -222,13 +234,20 @@ if __name__ == "__main__":
                          selections.city_stats]
 
     report_filters = [selections.results_limit,
+                      selections.min_latency,
                       selections.max_latency,
                       selections.sort_by]
 
     report_requested = True if any(report_selections) else False
     filters_applied = True if any(report_filters) else False
 
-    validate_inputs(selections, report_requested, report_filters, top_ips_limit, selections.sort_by, max_latency)
+    validate_inputs(selections,
+                    report_requested,
+                    report_filters,
+                    top_ips_limit,
+                    selections.sort_by,
+                    min_latency,
+                    max_latency)
 
     if selections.download_dbs:
         geolite2.download_dbs(force_dl=True)
@@ -242,4 +261,5 @@ if __name__ == "__main__":
                        records_limit=top_ips_limit,
                        stats_sort_fld=sort_stats,
                        res_sort_fld=sort_results,
+                       mn_latency=min_latency,
                        mx_latency=max_latency)
