@@ -68,17 +68,23 @@ class Analyze:
                 print('No matching results found')
             self.formatting.output('reset')
         else:
-            top_servers.sort(key=lambda x: x[sort_by])
-
-            field = {0: 'ENDPOINT',
-                     1: 'LATENCY',
-                     2: 'IP',
-                     3: 'COUNTRY',
-                     4: 'CITY'}
+            fields = {0: 'ENDPOINT',
+                      1: 'LATENCY',
+                      2: 'IP',
+                      3: 'COUNTRY',
+                      4: 'CITY'}
 
             self.formatting.output('bold', 'green')
-            print('Sorted by:', field[sort_by])
+            print('Sorted by:', fields[sort_by])
             self.formatting.output('reset')
+
+            if fields[sort_by] == 'IP':
+                top_servers.sort(key=lambda x: (int(str(x[sort_by]).split('.')[0]),
+                                                int(str(x[sort_by]).split('.')[1]),
+                                                int(str(x[sort_by]).split('.')[2]),
+                                                int(str(x[sort_by]).split('.')[3])))
+            else:
+                top_servers.sort(key=lambda x: x[sort_by])
 
             if limit == 'all':
                 limit = len(top_servers)
@@ -89,11 +95,11 @@ class Analyze:
             self.formatting.output('bold', 'reverse')
             print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
                 '#',
-                'ENDPOINT',
-                'LATENCY',
-                'IP',
-                'COUNTRY',
-                'CITY',
+                fields[0],
+                fields[1],
+                fields[2],
+                fields[3],
+                fields[4],
                 max_latency=max_latency_len + 2,
                 max_endpoint=max_endpoint_len + 2,
                 max_city=max_city_len + 2,
@@ -175,25 +181,25 @@ class Analyze:
             min_latency = round(min(country_latency[country]), 2)
             country_metrics.append((country, servers, min_latency))
 
-        field = {0: 'COUNTRY',
-                 1: 'SERVERS',
-                 2: 'LATENCY'}
+        fields = {0: 'COUNTRY',
+                  1: 'SERVERS',
+                  2: 'LATENCY'}
 
-        rev_sort = True if field[sort_by] == 'SERVERS' else False
+        rev_sort = True if fields[sort_by] == 'SERVERS' else False
 
         country_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
 
         self.formatting.output('bold', 'green')
-        print('Sorted by:', field[sort_by])
+        print('Sorted by:', fields[sort_by])
         self.formatting.output('reset')
 
         max_country_len = max(len(str(l[0])) for l in country_metrics)
         max_latency_len = max(len(str(l[2])) for l in country_metrics)
         self.formatting.output('bold', 'reverse')
         print('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('#',
-                                                                           'COUNTRY',
-                                                                           'SERVERS',
-                                                                           'LATENCY',
+                                                                           fields[0],
+                                                                           fields[1],
+                                                                           fields[2],
                                                                            max_country=max_country_len + 2,
                                                                            max_latency=max_latency_len + 2))
         self.formatting.output('reset')
@@ -249,25 +255,25 @@ class Analyze:
 
         city_metrics.sort(key=lambda x: x[sort_by])
 
-        field = {0: 'CITY',
+        fields = {0: 'CITY',
                  1: 'SERVERS',
                  2: 'LATENCY'}
 
-        rev_sort = True if field[sort_by] == 'SERVERS' else False
+        rev_sort = True if fields[sort_by] == 'SERVERS' else False
 
         city_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
 
         self.formatting.output('bold', 'green')
-        print('Sorted by:', field[sort_by])
+        print('Sorted by:', fields[sort_by])
         self.formatting.output('reset')
 
         max_city_len = max(len(str(l[0])) for l in city_metrics)
         max_latency_len = max(len(str(l[2])) for l in city_metrics)
         self.formatting.output('bold', 'reverse')
         print('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('#',
-                                                                        'CITY',
-                                                                        'SERVERS',
-                                                                        'LATENCY',
+                                                                        fields[0],
+                                                                        fields[1],
+                                                                        fields[2],
                                                                         max_city=max_city_len + 2,
                                                                         max_latency=max_latency_len + 2))
         self.formatting.output('reset')
