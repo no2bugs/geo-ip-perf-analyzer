@@ -119,13 +119,13 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
         formatting.output('reset')
         sys.exit(1)
 
-    if args.scan and (report_args or filter_args):
+    if args.scan and (any(report_args) or any(filter_args)):
         formatting.output('bold', 'red')
         print('\nError: Cannot run scan and report options at the same time\n')
         formatting.output('reset')
         sys.exit(1)
 
-    if filter_args and (not report_args and not args.scan and not args.download_dbs):
+    if any(filter_args) and not any(report_args):
         formatting.output('bold', 'red')
         print('\nError: Cannot apply filters without generating report\n')
         formatting.output('reset')
@@ -165,7 +165,7 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
         sys.exit(1)
 
 
-def perform_scan(args, targets_fle, results_fle, country_exclusions, refresh_geo_dbs=False):
+def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, refresh_geo_dbs=False):
     if not file_exists(targets_fle):
         formatting.output('bold', 'red')
         print('\nError: Nothing to scan\nTargets list file "' + targets_fle + '" not found')
@@ -238,11 +238,8 @@ if __name__ == "__main__":
                       selections.max_latency,
                       selections.sort_by]
 
-    report_requested = True if any(report_selections) else False
-    filters_applied = True if any(report_filters) else False
-
     validate_inputs(selections,
-                    report_requested,
+                    report_selections,
                     report_filters,
                     top_ips_limit,
                     selections.sort_by,
@@ -253,9 +250,9 @@ if __name__ == "__main__":
         geolite2.download_dbs(force_dl=True)
 
     if selections.scan:
-        perform_scan(selections, targets_file, res_file, excl_file, refresh_geo_dbs=False)
+        perform_scan(selections, targets_file, res_file, excl_file, pings, refresh_geo_dbs=False)
 
-    if report_requested:
+    if any(report_selections):
         produce_report(selections,
                        results_file=res_file,
                        records_limit=top_ips_limit,
