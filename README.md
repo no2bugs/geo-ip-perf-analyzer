@@ -63,7 +63,7 @@ optional arguments:
                         Search results by city name
 
   -b SORT_BY, --sort-by SORT_BY
-                        Sort --country-stats or --city-stats by field/column number. Default is 4 (LATENCY)
+                        Sort by field/column number. Default is "LATENCY"
 
   -d, --download-dbs    Force download latest geolite dbs. Default is False
 
