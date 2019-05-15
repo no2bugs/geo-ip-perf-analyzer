@@ -16,11 +16,14 @@ class GeoLite:
         db_files = []
 
         for db_file, db_url in self.dbs.items():
+            tar_db_folder = None
+            tar_db_file = None
+
             if not force_dl:
                 print('Looking for geolite db file', db_file)
                 if file_exists(db_file):
                     print('Found geolite db file', db_file, '\n')
-                    db_files.append(db_file)
+                    db_files.append(os.path.abspath(db_file))
                     continue
 
             if not file_exists(db_file):
@@ -31,37 +34,36 @@ class GeoLite:
 
             r = web_request(db_url)
 
-            print('Downloading', db_url)
-
             db_tar = db_url.split('/')[-1]
+
+            print('Downloading', db_url)
             with open(db_tar, 'wb') as f:
                 f.write(r.content)
             print('Finished downloading', db_tar)
 
-            print('Extracting...')
             tf = tarfile.open(db_tar, 'r:gz')
+
+            tar_file_members = tf.getmembers()
+            for member in tar_file_members:
+                if member.name.endswith('.mmdb'):
+                    tar_db_folder= member.name.split('/')[0]
+                    tar_db_file = member.name.split('/')[1]
+
+            print('Extracting into', tar_db_folder)
             tf.extractall()
 
             print('Deleting', db_tar, 'file')
             os.remove(db_tar)
 
-            target_dir = db_tar.split('.')[0]
+            db_file_path = os.path.join(tar_db_folder, tar_db_file)
 
-            for root, dirs, files in os.walk('.'):
-                for dir in dirs:
-                    if dir.find(target_dir) != -1:
-                        db_dir_path = os.path.join(root, dir)
-                        print('Extracted contents into', db_dir_path)
-                for fle in files:
-                    if fle.find(db_file) != -1:
-                        db_f_path = os.path.join(root, fle)
-                        print('Moving', db_f_path, 'to current path')
-                        shutil.move(db_f_path, '.')
+            print('Moving', db_file_path, 'into', os.getcwd())
+            shutil.move(db_file_path, os.getcwd())
 
-            db_files.append(db_file)
+            db_files.append(os.path.abspath(db_file))
 
-            print('Deleting', db_dir_path, 'folder')
-            shutil.rmtree(db_dir_path)
+            print('Deleting', tar_db_folder, 'folder')
+            shutil.rmtree(tar_db_folder)
             print('DONE\n')
 
         return db_files
