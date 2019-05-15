@@ -14,7 +14,7 @@ def request(url, time_out=60):
     except ConnectionError as e:
         print(e)
         print('Returned:', resp.status_code, resp.reason)
-        print()
+        return resp
     except Exception as e:
         print('Error: Something went wrong\n', e)
         return None

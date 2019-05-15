@@ -220,10 +220,10 @@ if __name__ == "__main__":
     selections = options().parse_args()
 
     targets_file = selections.servers_file
-    sort_stats = 2 if not selections.sort_by else selections.sort_by - 1
-    sort_results = 1 if not selections.sort_by else selections.sort_by - 1
     pings = selections.scan_pings
     top_ips_limit = selections.results_limit
+    sort_stats = 2 if not selections.sort_by else selections.sort_by - 1
+    sort_results = 1 if not selections.sort_by else selections.sort_by - 1
     max_latency = float("inf") if not selections.max_latency else round(float(selections.max_latency), 2)
     min_latency = 0 if not selections.min_latency else round(float(selections.min_latency), 2)
 
