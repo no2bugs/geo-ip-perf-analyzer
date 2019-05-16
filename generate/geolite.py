@@ -45,7 +45,7 @@ class GeoLite:
             tar_file_members = tf.getmembers()
             for member in tar_file_members:
                 if member.name.endswith('.mmdb'):
-                    tar_db_folder= member.name.split('/', 1)[0]
+                    tar_db_folder= member.name.rsplit('/', 1)[0]
                     tar_db_file = member.name.rsplit('/', 1)[-1]
 
             print('Extracting into', tar_db_folder)
