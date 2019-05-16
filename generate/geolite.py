@@ -32,11 +32,10 @@ class GeoLite:
                 print('Forcing refresh of geolite db', db_file)
                 os.remove(db_file)
 
-            r = web_request(db_url)
-
             db_tar = db_url.split('/')[-1]
 
             print('Downloading', db_url)
+            r = web_request(db_url)
             with open(db_tar, 'wb') as f:
                 f.write(r.content)
             print('Finished downloading', db_tar)
@@ -46,8 +45,8 @@ class GeoLite:
             tar_file_members = tf.getmembers()
             for member in tar_file_members:
                 if member.name.endswith('.mmdb'):
-                    tar_db_folder= member.name.split('/')[0]
-                    tar_db_file = member.name.split('/')[1]
+                    tar_db_folder= member.name.split('/', 1)[0]
+                    tar_db_file = member.name.rsplit('/', 1)[-1]
 
             print('Extracting into', tar_db_folder)
             tf.extractall()
