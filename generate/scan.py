@@ -3,8 +3,13 @@ from format.colors import Format
 from datetime import timedelta
 from collections import OrderedDict
 from subprocess import run, PIPE
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Iterable, List, Optional, Tuple
+import threading
 from json import dump
 import geoip2.database
+import platform
+import re
 import socket
 import sys
 import time
@@ -22,13 +27,13 @@ class Scanner:
         self.include_countries = include_countries
 
     @staticmethod
-    def write_json_file(json_file, data):
+    def write_json_file(json_file: str, data: Dict[str, List]) -> None:
         print('\nCreating json file:', json_file)
         with open(json_file, 'w') as outfile:
             dump(data, outfile, indent=2)
         print('DONE')
 
-    def get_servers_list(self):
+    def get_servers_list(self) -> Optional[List[str]]:
         if not file_exists(self.targets_file):
             return None
 
@@ -43,13 +48,13 @@ class Scanner:
             self.formatting.output('reset')
             sys.exit(1)
 
-        servers.sort(key=lambda x: x[0])
+        servers.sort(key=str.lower)
 
         print('\nFound total of', len(servers), 'targets')
 
         return servers
 
-    def exclude_countries(self):
+    def exclude_countries(self) -> Optional[List[str]]:
         try:
             with open(self.exclude_countries_fle, 'r') as f:
                 lines = f.readlines()
@@ -63,19 +68,20 @@ class Scanner:
 
         return excludes
 
-    def scan(self, pings_num=1):
+    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False) -> Dict[str, List]:
         domains = self.get_servers_list()
         excl_countries = None
         include_countries = self.include_countries
 
-        endpoints_list = []
-        endpoints_dict = OrderedDict()
+        endpoints_list: List[Tuple[str, float, str, str, str]] = []
+        endpoints_dict: "OrderedDict[str, List]" = OrderedDict()
 
         skipped_total = 0
         errors_total = 0
 
         city_reader = geoip2.database.Reader(self.city_db)
         country_reader = geoip2.database.Reader(self.country_db)
+        lock = threading.Lock()
 
         if self.exclude_countries():
             excl_countries = sorted(self.exclude_countries())
@@ -84,82 +90,71 @@ class Scanner:
         self.formatting.output('bold')
         print('\nMeasuring latency to', len(domains), 'servers')
         print('Pings:', pings_num)
+        print('Workers:', workers)
+        print('Timeout:', str(timeout_ms) + 'ms')
+        print('All A records:', all_a_records)
         print('Started:', time.strftime("%d/%m/%Y %H:%M:%S"))
         self.formatting.output('reset')
 
         start_scan = time.time()
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
-        for count, domain in enumerate(domains, 1):
-            try:
-                resolv = socket.gethostbyname_ex(domain)
-                ip = resolv[2][0]
+        total_targets = 0
+        tasks = []
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            for domain in domains:
                 try:
-                    country_result = country_reader.country(ip)
-                    country = country_result.country.name
-                    if not country:
-                        raise ValueError()
-                except Exception:
-                    self.formatting.output('yellow')
-                    print('Unable to determine country for', ip, 'setting country to Unknown')
-                    country = 'Unknown'
+                    resolv = socket.gethostbyname_ex(domain)
+                    ips = resolv[2]
+                    if not ips:
+                        raise ValueError('No IPs returned')
+                except (socket.gaierror, socket.herror):
+                    self.formatting.output('red')
+                    print('Unable to resolve', domain, 'Skipping...')
+                    errors_total += 1
                     self.formatting.output('reset')
-                try:
-                    city_result = city_reader.city(ip)
-                    city = city_result.city.name
-                    if not city:
-                        raise ValueError()
-                except Exception:
-                    self.formatting.output('yellow')
-                    print('Unable to determine city for', ip, 'setting city to Unknown')
-                    city = 'Unknown'
+                    continue
+                except Exception as error:
+                    self.formatting.output('red')
+                    print('Error with endpoint:', domain, 'Skipping...')
+                    print(error)
+                    errors_total += 1
                     self.formatting.output('reset')
-            except socket.gaierror or socket.herror:
-                self.formatting.output('red')
-                print('Unable to resolve', domain, 'Skipping...')
-                errors_total += 1
-                self.formatting.output('reset')
-                continue
-            except Exception as error:
-                self.formatting.output('red')
-                print('Error with endpoint:', domain, 'Skipping...')
-                print(error)
-                errors_total += 1
-                self.formatting.output('reset')
-                continue
+                    continue
 
-            if excl_countries and country in excl_countries:
-                print('Excluding', domain, 'in', country)
-                skipped_total += 1
-                continue
-            if include_countries is not None and country not in include_countries:
-                print('Skipping', domain, 'in', country, '(not in include_countries)')
-                skipped_total += 1
-                continue
+                if not all_a_records:
+                    ips = [ips[0]]
 
-            # Use 1 second timeout for ping
-            result = run(["ping", "-c", str(pings_num), "-W", "1", ip], stdout=PIPE).stdout.decode('UTF-8')
+                for ip in ips:
+                    total_targets += 1
+                    tasks.append(executor.submit(
+                        self._scan_one,
+                        domain,
+                        ip,
+                        pings_num,
+                        timeout_ms,
+                        excl_countries,
+                        include_countries,
+                        city_reader,
+                        country_reader,
+                        lock
+                    ))
 
-            try:
-                lines = result.split('\n')
-                response = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
-                avg_latency = float(response[-1].split('=')[1].split('/')[1])
-            except Exception:
-                self.formatting.output('red')
-                print('Error: No response time received from', domain, 'Skipping...')
-                errors_total += 1
-                self.formatting.output('reset')
-                continue
-
-            self.formatting.output('green')
-            print('(' + str(count) + "/" + str(len(domains)) + ')', domain, avg_latency, ip, country, city)
-            self.formatting.output('reset')
-
-            endpoints_list.append((domain, avg_latency, ip, country, city))
+            for future in as_completed(tasks):
+                result = future.result()
+                if result is None:
+                    continue
+                status, payload = result
+                if status == 'ok':
+                    endpoints_list.append(payload)
+                elif status == 'skipped':
+                    skipped_total += 1
+                elif status == 'error':
+                    errors_total += 1
 
         endpoints_list.sort(key=lambda x: x[1])
 
-        retrieved_total = int(len(domains)) - (skipped_total + errors_total)
+        retrieved_total = int(total_targets) - (skipped_total + errors_total)
 
         finish_time = time.strftime("%d/%m/%Y %H:%M:%S")
         finish_scan = time.time()
@@ -173,8 +168,8 @@ class Scanner:
 
         if excl_countries:
             print('\nExcluded countries:', excl_countries)
-        print('\nExcluded:        ', skipped_total, '/', len(domains))
-        print('Errors:           ', errors_total, '/', len(domains))
+        print('\nExcluded:        ', skipped_total, '/', total_targets)
+        print('Errors:           ', errors_total, '/', total_targets)
         print('\nTotal Retrieved: ', retrieved_total, '/', len(domains))
 
         for item in endpoints_list:
@@ -189,3 +184,87 @@ class Scanner:
             self.formatting.output('reset')
 
         return endpoints_dict
+
+    @staticmethod
+    def _ping_avg_latency(ip: str, pings_num: int, timeout_ms: int) -> Optional[float]:
+        # Use timeout per ping
+        system = platform.system().lower()
+        if system == 'windows':
+            cmd = ["ping", "-n", str(pings_num), "-w", str(timeout_ms), ip]
+        else:
+            timeout_s = max(1, int(round(timeout_ms / 1000)))
+            cmd = ["ping", "-c", str(pings_num), "-W", str(timeout_s), ip]
+
+        result = run(cmd, stdout=PIPE).stdout.decode('UTF-8', errors='ignore')
+
+        if system == 'windows':
+            # Example: "Average = 23ms"
+            match = re.search(r'Average\s*=\s*(\d+)\s*ms', result, re.IGNORECASE)
+            if match:
+                return float(match.group(1))
+            return None
+
+        # Example: "rtt min/avg/max/mdev = 12.3/23.4/..."
+        match = re.search(r'=\s*([\d\.]+)/([\d\.]+)/', result)
+        if match:
+            return float(match.group(2))
+        return None
+
+    def _scan_one(self, domain: str, ip: str, pings_num: int, timeout_ms: int, excl_countries: Optional[List[str]],
+                  include_countries: Optional[List[str]], city_reader, country_reader,
+                  lock: threading.Lock) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str]]]]:
+        try:
+            try:
+                country_result = country_reader.country(ip)
+                country = country_result.country.name
+                if not country:
+                    raise ValueError()
+            except Exception:
+                with lock:
+                    self.formatting.output('yellow')
+                    print('Unable to determine country for', ip, 'setting country to Unknown')
+                    self.formatting.output('reset')
+                country = 'Unknown'
+
+            try:
+                city_result = city_reader.city(ip)
+                city = city_result.city.name
+                if not city:
+                    raise ValueError()
+            except Exception:
+                with lock:
+                    self.formatting.output('yellow')
+                    print('Unable to determine city for', ip, 'setting city to Unknown')
+                    self.formatting.output('reset')
+                city = 'Unknown'
+        except Exception as error:
+            with lock:
+                self.formatting.output('red')
+                print('Error with endpoint:', domain, 'Skipping...')
+                print(error)
+                self.formatting.output('reset')
+            return ('error', None)
+
+        if excl_countries and country in excl_countries:
+            with lock:
+                print('Excluding', domain, 'in', country)
+            return ('skipped', None)
+        if include_countries is not None and country not in include_countries:
+            with lock:
+                print('Skipping', domain, 'in', country, '(not in include_countries)')
+            return ('skipped', None)
+
+        avg_latency = self._ping_avg_latency(ip, pings_num, timeout_ms)
+        if avg_latency is None:
+            with lock:
+                self.formatting.output('red')
+                print('Error: No response time received from', domain, 'Skipping...')
+                self.formatting.output('reset')
+            return ('error', None)
+
+        with lock:
+            self.formatting.output('green')
+            print(domain, avg_latency, ip, country, city)
+            self.formatting.output('reset')
+
+        return ('ok', (domain, avg_latency, ip, country, city))

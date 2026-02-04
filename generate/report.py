@@ -1,6 +1,7 @@
 from format.colors import Format
 from json import loads
 from collections import defaultdict
+from typing import Dict, List, Optional, Tuple
 import sys
 import re
 
@@ -8,11 +9,11 @@ import re
 class Analyze:
     formatting = Format()
 
-    def __init__(self, res_fl):
+    def __init__(self, res_fl: str):
         self.res_fl = res_fl
 
     @staticmethod
-    def read_json_file(json_file):
+    def read_json_file(json_file: str) -> Dict[str, List]:
         print("Reading file:", json_file, '\n')
         with open(json_file, 'r') as infile:
             data = infile.read()
@@ -20,7 +21,9 @@ class Analyze:
 
         return json_data
 
-    def get_top_performers(self, limit=None, country=None, city=None, sort_by=1, min_latency_limit=0, max_latency_limit=float("inf")):
+    def get_top_performers(self, limit: Optional[int] = None, country: Optional[str] = None,
+                           city: Optional[str] = None, sort_by: int = 1,
+                           min_latency_limit: float = 0, max_latency_limit: float = float("inf")) -> List[Tuple[str, float, str, str, str]]:
         if not limit:
             limit = 'all'
 
@@ -79,10 +82,13 @@ class Analyze:
             self.formatting.output('reset')
 
             if fields[sort_by] == 'IP':
-                top_servers.sort(key=lambda x: (int(str(x[sort_by]).split('.')[0]),
-                                                int(str(x[sort_by]).split('.')[1]),
-                                                int(str(x[sort_by]).split('.')[2]),
-                                                int(str(x[sort_by]).split('.')[3])))
+                def _ipv4_key(value):
+                    parts = str(value).split('.')
+                    if len(parts) != 4 or not all(p.isdigit() for p in parts):
+                        return (999, 999, 999, 999)
+                    return tuple(int(p) for p in parts)
+
+                top_servers.sort(key=lambda x: _ipv4_key(x[sort_by]))
             else:
                 top_servers.sort(key=lambda x: x[sort_by])
 
@@ -139,7 +145,6 @@ class Analyze:
                 except (BrokenPipeError, IOError):
                     print('Caught BrokenPipeError')
                 self.formatting.output('reset')
-                sys.stderr.close()
 
             self.formatting.output('green')
             if limit <= len(top_servers):
@@ -150,7 +155,8 @@ class Analyze:
 
         return top_servers
 
-    def country_stats(self, sort_by=2, min_latency_limit=0, max_latency_limit=float("inf")):
+    def country_stats(self, sort_by: int = 2, min_latency_limit: float = 0,
+                      max_latency_limit: float = float("inf")) -> None:
         country_servers = {}
         country_latency = defaultdict(list)
         country_metrics = []
@@ -228,7 +234,8 @@ class Analyze:
         print("\nTotal Countries:", len(country_metrics))
         self.formatting.output('reset')
 
-    def city_stats(self, sort_by=2, min_latency_limit=0, max_latency_limit=float("inf")):
+    def city_stats(self, sort_by: int = 2, min_latency_limit: float = 0,
+                   max_latency_limit: float = float("inf")) -> None:
         city_servers = {}
         city_latency = defaultdict(list)
         city_metrics = []

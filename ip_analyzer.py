@@ -2,7 +2,6 @@
 
 import validate.python_version
 from validate.file import exists as file_exists
-from generate.geolite import GeoLite
 from generate.scan import Scanner
 from generate.report import Analyze
 from format.colors import Format
@@ -53,6 +52,21 @@ def options():
                         help='''Number of pings to each IP during scan (increase for better accuracy). Default is 1
                              ''', default=1)
 
+    parser.add_argument('-w', '--workers',
+                        type=int,
+                        help='''Number of concurrent workers for scanning. Default is 20
+                             ''', default=20)
+
+    parser.add_argument('-o', '--timeout-ms',
+                        type=int,
+                        help='''Ping timeout per request in milliseconds. Default is 1000
+                             ''', default=1000)
+
+    parser.add_argument('-a', '--all-a-records',
+                        action='store_true',
+                        help='''Scan all resolved IPv4 addresses for each domain (A records). Default is False
+                             ''', default=False)
+
     parser.add_argument('-f', '--servers-file',
                         type=str,
                         help='''Read servers list from file (one domain or ip per line). Default is "servers.list"
@@ -93,11 +107,6 @@ def options():
                         help='''Sort --country-stats or --city-stats by field/column number. Default is 4 (LATENCY)
                              ''', default=None)
 
-    parser.add_argument('-d', '--download-dbs',
-                        action='store_true',
-                        help='''Force download latest geolite dbs. Default is False
-                             ''', default=False)
-
     parser.add_argument('-n', '--min-latency',
                         type=float,
                         help='''Filter results by minimum latency (integer/float). Default is 0
@@ -110,7 +119,7 @@ def options():
 
     parser.add_argument('--include-countries',
                         action='store_true',
-                        help='''Optionally include only countries listed in include_countries.txt (comma delimited). Others will be skipped.''',
+                        help='''Optionally include only countries listed in include_countries.list (comma delimited). Others will be skipped.''',
                         default=False)
     return parser
 
@@ -157,19 +166,19 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
         print('Filtered by max latency:', str(mx_latency) + 'ms\n')
         formatting.output('reset')
 
-    if sort_by and (args.city_stats or args.country_stats) and (not 0 <= sort_by <= 3):
+    if sort_by and (args.city_stats or args.country_stats) and (not 0 <= sort_by <= 2):
         formatting.output('bold', 'red')
         print("\nError: invalid stats field number\n")
         formatting.output('reset')
         sys.exit(1)
-    elif sort_by and not 0 <= sort_by <= 5:
+    elif sort_by and not 0 <= sort_by <= 4:
         formatting.output('bold', 'red')
         print("\nError: invalid results field number\n")
         formatting.output('reset')
         sys.exit(1)
 
 
-def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, refresh_geo_dbs=False, include_countries=None):
+def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, include_countries=None):
     if not file_exists(targets_fle):
         formatting.output('bold', 'red')
         print('\nError: Nothing to scan\nTargets list file "' + targets_fle + '" not found')
@@ -178,16 +187,17 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, re
         formatting.output('reset')
         sys.exit(1)
 
-    geo_city_db, geo_country_db = geolite2.download_dbs(force_dl=refresh_geo_dbs)
-
     scanner = Scanner(targets_file=args.servers_file,
-                      city_db=geo_city_db,
-                      country_db=geo_country_db,
+                      city_db='GeoLite2-City.mmdb',
+                      country_db='GeoLite2-Country.mmdb',
                       results_json=results_fle,
                       excl_countries_fle=country_exclusions,
                       include_countries=include_countries)
 
-    scanner.scan(pings_num=pings)
+    scanner.scan(pings_num=pings,
+                 timeout_ms=args.timeout_ms,
+                 workers=args.workers,
+                 all_a_records=args.all_a_records)
 
 
 def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_fld, mn_latency, mx_latency):
@@ -219,7 +229,6 @@ if __name__ == "__main__":
 
     formatting = Format()
 
-    geolite2 = GeoLite()
     report = Analyze(res_fl=res_file)
 
     selections = options().parse_args()
@@ -246,11 +255,13 @@ if __name__ == "__main__":
     include_countries = None
     if selections.include_countries:
         try:
-            with open('include_countries.txt', 'r') as f:
+            with open('include_countries.list', 'r') as f:
                 content = f.read().strip()
                 include_countries = [c.strip() for c in content.split(',') if c.strip()]
+                if not include_countries:
+                    include_countries = None
         except FileNotFoundError:
-            print('include_countries.txt not found, ignoring country filter.')
+            print('include_countries.list not found, ignoring country filter.')
             include_countries = None
 
     validate_inputs(selections,
@@ -261,11 +272,8 @@ if __name__ == "__main__":
                     min_latency,
                     max_latency)
 
-    if selections.download_dbs:
-        geolite2.download_dbs(force_dl=True)
-
     if selections.scan:
-        perform_scan(selections, targets_file, res_file, excl_file, pings, refresh_geo_dbs=False, include_countries=include_countries)
+        perform_scan(selections, targets_file, res_file, excl_file, pings, include_countries=include_countries)
 
     if any(report_selections):
         produce_report(selections,
