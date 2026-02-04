@@ -20,11 +20,15 @@
 #### Getting Started
 1. Create "servers.list" file with one domain/IP per line
 
-2. To exclude countries from scan, add one country name per line in "exclusions.list" file
+2. To exclude countries from scan, add one country name per line in "exclude_countries.list" file
 
 3. To include only specific countries in the scan, add comma delimited countries to "include_countries.list" file
 
-4. Ensure `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` are present in the project root
+4. Ensure `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` are present in the project root.
+   Download from:
+   ```
+   https://github.com/P3TERX/GeoLite.mmdb/releases
+   ```
 
 5. Run script with ```--scan``` to generate new report (results.json)
 
@@ -49,12 +53,15 @@ optional arguments:
   -c, --country-stats   Show stats by country
   -i, --city-stats      Show stats by city
   --include-countries   Optionally include only countries listed in include_countries.list (comma delimited). Others will be skipped.
+  --update-geolite-dbs  Show instructions for updating GeoLite DBs and exit.
 
   -p SCAN_PINGS, --scan-pings SCAN_PINGS
                         Number of pings to each IP during scan (increase for better accuracy). Default is 1
   -w WORKERS, --workers WORKERS
+  
                         Number of concurrent workers for scanning. Default is 20
   -o TIMEOUT_MS, --timeout-ms TIMEOUT_MS
+
                         Ping timeout per request in milliseconds. Default is 1000
   -a, --all-a-records   Scan all resolved IPv4 addresses for each domain (A records). Default is False
 

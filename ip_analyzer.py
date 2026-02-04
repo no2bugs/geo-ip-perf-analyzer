@@ -9,6 +9,10 @@ import sys
 import argparse
 
 
+def _normalize_countries(values):
+    return [v.strip().casefold() for v in values if v and v.strip()]
+
+
 class ColoredArgParser(argparse.ArgumentParser):
     color_dict = {'RED': '1;31', 'GREEN': '0;32',
                   'YELLOW': '0;33', 'BLUE': '0;34'}
@@ -121,6 +125,11 @@ def options():
                         action='store_true',
                         help='''Optionally include only countries listed in include_countries.list (comma delimited). Others will be skipped.''',
                         default=False)
+
+    parser.add_argument('--update-geolite-dbs',
+                        action='store_true',
+                        help='''Show instructions for updating GeoLite DBs and exit.''',
+                        default=False)
     return parser
 
 
@@ -179,6 +188,14 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
 
 
 def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, include_countries=None):
+    if not (file_exists('GeoLite2-City.mmdb') and file_exists('GeoLite2-Country.mmdb')):
+        formatting.output('bold', 'red')
+        print('\nError: GeoLite DB files not found in project root.')
+        print('Download them from:')
+        print('https://github.com/P3TERX/GeoLite.mmdb/releases\n')
+        formatting.output('reset')
+        sys.exit(1)
+
     if not file_exists(targets_fle):
         formatting.output('bold', 'red')
         print('\nError: Nothing to scan\nTargets list file "' + targets_fle + '" not found')
@@ -225,7 +242,7 @@ def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_f
 
 if __name__ == "__main__":
     res_file = 'results.json'
-    excl_file = 'exclusions.list'
+    excl_file = 'exclude_countries.list'
 
     formatting = Format()
 
@@ -257,12 +274,18 @@ if __name__ == "__main__":
         try:
             with open('include_countries.list', 'r') as f:
                 content = f.read().strip()
-                include_countries = [c.strip() for c in content.split(',') if c.strip()]
+                include_countries = _normalize_countries(content.split(','))
                 if not include_countries:
+                    print('include_countries.list is empty, scanning all countries.')
                     include_countries = None
         except FileNotFoundError:
             print('include_countries.list not found, ignoring country filter.')
             include_countries = None
+
+    if selections.update_geolite_dbs:
+        print('Download GeoLite DBs from:')
+        print('https://github.com/P3TERX/GeoLite.mmdb/releases')
+        sys.exit(0)
 
     validate_inputs(selections,
                     report_selections,

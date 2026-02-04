@@ -86,6 +86,8 @@ class Scanner:
         if self.exclude_countries():
             excl_countries = sorted(self.exclude_countries())
             print('Excluding results from:', excl_countries)
+        excl_countries_norm = {c.strip().casefold() for c in excl_countries} if excl_countries else None
+        include_countries_norm = {c.strip().casefold() for c in include_countries} if include_countries else None
 
         self.formatting.output('bold')
         print('\nMeasuring latency to', len(domains), 'servers')
@@ -100,6 +102,7 @@ class Scanner:
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
         total_targets = 0
+        progress = {"done": 0, "total": 0}
         tasks = []
         with ThreadPoolExecutor(max_workers=workers) as executor:
             for domain in domains:
@@ -126,18 +129,21 @@ class Scanner:
                     ips = [ips[0]]
 
                 for ip in ips:
-                    total_targets += 1
+                    with lock:
+                        total_targets += 1
+                        progress["total"] = total_targets
                     tasks.append(executor.submit(
                         self._scan_one,
                         domain,
                         ip,
                         pings_num,
                         timeout_ms,
-                        excl_countries,
-                        include_countries,
+                        excl_countries_norm,
+                        include_countries_norm,
                         city_reader,
                         country_reader,
-                        lock
+                        lock,
+                        progress
                     ))
 
             for future in as_completed(tasks):
@@ -210,9 +216,9 @@ class Scanner:
             return float(match.group(2))
         return None
 
-    def _scan_one(self, domain: str, ip: str, pings_num: int, timeout_ms: int, excl_countries: Optional[List[str]],
-                  include_countries: Optional[List[str]], city_reader, country_reader,
-                  lock: threading.Lock) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str]]]]:
+    def _scan_one(self, domain: str, ip: str, pings_num: int, timeout_ms: int,
+                  excl_countries: Optional[set], include_countries: Optional[set], city_reader, country_reader,
+                  lock: threading.Lock, progress: Dict[str, int]) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str]]]]:
         try:
             try:
                 country_result = country_reader.country(ip)
@@ -240,31 +246,46 @@ class Scanner:
         except Exception as error:
             with lock:
                 self.formatting.output('red')
-                print('Error with endpoint:', domain, 'Skipping...')
+                progress["done"] += 1
+                total = progress.get("total", 0)
+                prefix = f'({progress["done"]}/{total}) ' if total else ''
+                print(prefix + 'Error with endpoint:', domain, 'Skipping...')
                 print(error)
                 self.formatting.output('reset')
             return ('error', None)
 
-        if excl_countries and country in excl_countries:
+        if excl_countries and country and country.casefold() in excl_countries:
             with lock:
-                print('Excluding', domain, 'in', country)
+                progress["done"] += 1
+                total = progress.get("total", 0)
+                prefix = f'({progress["done"]}/{total}) ' if total else ''
+                print(prefix + 'Excluding', domain, 'in', country)
             return ('skipped', None)
-        if include_countries is not None and country not in include_countries:
+        if include_countries is not None and (not country or country.casefold() not in include_countries):
             with lock:
-                print('Skipping', domain, 'in', country, '(not in include_countries)')
+                progress["done"] += 1
+                total = progress.get("total", 0)
+                prefix = f'({progress["done"]}/{total}) ' if total else ''
+                print(prefix + 'Skipping', domain, 'in', country, '(not in include_countries)')
             return ('skipped', None)
 
         avg_latency = self._ping_avg_latency(ip, pings_num, timeout_ms)
         if avg_latency is None:
             with lock:
                 self.formatting.output('red')
-                print('Error: No response time received from', domain, 'Skipping...')
+                progress["done"] += 1
+                total = progress.get("total", 0)
+                prefix = f'({progress["done"]}/{total}) ' if total else ''
+                print(prefix + 'Error: No response time received from', domain, 'Skipping...')
                 self.formatting.output('reset')
             return ('error', None)
 
         with lock:
             self.formatting.output('green')
-            print(domain, avg_latency, ip, country, city)
+            progress["done"] += 1
+            total = progress.get("total", 0)
+            prefix = f'({progress["done"]}/{total}) ' if total else ''
+            print(prefix + domain, avg_latency, ip, country, city)
             self.formatting.output('reset')
 
         return ('ok', (domain, avg_latency, ip, country, city))
