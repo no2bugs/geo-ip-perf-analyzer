@@ -1,5 +1,8 @@
-import os
+"""File utility helpers."""
+
+from pathlib import Path
 
 
 def exists(fle):
-    return True if os.path.isfile(fle) else False
+    """Return True if a path exists and is a file."""
+    return Path(fle).is_file()

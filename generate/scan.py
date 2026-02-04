@@ -1,12 +1,16 @@
+"""Latency scanning and GeoIP enrichment for target endpoints."""
+
 from validate.file import exists as file_exists
 from format.colors import Format
 from datetime import timedelta
 from collections import OrderedDict
 from subprocess import run, PIPE
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import threading
 from json import dump
+from pathlib import Path
+import logging
 import geoip2.database
 import platform
 import re
@@ -14,8 +18,11 @@ import socket
 import sys
 import time
 
+logger = logging.getLogger(__name__)
+
 
 class Scanner:
+    """Scan a list of targets, ping them, and write GeoIP-enriched results."""
     formatting = Format()
 
     def __init__(self, targets_file, city_db, country_db, results_json, excl_countries_fle, include_countries=None):
@@ -28,42 +35,42 @@ class Scanner:
 
     @staticmethod
     def write_json_file(json_file: str, data: Dict[str, List]) -> None:
-        print('\nCreating json file:', json_file)
-        with open(json_file, 'w') as outfile:
+        print("Creating json file:", json_file)
+        with Path(json_file).open('w', encoding='utf-8') as outfile:
             dump(data, outfile, indent=2)
-        print('DONE')
+        print("DONE")
 
     def get_servers_list(self) -> Optional[List[str]]:
         if not file_exists(self.targets_file):
             return None
 
-        print('Reading targets from:', self.targets_file)
-        with open(self.targets_file, 'r') as f:
+        logger.info("Reading targets from: %s", self.targets_file)
+        with Path(self.targets_file).open('r', encoding='utf-8') as f:
             lines = f.readlines()
             servers = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
 
         if len(servers) < 1:
             self.formatting.output('bold', 'red')
-            print('Error:', self.targets_file, 'does not have any targets\n')
+            logger.error("Error: %s does not have any targets", self.targets_file)
             self.formatting.output('reset')
             sys.exit(1)
 
         servers.sort(key=str.lower)
 
-        print('\nFound total of', len(servers), 'targets')
+        logger.info("Found total of %s targets", len(servers))
 
         return servers
 
     def exclude_countries(self) -> Optional[List[str]]:
         try:
-            with open(self.exclude_countries_fle, 'r') as f:
+            with Path(self.exclude_countries_fle).open('r', encoding='utf-8') as f:
                 lines = f.readlines()
                 excludes = [line.rstrip('\n') for line in lines if len(line) > 1]
         except FileNotFoundError:
             excludes = None
             self.formatting.output('yellow')
-            print('INFO: No countries were excluded from scan')
-            print('To exclude countries, create file "' + self.exclude_countries_fle + '" with country name per line\n')
+            logger.info("INFO: No countries were excluded from scan")
+            logger.info('To exclude countries, create file "%s" with country name per line', self.exclude_countries_fle)
             self.formatting.output('reset')
 
         return excludes
@@ -85,66 +92,69 @@ class Scanner:
 
         if self.exclude_countries():
             excl_countries = sorted(self.exclude_countries())
-            print('Excluding results from:', excl_countries)
+            logger.info("Excluding results from: %s", excl_countries)
         excl_countries_norm = {c.strip().casefold() for c in excl_countries} if excl_countries else None
         include_countries_norm = {c.strip().casefold() for c in include_countries} if include_countries else None
 
         self.formatting.output('bold')
-        print('\nMeasuring latency to', len(domains), 'servers')
-        print('Pings:', pings_num)
-        print('Workers:', workers)
-        print('Timeout:', str(timeout_ms) + 'ms')
-        print('All A records:', all_a_records)
-        print('Started:', time.strftime("%d/%m/%Y %H:%M:%S"))
+        logger.info("Measuring latency to %s servers", len(domains))
+        logger.info("Pings: %s", pings_num)
+        logger.info("Workers: %s", workers)
+        logger.info("Timeout: %sms", timeout_ms)
+        logger.info("All A records: %s", all_a_records)
+        logger.info("Started: %s", time.strftime("%d/%m/%Y %H:%M:%S"))
         self.formatting.output('reset')
 
         start_scan = time.time()
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
-        total_targets = 0
         progress = {"done": 0, "total": 0}
+        targets = []
+        for domain in domains:
+            try:
+                resolv = socket.gethostbyname_ex(domain)
+                ips = resolv[2]
+                if not ips:
+                    raise ValueError('No IPs returned')
+            except (socket.gaierror, socket.herror):
+                self.formatting.output('red')
+                print('Unable to resolve', domain, 'Skipping...')
+                errors_total += 1
+                self.formatting.output('reset')
+                continue
+            except Exception as error:
+                self.formatting.output('red')
+                print('Error with endpoint:', domain, 'Skipping...')
+                print(error)
+                errors_total += 1
+                self.formatting.output('reset')
+                continue
+
+            if not all_a_records:
+                ips = [ips[0]]
+
+            for ip in ips:
+                targets.append((domain, ip))
+
+        total_targets = len(targets)
+        progress["total"] = total_targets
+
         tasks = []
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            for domain in domains:
-                try:
-                    resolv = socket.gethostbyname_ex(domain)
-                    ips = resolv[2]
-                    if not ips:
-                        raise ValueError('No IPs returned')
-                except (socket.gaierror, socket.herror):
-                    self.formatting.output('red')
-                    print('Unable to resolve', domain, 'Skipping...')
-                    errors_total += 1
-                    self.formatting.output('reset')
-                    continue
-                except Exception as error:
-                    self.formatting.output('red')
-                    print('Error with endpoint:', domain, 'Skipping...')
-                    print(error)
-                    errors_total += 1
-                    self.formatting.output('reset')
-                    continue
-
-                if not all_a_records:
-                    ips = [ips[0]]
-
-                for ip in ips:
-                    with lock:
-                        total_targets += 1
-                        progress["total"] = total_targets
-                    tasks.append(executor.submit(
-                        self._scan_one,
-                        domain,
-                        ip,
-                        pings_num,
-                        timeout_ms,
-                        excl_countries_norm,
-                        include_countries_norm,
-                        city_reader,
-                        country_reader,
-                        lock,
-                        progress
-                    ))
+            for domain, ip in targets:
+                tasks.append(executor.submit(
+                    self._scan_one,
+                    domain,
+                    ip,
+                    pings_num,
+                    timeout_ms,
+                    excl_countries_norm,
+                    include_countries_norm,
+                    city_reader,
+                    country_reader,
+                    lock,
+                    progress
+                ))
 
             for future in as_completed(tasks):
                 result = future.result()
@@ -167,16 +177,16 @@ class Scanner:
         t_diff = float(finish_scan) - float(start_scan)
         t_finish = timedelta(seconds=int(t_diff))
 
-        self.formatting.output('bold')
-        print('\nStarted scan:     ', start_time)
-        print('Finished scan:    ', finish_time)
-        print('Scan duration:    ', t_finish)
+        self.formatting.output('bold', 'blue')
+        print("Started scan:    ", start_time)
+        print("Finished scan:   ", finish_time)
+        print("Scan duration:   ", t_finish)
 
         if excl_countries:
-            print('\nExcluded countries:', excl_countries)
-        print('\nExcluded:        ', skipped_total, '/', total_targets)
-        print('Errors:           ', errors_total, '/', total_targets)
-        print('\nTotal Retrieved: ', retrieved_total, '/', len(domains))
+            print("Excluded countries:", excl_countries)
+        print("Excluded:        ", skipped_total, '/', total_targets)
+        print("Errors:          ", errors_total, '/', total_targets)
+        print("Total Retrieved: ", retrieved_total, '/', len(domains))
 
         for item in endpoints_list:
             endpoints_dict[item[0]] = [item[1], item[2], item[3], item[4]]
@@ -186,7 +196,7 @@ class Scanner:
             self.formatting.output('reset')
         else:
             self.formatting.output('red')
-            print('\nFailed to ping any targets from the list\n')
+            print("Failed to ping any targets from the list")
             self.formatting.output('reset')
 
         return endpoints_dict
@@ -256,17 +266,21 @@ class Scanner:
 
         if excl_countries and country and country.casefold() in excl_countries:
             with lock:
+                self.formatting.output('yellow')
                 progress["done"] += 1
                 total = progress.get("total", 0)
                 prefix = f'({progress["done"]}/{total}) ' if total else ''
                 print(prefix + 'Excluding', domain, 'in', country)
+                self.formatting.output('reset')
             return ('skipped', None)
         if include_countries is not None and (not country or country.casefold() not in include_countries):
             with lock:
+                self.formatting.output('yellow')
                 progress["done"] += 1
                 total = progress.get("total", 0)
                 prefix = f'({progress["done"]}/{total}) ' if total else ''
                 print(prefix + 'Skipping', domain, 'in', country, '(not in include_countries)')
+                self.formatting.output('reset')
             return ('skipped', None)
 
         avg_latency = self._ping_avg_latency(ip, pings_num, timeout_ms)

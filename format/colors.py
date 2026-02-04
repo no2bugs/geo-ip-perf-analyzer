@@ -1,7 +1,10 @@
+"""ANSI color formatting helpers."""
+
 import sys
 
 
 class Format:
+    """Utility for writing ANSI color codes to stdout."""
     def __init__(self, enabled=True):
         self.enabled = enabled
 

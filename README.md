@@ -64,6 +64,7 @@ optional arguments:
 
                         Ping timeout per request in milliseconds. Default is 1000
   -a, --all-a-records   Scan all resolved IPv4 addresses for each domain (A records). Default is False
+  --verbose             Enable verbose logging output.
 
   -f SERVERS_FILE, --servers-file SERVERS_FILE
                         Read servers list from file (one domain or ip per line). Default is "servers.list"

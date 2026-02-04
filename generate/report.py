@@ -1,12 +1,19 @@
+"""Report rendering for latency scan results."""
+
 from format.colors import Format
 from json import loads
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+import logging
 import sys
 import re
 
+logger = logging.getLogger(__name__)
+
 
 class Analyze:
+    """Read results and generate filtered reports and stats."""
     formatting = Format()
 
     def __init__(self, res_fl: str):
@@ -14,8 +21,8 @@ class Analyze:
 
     @staticmethod
     def read_json_file(json_file: str) -> Dict[str, List]:
-        print("Reading file:", json_file, '\n')
-        with open(json_file, 'r') as infile:
+        logger.info("Reading file: %s", json_file)
+        with Path(json_file).open('r', encoding='utf-8') as infile:
             data = infile.read()
             json_data = loads(data)
 
@@ -32,43 +39,43 @@ class Analyze:
         results_json = self.read_json_file(self.res_fl)
 
         if country and city:
-            print('Searching for', limit, 'servers matching', city.capitalize() + ',', country.capitalize(), '\n')
+            logger.info("Searching for %s servers matching %s, %s", limit, city.capitalize(), country.capitalize())
             for server in results_json.items():
                 if re.search(str(country), server[1][2], re.IGNORECASE) \
                         and re.match(str(city), server[1][3], re.IGNORECASE) \
                         and min_latency_limit <= server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         elif country:
-            print('Searching for', limit, 'servers matching country', country.capitalize(), '\n')
+            logger.info("Searching for %s servers matching country %s", limit, country.capitalize())
             for server in results_json.items():
                 if re.search(str(country), server[1][2], re.IGNORECASE) \
                         and min_latency_limit <= server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         elif city:
-            print('Searching for', limit, 'servers matching city', city.capitalize(), '\n')
+            logger.info("Searching for %s servers matching city %s", limit, city.capitalize())
             for server in results_json.items():
                 if re.search(str(city), server[1][3], re.IGNORECASE) \
                         and min_latency_limit <= server[1][0] <= max_latency_limit:
                     top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
         else:
-            print('Searching for', limit, 'servers\n')
+            logger.info("Searching for %s servers", limit)
             top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in
                            results_json.items() if min_latency_limit <= server[1][0] <= max_latency_limit]
 
         if not top_servers:
             self.formatting.output('yellow')
             if country and city:
-                print('No results found for', city + ',', country)
-                print('Run with --country-stats to see list of all available countries')
-                print('Run with --city-stats to see list of all available cities')
+                logger.info("No results found for %s, %s", city, country)
+                logger.info("Run with --country-stats to see list of all available countries")
+                logger.info("Run with --city-stats to see list of all available cities")
             elif country:
-                print('No results found for', country)
-                print('Run with --country-stats to see list of all available countries')
+                logger.info("No results found for %s", country)
+                logger.info("Run with --country-stats to see list of all available countries")
             elif city:
-                print('No results found for', city)
-                print('Run with --city-stats to see list of all available cities')
+                logger.info("No results found for %s", city)
+                logger.info("Run with --city-stats to see list of all available cities")
             else:
-                print('No matching results found')
+                logger.info("No matching results found")
             self.formatting.output('reset')
         else:
             fields = {0: 'ENDPOINT',
@@ -78,7 +85,7 @@ class Analyze:
                       4: 'CITY'}
 
             self.formatting.output('bold', 'green')
-            print('Sorted by:', fields[sort_by])
+            logger.info("Sorted by: %s", fields[sort_by])
             self.formatting.output('reset')
 
             if fields[sort_by] == 'IP':
@@ -99,7 +106,7 @@ class Analyze:
             max_country_len = max(len(l[3]) for l in top_servers[0:limit])
             max_city_len = max(len(l[4]) for l in top_servers[0:limit])
             self.formatting.output('bold', 'reverse')
-            print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
+            logger.info('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
                 '#',
                 fields[0],
                 fields[1],
@@ -111,7 +118,7 @@ class Analyze:
                 max_city=max_city_len + 2,
                 max_country=max_country_len + 2))
             self.formatting.output('reset')
-            print('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
+            logger.info('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
                 '-' * 5,
                 '-' * (max_endpoint_len + 2),
                 '-' * 8,
@@ -131,7 +138,7 @@ class Analyze:
                 city = item[4]
                 self.formatting.output('bold')
                 try:
-                    print('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
+                    logger.info('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
                         i,
                         endpoint,
                         latency,
@@ -143,14 +150,14 @@ class Analyze:
                         max_city=max_city_len + 2,
                         max_country=max_country_len + 2))
                 except (BrokenPipeError, IOError):
-                    print('Caught BrokenPipeError')
+                    logger.error("Caught BrokenPipeError")
                 self.formatting.output('reset')
 
             self.formatting.output('green')
             if limit <= len(top_servers):
-                print('\nFound: {0} results'.format(limit))
+                logger.info("Found: %s results", limit)
             else:
-                print('\nFound: {0} results'.format(len(top_servers)))
+                logger.info("Found: %s results", len(top_servers))
             self.formatting.output('reset')
 
         return top_servers
@@ -179,7 +186,7 @@ class Analyze:
 
         if not country_servers:
             self.formatting.output('bold', 'yellow')
-            print('No results found')
+            logger.info("No results found")
             self.formatting.output('reset')
             sys.exit(0)
 
@@ -196,20 +203,20 @@ class Analyze:
         country_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
 
         self.formatting.output('bold', 'green')
-        print('Sorted by:', fields[sort_by])
+        logger.info("Sorted by: %s", fields[sort_by])
         self.formatting.output('reset')
 
         max_country_len = max(len(str(l[0])) for l in country_metrics)
         max_latency_len = max(len(str(l[2])) for l in country_metrics)
         self.formatting.output('bold', 'reverse')
-        print('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('#',
+        logger.info('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('#',
                                                                            fields[0],
                                                                            fields[1],
                                                                            fields[2],
                                                                            max_country=max_country_len + 2,
                                                                            max_latency=max_latency_len + 2))
         self.formatting.output('reset')
-        print('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
+        logger.info('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
                                                                            '-' * (max_country_len + 2),
                                                                            '-' * 8,
                                                                            '-' * (max_latency_len + 2),
@@ -222,7 +229,7 @@ class Analyze:
             latency = round(each[2], 2)
 
             self.formatting.output('bold')
-            print('{0:<5} {1:<{max_country}} {2:<8} {3:<{max_latency}}'.format(i,
+            logger.info('{0:<5} {1:<{max_country}} {2:<8} {3:<{max_latency}}'.format(i,
                                                                                country,
                                                                                servers,
                                                                                latency,
@@ -231,7 +238,7 @@ class Analyze:
             self.formatting.output('reset')
 
         self.formatting.output('bold', 'green')
-        print("\nTotal Countries:", len(country_metrics))
+        logger.info("Total Countries: %s", len(country_metrics))
         self.formatting.output('reset')
 
     def city_stats(self, sort_by: int = 2, min_latency_limit: float = 0,
@@ -271,20 +278,20 @@ class Analyze:
         city_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
 
         self.formatting.output('bold', 'green')
-        print('Sorted by:', fields[sort_by])
+        logger.info("Sorted by: %s", fields[sort_by])
         self.formatting.output('reset')
 
         max_city_len = max(len(str(l[0])) for l in city_metrics)
         max_latency_len = max(len(str(l[2])) for l in city_metrics)
         self.formatting.output('bold', 'reverse')
-        print('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('#',
+        logger.info('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('#',
                                                                         fields[0],
                                                                         fields[1],
                                                                         fields[2],
                                                                         max_city=max_city_len + 2,
                                                                         max_latency=max_latency_len + 2))
         self.formatting.output('reset')
-        print('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
+        logger.info('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
                                                                         '-' * (max_city_len + 2),
                                                                         '-' * 8,
                                                                         '-' * (max_latency_len + 2),
@@ -296,7 +303,7 @@ class Analyze:
             servers = each[1]
             latency = round(each[2], 2)
             self.formatting.output('bold')
-            print('{0:<5} {1:<{max_city}} {2:<8} {3:<{max_latency}}'.format(i,
+            logger.info('{0:<5} {1:<{max_city}} {2:<8} {3:<{max_latency}}'.format(i,
                                                                             city,
                                                                             servers,
                                                                             latency,
@@ -305,5 +312,5 @@ class Analyze:
             self.formatting.output('reset')
 
         self.formatting.output('bold', 'green')
-        print("\nTotal Cities:", len(city_metrics))
+        logger.info("Total Cities: %s", len(city_metrics))
         self.formatting.output('reset')

@@ -1,19 +1,32 @@
 #!/usr/bin/env python3
+"""CLI for scanning endpoint latency and reporting by location."""
+
+import argparse
+import logging
+import re
+import sys
+from pathlib import Path
 
 import validate.python_version
 from validate.file import exists as file_exists
 from generate.scan import Scanner
 from generate.report import Analyze
 from format.colors import Format
-import sys
-import argparse
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_countries(values):
-    return [v.strip().casefold() for v in values if v and v.strip()]
+    """Normalize country names for case-insensitive comparison."""
+    if isinstance(values, str):
+        parts = re.split(r'[,\n]', values)
+    else:
+        parts = values
+    return [v.strip().casefold() for v in parts if v and v.strip()]
 
 
 class ColoredArgParser(argparse.ArgumentParser):
+    """Argument parser with colored usage/help output."""
     color_dict = {'RED': '1;31', 'GREEN': '0;32',
                   'YELLOW': '0;33', 'BLUE': '0;34'}
 
@@ -42,6 +55,7 @@ class ColoredArgParser(argparse.ArgumentParser):
 
 
 def options():
+    """Define CLI options."""
     parser = ColoredArgParser(
         description='Performs latency scan on each domain/ip and shows top performers by location',
         formatter_class=argparse.RawTextHelpFormatter)
@@ -130,77 +144,84 @@ def options():
                         action='store_true',
                         help='''Show instructions for updating GeoLite DBs and exit.''',
                         default=False)
+
+    parser.add_argument('--verbose',
+                        action='store_true',
+                        help='''Enable verbose logging output.''',
+                        default=True)
     return parser
 
 
 def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_latency, mx_latency):
+    """Validate CLI argument combinations and bounds."""
     if not len(sys.argv) > 1:
         options().print_help()
         formatting.output('bold', 'red')
-        print("\n*** Error: Pick one of the options ***\n")
+        logger.error("*** Error: Pick one of the options ***")
         formatting.output('reset')
         sys.exit(1)
 
     if args.scan and (any(report_args) or any(filter_args)):
         formatting.output('bold', 'red')
-        print('\nError: Cannot run scan and report options at the same time\n')
+        logger.error("Error: Cannot run scan and report options at the same time")
         formatting.output('reset')
         sys.exit(1)
 
     if any(filter_args) and not any(report_args):
         formatting.output('bold', 'red')
-        print('\nError: Cannot apply filters without generating report\n')
+        logger.error("Error: Cannot apply filters without generating report")
         formatting.output('reset')
         sys.exit(1)
 
     if results_limit and results_limit < 1:
         formatting.output('bold', 'red')
-        print("\nError: --results-limit must be > 0\n")
+        logger.error("Error: --results-limit must be > 0")
         formatting.output('reset')
         sys.exit(1)
 
     if mn_latency < 0 or mx_latency < 0:
         formatting.output('bold', 'red')
-        print("\nError: latency must be => 0\n")
+        logger.error("Error: latency must be => 0")
         formatting.output('reset')
         sys.exit(1)
 
     if mn_latency != 0:
         formatting.output('bold', 'yellow')
-        print('Filtered by min latency:', str(mn_latency) + 'ms\n')
+        logger.info("Filtered by min latency: %sms", mn_latency)
         formatting.output('reset')
 
     if mx_latency != float("inf"):
         formatting.output('bold', 'yellow')
-        print('Filtered by max latency:', str(mx_latency) + 'ms\n')
+        logger.info("Filtered by max latency: %sms", mx_latency)
         formatting.output('reset')
 
     if sort_by and (args.city_stats or args.country_stats) and (not 0 <= sort_by <= 2):
         formatting.output('bold', 'red')
-        print("\nError: invalid stats field number\n")
+        logger.error("Error: invalid stats field number")
         formatting.output('reset')
         sys.exit(1)
     elif sort_by and not 0 <= sort_by <= 4:
         formatting.output('bold', 'red')
-        print("\nError: invalid results field number\n")
+        logger.error("Error: invalid results field number")
         formatting.output('reset')
         sys.exit(1)
 
 
 def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, include_countries=None):
+    """Run a full scan and write results."""
     if not (file_exists('GeoLite2-City.mmdb') and file_exists('GeoLite2-Country.mmdb')):
         formatting.output('bold', 'red')
-        print('\nError: GeoLite DB files not found in project root.')
-        print('Download them from:')
-        print('https://github.com/P3TERX/GeoLite.mmdb/releases\n')
+        logger.error("Error: GeoLite DB files not found in project root.")
+        logger.error("Download them from:")
+        logger.error("https://github.com/P3TERX/GeoLite.mmdb/releases")
         formatting.output('reset')
         sys.exit(1)
 
     if not file_exists(targets_fle):
         formatting.output('bold', 'red')
-        print('\nError: Nothing to scan\nTargets list file "' + targets_fle + '" not found')
-        print('Create "' + targets_fle + '" with one domain or IP per line')
-        print('(or point to another file with --servers-file)\n')
+        logger.error('Error: Nothing to scan. Targets list file "%s" not found', targets_fle)
+        logger.error('Create "%s" with one domain or IP per line', targets_fle)
+        logger.error('(or point to another file with --servers-file)')
         formatting.output('reset')
         sys.exit(1)
 
@@ -218,10 +239,11 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, in
 
 
 def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_fld, mn_latency, mx_latency):
+    """Render report output based on results.json and CLI flags."""
     if not file_exists(results_file):
         formatting.output('bold', 'red')
-        print('\nError: Unable to produce report. Latency scan results file "' + results_file + '" is missing')
-        print('Perform --scan to generate new IP/domain performance report (' + results_file + ')')
+        logger.error('Error: Unable to produce report. Latency scan results file "%s" is missing', results_file)
+        logger.error('Perform --scan to generate new IP/domain performance report (%s)', results_file)
         formatting.output('reset')
         sys.exit(1)
 
@@ -241,6 +263,7 @@ def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_f
 
 
 if __name__ == "__main__":
+    """Entry point."""
     res_file = 'results.json'
     excl_file = 'exclude_countries.list'
 
@@ -249,6 +272,10 @@ if __name__ == "__main__":
     report = Analyze(res_fl=res_file)
 
     selections = options().parse_args()
+    logging.basicConfig(
+        level=logging.DEBUG if selections.verbose else logging.INFO,
+        format='%(message)s'
+    )
 
     targets_file = selections.servers_file
     pings = selections.scan_pings
@@ -270,21 +297,24 @@ if __name__ == "__main__":
                       selections.sort_by]
 
     include_countries = None
+    include_file = Path('include_countries.list')
     if selections.include_countries:
         try:
-            with open('include_countries.list', 'r') as f:
+            with include_file.open('r', encoding='utf-8') as f:
                 content = f.read().strip()
-                include_countries = _normalize_countries(content.split(','))
+                include_countries = _normalize_countries(content)
                 if not include_countries:
-                    print('include_countries.list is empty, scanning all countries.')
+                    logger.info("include_countries.list is empty, scanning all countries.")
                     include_countries = None
+                else:
+                    logger.info("Applying include_countries.list filter.")
         except FileNotFoundError:
-            print('include_countries.list not found, ignoring country filter.')
+            logger.warning("include_countries.list not found, ignoring country filter.")
             include_countries = None
 
     if selections.update_geolite_dbs:
-        print('Download GeoLite DBs from:')
-        print('https://github.com/P3TERX/GeoLite.mmdb/releases')
+        logger.info("Download GeoLite DBs from:")
+        logger.info("https://github.com/P3TERX/GeoLite.mmdb/releases")
         sys.exit(0)
 
     validate_inputs(selections,
