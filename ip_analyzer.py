@@ -108,6 +108,10 @@ def options():
                         help='''Filter results by maximum latency (integer/float). Default is no limit
                              ''', default=None)
 
+    parser.add_argument('--include-countries',
+                        action='store_true',
+                        help='''Optionally include only countries listed in include_countries.txt (comma delimited). Others will be skipped.''',
+                        default=False)
     return parser
 
 
@@ -165,7 +169,7 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
         sys.exit(1)
 
 
-def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, refresh_geo_dbs=False):
+def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, refresh_geo_dbs=False, include_countries=None):
     if not file_exists(targets_fle):
         formatting.output('bold', 'red')
         print('\nError: Nothing to scan\nTargets list file "' + targets_fle + '" not found')
@@ -180,7 +184,8 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, re
                       city_db=geo_city_db,
                       country_db=geo_country_db,
                       results_json=results_fle,
-                      excl_countries_fle=country_exclusions)
+                      excl_countries_fle=country_exclusions,
+                      include_countries=include_countries)
 
     scanner.scan(pings_num=pings)
 
@@ -238,6 +243,16 @@ if __name__ == "__main__":
                       selections.max_latency,
                       selections.sort_by]
 
+    include_countries = None
+    if selections.include_countries:
+        try:
+            with open('include_countries.txt', 'r') as f:
+                content = f.read().strip()
+                include_countries = [c.strip() for c in content.split(',') if c.strip()]
+        except FileNotFoundError:
+            print('include_countries.txt not found, ignoring country filter.')
+            include_countries = None
+
     validate_inputs(selections,
                     report_selections,
                     report_filters,
@@ -250,7 +265,7 @@ if __name__ == "__main__":
         geolite2.download_dbs(force_dl=True)
 
     if selections.scan:
-        perform_scan(selections, targets_file, res_file, excl_file, pings, refresh_geo_dbs=False)
+        perform_scan(selections, targets_file, res_file, excl_file, pings, refresh_geo_dbs=False, include_countries=include_countries)
 
     if any(report_selections):
         produce_report(selections,

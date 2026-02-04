@@ -1,71 +1,90 @@
 #!/usr/bin/env python3
 
-from bs4 import BeautifulSoup
 import os
 import requests
+import zipfile
+import io
 
 
 def web_request(url, time_out=60):
+    """Make a web request to the given URL with specified timeout."""
     try:
-        resp = requests.get(url,
-                            timeout=time_out,
-                            headers={
-                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'})
+        resp = requests.get(
+            url,
+            timeout=time_out,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'
+            }
+        )
 
-        if (100 <= resp.status_code < 600) and (resp.status_code != 200):
-            raise ConnectionError('Error: Bad response code')
-        print("Connected to", url)
-    except ConnectionError as e:
-        print(e)
-        print('Returned:', resp.status_code, resp.reason)
-        print()
-    except Exception as e:
-        print('Error: Something went wrong\n', e)
+        if not resp.ok:
+            raise ConnectionError(f'Error: Bad response code {resp.status_code}')
+
+    except requests.RequestException as e:
+        print('Error:', e)
         return None
 
     return resp
 
 
-def crawl_nordvpn(raw_content):
-    soup = BeautifulSoup(raw_content, "html.parser")
-
+def get_server_names_from_zip(url):
+    """Get server names from the ZIP file without extracting it."""
     servers = []
 
-    print('\nSearching for VPN servers...')
+    try:
+        resp = web_request(url)
 
-    spans = soup.find_all('span', attrs={'mr-2'})
+        if not resp:
+            raise Exception("Failed to download ZIP file")
 
-    print('\nFound total of', len(spans), 'VPN servers...')
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zip_ref:
+            for info in zip_ref.infolist():
+                if info.filename.endswith('.udp.ovpn'):
+                    # FIX: .udp.ovpn is 9 characters long, not 10.
+                    # Previous code [:-10] was cutting off the 'm' in .com
+                    server_name = os.path.basename(info.filename)[:-9]
+                    servers.append(server_name)
 
-    for i, host in enumerate(spans, 1):
-        print(i, 'Fetched:', host.string)
-        servers.append(host.string)
-
-    print('\nFetched total of', len(servers), 'VPN servers\n')
-
-    servers.sort(key=lambda x: x[0])
+    except Exception as e:
+        print('Error:', e)
 
     return servers
 
 
 def write_to_file(path, f_name, items):
-    save_dir = ''.join((os.path.abspath(path.rstrip('/') + '/'), '/'))
+    """Write server names to a file."""
+    # FIX: Use absolute path without joining to root '/'
+    save_dir = os.path.abspath(path.strip())
 
-    print('Writing to file:', f_name)
-    with open(save_dir + f_name, 'w') as f:
-        for item in items:
-            f.write(item + '\n')
-    print('Created:', save_dir + f_name)
+    full_path = os.path.join(save_dir, f_name)
+    print(f"Attempting to write to: {full_path}")
+
+    try:
+        with open(full_path, 'w') as f:
+            for item in items:
+                f.write(item + '\n')
+
+        print(f'Created: {full_path}')
+
+    except PermissionError as e:
+        print(f'Permission denied when writing to file: {e}')
+    except Exception as e:
+        print(f'An error occurred while writing to file: {e}')
 
 
 if __name__ == "__main__":
-    URL = "https://nordvpn.com/ovpn"
+    URL = "https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip"
 
-    f_path = '.'
-    f_name = 'servers.list'
+    print(f"Current working directory: {os.getcwd()}")
 
-    data = web_request(URL).content
+    save_dir = '.'
 
-    servers_list = crawl_nordvpn(data)
+    servers_list = get_server_names_from_zip(URL)
 
-    write_to_file(f_path, f_name, servers_list)
+    if not os.access(save_dir, os.W_OK):
+        print(f'Permission denied to write in directory: {save_dir}')
+    else:
+        if servers_list:
+            write_to_file(save_dir, 'servers.list', servers_list)
+        else:
+            print("No servers found or download failed.")

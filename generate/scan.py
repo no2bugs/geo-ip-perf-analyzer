@@ -13,12 +13,13 @@ import time
 class Scanner:
     formatting = Format()
 
-    def __init__(self, targets_file, city_db, country_db, results_json, excl_countries_fle):
+    def __init__(self, targets_file, city_db, country_db, results_json, excl_countries_fle, include_countries=None):
         self.targets_file = targets_file
         self.city_db = city_db
         self.country_db = country_db
         self.results_json = results_json
         self.exclude_countries_fle = excl_countries_fle
+        self.include_countries = include_countries
 
     @staticmethod
     def write_json_file(json_file, data):
@@ -65,6 +66,7 @@ class Scanner:
     def scan(self, pings_num=1):
         domains = self.get_servers_list()
         excl_countries = None
+        include_countries = self.include_countries
 
         endpoints_list = []
         endpoints_dict = OrderedDict()
@@ -130,8 +132,13 @@ class Scanner:
                 print('Excluding', domain, 'in', country)
                 skipped_total += 1
                 continue
+            if include_countries is not None and country not in include_countries:
+                print('Skipping', domain, 'in', country, '(not in include_countries)')
+                skipped_total += 1
+                continue
 
-            result = run(["ping", "-c", str(pings_num), ip], stdout=PIPE).stdout.decode('UTF-8')
+            # Use 1 second timeout for ping
+            result = run(["ping", "-c", str(pings_num), "-W", "1", ip], stdout=PIPE).stdout.decode('UTF-8')
 
             try:
                 lines = result.split('\n')
