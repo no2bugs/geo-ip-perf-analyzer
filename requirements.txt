@@ -3,3 +3,5 @@ bs4
 geoip2
 flask
 gunicorn
+speedtest-cli
+python-dotenv

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isScanning = false;
     let pollInterval = null;
     let allResults = [];
+    let selectedDomains = new Set();
 
     // Initial Load
     fetchStatus();
@@ -21,6 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
     startBtn.addEventListener('click', startScan);
     refreshBtn.addEventListener('click', fetchResults);
     searchInput.addEventListener('input', filterResults);
+
+    // VPN Speedtest controls
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const vpnSpeedtestBtn = document.getElementById('vpnSpeedtestBtn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+    selectAllBtn.addEventListener('click', (e) => toggleSelectAll(e));
+    vpnSpeedtestBtn.addEventListener('click', runVpnSpeedtest);
+    selectAllCheckbox.addEventListener('change', (e) => toggleSelectAll(e));
 
     // Sorting
     document.querySelectorAll('th[data-sort]').forEach(th => {
@@ -36,13 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const pings = document.getElementById('pings').value;
         const timeout = document.getElementById('timeout').value;
         const workers = document.getElementById('workers').value;
+        const vpnSpeedtest = document.getElementById('vpnSpeedtest').checked;
 
         try {
             startBtn.disabled = true;
             const response = await fetch('/api/scan/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pings, timeout, workers })
+                body: JSON.stringify({ pings, timeout, workers, vpn_speedtest: vpnSpeedtest })
             });
 
             if (response.ok) {
@@ -118,14 +129,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/results');
             const data = await response.json();
 
-            // Convert to array
-            allResults = Object.keys(data).map(domain => ({
-                domain,
-                latency: data[domain][0],
-                ip: data[domain][1],
-                country: data[domain][2],
-                city: data[domain][3]
-            }));
+            // Convert to array and handle both old and new formats
+            allResults = Object.keys(data).map(domain => {
+                const entry = data[domain];
+                // New format (dict)
+                if (typeof entry === 'object' && !Array.isArray(entry)) {
+                    return {
+                        domain,
+                        latency: entry.latency_ms || 0,
+                        ip: entry.ip || 'N/A',
+                        country: entry.country || 'Unknown',
+                        city: entry.city || 'Unknown',
+                        rx_speed: entry.rx_speed_mbps,
+                        tx_speed: entry.tx_speed_mbps
+                    };
+                }
+                // Old format (array)
+                return {
+                    domain,
+                    latency: entry[0] || 0,
+                    ip: entry[1] || 'N/A',
+                    country: entry[2] || 'Unknown',
+                    city: entry[3] || 'Unknown',
+                    rx_speed: null,
+                    tx_speed: null
+                };
+            });
 
             // Default sort by latency
             allResults.sort((a, b) => a.latency - b.latency);
@@ -140,23 +169,42 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsBody.innerHTML = '';
         if (results.length === 0) {
             document.getElementById('noResults').style.display = 'block';
+            selectAllBtn.disabled = true;
+            vpnSpeedtestBtn.disabled = true;
             return;
         }
         document.getElementById('noResults').style.display = 'none';
+        selectAllBtn.disabled = false;
 
         results.forEach(item => {
             const row = document.createElement('tr');
             const latencyClass = item.latency < 50 ? 'latency-good' : (item.latency < 150 ? 'latency-med' : 'latency-bad');
 
-            row.innerHTML = `
+            const dlSpeed = item.rx_speed !== null && item.rx_speed !== undefined ? item.rx_speed.toFixed(2) : 'N/A';
+            const ulSpeed = item.tx_speed !== null && item.tx_speed !== undefined ? item.tx_speed.toFixed(2) : 'N/A';
+
+            const checkboxTd = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'row-checkbox';
+            checkbox.dataset.domain = item.domain;
+            checkbox.checked = selectedDomains.has(item.domain);
+            checkbox.addEventListener('change', handleCheckboxChange);
+            checkboxTd.appendChild(checkbox);
+            row.appendChild(checkboxTd);
+
+            row.insertAdjacentHTML('beforeend', `
                 <td><strong>${item.domain}</strong></td>
                 <td class="${latencyClass}">${item.latency.toFixed(2)}</td>
                 <td class="mono">${item.ip}</td>
                 <td>${item.country}</td>
                 <td>${item.city}</td>
-            `;
+                <td>${dlSpeed}</td>
+                <td>${ulSpeed}</td>
+            `);
             resultsBody.appendChild(row);
         });
+        updateVpnButtonState();
     }
 
     function filterResults() {
@@ -191,4 +239,124 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
+
+    function handleCheckboxChange(e) {
+        const domain = e.target.dataset.domain;
+        if (e.target.checked) selectedDomains.add(domain); else selectedDomains.delete(domain);
+        updateVpnButtonState();
+        updateSelectAllCheckbox();
+    }
+
+    function toggleSelectAll(e) {
+        // If triggered by button, toggle the header checkbox first
+        if (e && e.target === selectAllBtn) {
+            selectAllCheckbox.checked = !selectAllCheckbox.checked;
+        }
+
+        const shouldCheck = selectAllCheckbox.checked;
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+
+        checkboxes.forEach(cb => {
+            cb.checked = shouldCheck;
+            const domain = cb.dataset.domain;
+            if (shouldCheck) {
+                selectedDomains.add(domain);
+            } else {
+                selectedDomains.delete(domain);
+            }
+        });
+
+        updateVpnButtonState();
+    }
+
+    function updateSelectAllCheckbox() {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        selectAllCheckbox.checked = Array.from(checkboxes).every(cb => cb.checked);
+    }
+
+    function updateVpnButtonState() {
+        vpnSpeedtestBtn.disabled = selectedDomains.size === 0;
+        const allChecked = document.querySelectorAll('.row-checkbox').length > 0 &&
+            Array.from(document.querySelectorAll('.row-checkbox')).every(cb => cb.checked);
+        selectAllBtn.textContent = allChecked ? 'Deselect All' : 'Select All';
+    }
+
+    async function runVpnSpeedtest() {
+        if (selectedDomains.size === 0) return showToast('No endpoints selected', true);
+        try {
+            vpnSpeedtestBtn.disabled = true;
+            const res = await fetch('/api/vpn-speedtest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domains: Array.from(selectedDomains) })
+            });
+            if (res.ok) {
+                showToast('VPN speedtest started');
+                startPolling();
+                // Clear console for new run
+                logConsole.innerHTML = '<div class="log-message system"><span class="level">SYS</span> VPN Speedtest batch started...</div>';
+            }
+            else { const err = await res.json(); showToast('Error: ' + err.message, true); vpnSpeedtestBtn.disabled = false; }
+        } catch (e) { showToast('Network error', true); vpnSpeedtestBtn.disabled = false; }
+    }
+
+    // Log Console Logic
+    const logConsole = document.getElementById('logConsole');
+    const clearLogsBtn = document.getElementById('clearLogsBtn');
+    let logInterval = null;
+
+    clearLogsBtn.addEventListener('click', async () => {
+        await fetch('/api/logs/clear', { method: 'POST' });
+        logConsole.innerHTML = '<div class="log-message system"><span class="level">SYS</span> Console cleared.</div>';
+    });
+
+    async function fetchLogs() {
+        try {
+            const response = await fetch('/api/logs');
+            const logs = await response.json();
+            renderLogs(logs);
+        } catch (e) {
+            console.error("Failed to fetch logs", e);
+        }
+    }
+
+    function renderLogs(logs) {
+        // Only update if we have new logs or something changed
+        const currentCount = logConsole.querySelectorAll('.log-message').length;
+        if (logs.length === 0 && currentCount > 1) {
+            // Logs might have been cleared on server
+            return;
+        }
+
+        // We redraw to simplify, but for performance with many logs we could append
+        // For now, simple redraw is fine for 200 logs
+        const html = logs.map(log => {
+            const levelClass = log.level.toLowerCase();
+            const levelShort = log.level.substring(0, 3).toUpperCase();
+            return `
+                <div class="log-message ${levelClass}">
+                    <span class="timestamp">[${log.timestamp}]</span>
+                    <span class="level">${levelShort}</span>
+                    <span class="text">${escapeHtml(log.message)}</span>
+                </div>
+            `;
+        }).join('');
+
+        if (html) {
+            const isScrolledToBottom = logConsole.scrollHeight - logConsole.clientHeight <= logConsole.scrollTop + 1;
+            logConsole.innerHTML = html;
+            if (isScrolledToBottom) {
+                logConsole.scrollTop = logConsole.scrollHeight;
+            }
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Start log polling immediately
+    setInterval(fetchLogs, 2000);
 });

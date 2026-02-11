@@ -75,12 +75,12 @@ class Scanner:
 
         return excludes
 
-    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False, progress_container: Dict = None) -> Dict[str, List]:
+    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None) -> Dict[str, List]:
         domains = self.get_servers_list()
         excl_countries = None
         include_countries = self.include_countries
 
-        endpoints_list: List[Tuple[str, float, str, str, str]] = []
+        endpoints_list: List[Tuple[str, float, str, str, str, Optional[float], Optional[float]]] = []
         endpoints_dict: "OrderedDict[str, List]" = OrderedDict()
 
         skipped_total = 0
@@ -189,7 +189,14 @@ class Scanner:
         print("Total Retrieved: ", retrieved_total, '/', len(domains))
 
         for item in endpoints_list:
-            endpoints_dict[item[0]] = [item[1], item[2], item[3], item[4]]
+            endpoints_dict[item[0]] = {
+                'latency_ms': item[1],
+                'ip': item[2],
+                'country': item[3],
+                'city': item[4],
+                'rx_speed_mbps': item[5],
+                'tx_speed_mbps': item[6]
+            }
 
         if endpoints_list:
             self.write_json_file(json_file=self.results_json, data=endpoints_dict)
@@ -198,6 +205,22 @@ class Scanner:
             self.formatting.output('red')
             print("Failed to ping any targets from the list")
             self.formatting.output('reset')
+
+        # Perform VPN speedtests if requested
+        if vpn_speedtest and vpn_ovpn_dir and vpn_username and vpn_password:
+            self._perform_vpn_speedtests(
+                endpoints_dict, 
+                vpn_ovpn_dir, 
+                vpn_username, 
+                vpn_password,
+                progress,
+                batch_size=vpn_batch_size,
+                interactive=vpn_batch_interactive,
+                selected_domains=vpn_selected_domains
+            )
+            # Save results after speedtests
+            if endpoints_dict:
+                self.write_json_file(json_file=self.results_json, data=endpoints_dict)
 
         return endpoints_dict
 
@@ -228,7 +251,7 @@ class Scanner:
 
     def _scan_one(self, domain: str, ip: str, pings_num: int, timeout_ms: int,
                   excl_countries: Optional[set], include_countries: Optional[set], city_reader, country_reader,
-                  lock: threading.Lock, progress: Dict[str, int]) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str]]]]:
+                  lock: threading.Lock, progress: Dict[str, int]) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str, Optional[float], Optional[float]]]]]:
         try:
             try:
                 country_result = country_reader.country(ip)
@@ -302,4 +325,13 @@ class Scanner:
             print(prefix + domain, avg_latency, ip, country, city)
             self.formatting.output('reset')
 
-        return ('ok', (domain, avg_latency, ip, country, city))
+        return ('ok', (domain, avg_latency, ip, country, city, None, None))
+
+    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None) -> None:
+        """Perform VPN speedtests on endpoints that have matching .ovpn files."""
+        from generate.vpn_batch_helper import _perform_vpn_speedtests_batch
+        _perform_vpn_speedtests_batch(
+            endpoints_dict, ovpn_dir, username, password, progress,
+            batch_size, interactive, selected_domains, self.formatting
+        )
+

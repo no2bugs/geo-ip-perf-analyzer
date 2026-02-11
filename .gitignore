@@ -5,3 +5,4 @@ servers.list
 *.pyc
 __pycache__
 ovpn/*
+.env

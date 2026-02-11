@@ -149,6 +149,26 @@ def options():
                         action='store_true',
                         help='''Enable verbose logging output.''',
                         default=True)
+    
+    parser.add_argument('--vpn-speedtest',
+                        action='store_true',
+                        help='''Perform VPN speedtest on endpoints with matching .ovpn files''',
+                        default=False)
+    
+    parser.add_argument('--vpn-ovpn-dir',
+                        type=str,
+                        help='''Directory containing .ovpn config files. Default is "ovpn"''',
+                        default='ovpn')
+    
+    parser.add_argument('--vpn-env-file',
+                        type=str,
+                        help='''Path to .env file with VPN credentials. Default is ".env"''',
+                        default='.env')
+    
+    parser.add_argument('--vpn-batch-size',
+                        type=int,
+                        help='''Number of VPN speedtests to run per batch before prompting. Default is 20''',
+                        default=20)
     return parser
 
 
@@ -209,6 +229,8 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
 
 def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, include_countries=None):
     """Run a full scan and write results."""
+    from dotenv import dotenv_values
+    
     if not (file_exists('GeoLite2-City.mmdb') and file_exists('GeoLite2-Country.mmdb')):
         formatting.output('bold', 'red')
         logger.error("Error: GeoLite DB files not found in project root.")
@@ -232,10 +254,29 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, in
                       excl_countries_fle=country_exclusions,
                       include_countries=include_countries)
 
+    # Load VPN credentials if speedtest requested
+    vpn_username = ''
+    vpn_password = ''
+    if args.vpn_speedtest:
+        if file_exists(args.vpn_env_file):
+            env_config = dotenv_values(args.vpn_env_file)
+            vpn_username = env_config.get('VPN_USERNAME', '')
+            vpn_password = env_config.get('VPN_PASSWORD', '')
+            if not vpn_username or not vpn_password:
+                logger.warning('VPN credentials not found in %s', args.vpn_env_file)
+        else:
+            logger.warning('VPN env file not found: %s', args.vpn_env_file)
+
     scanner.scan(pings_num=pings,
                  timeout_ms=args.timeout_ms,
                  workers=args.workers,
-                 all_a_records=args.all_a_records)
+                 all_a_records=args.all_a_records,
+                 vpn_speedtest=args.vpn_speedtest,
+                 vpn_ovpn_dir=args.vpn_ovpn_dir,
+                 vpn_username=vpn_username,
+                 vpn_password=vpn_password,
+                 vpn_batch_size=args.vpn_batch_size,
+                 vpn_batch_interactive=True)
 
 
 def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_fld, mn_latency, mx_latency):
