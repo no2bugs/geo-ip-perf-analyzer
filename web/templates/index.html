@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -17,6 +19,18 @@
         </header>
 
         <main>
+            <div class="console-section glass-panel">
+                <div class="console-header">
+                    <h2>Log Console</h2>
+                    <div class="console-actions">
+                        <button id="clearLogsBtn" class="secondary-btn btn-sm">Clear</button>
+                    </div>
+                </div>
+                <div class="console-body" id="logConsole">
+                    <div class="log-message system">Log console initialized. Standby for progress...</div>
+                </div>
+            </div>
+
             <div class="controls-section glass-panel">
                 <h2>Scan Configuration</h2>
                 <div class="controls-grid">
@@ -35,8 +49,12 @@
                     <div class="control-group button-group">
                         <button id="startBtn" class="primary-btn">Start Scan</button>
                     </div>
+                    <div class="control-group button-group" style="margin-top: 10px;">
+                        <button id="selectAllBtn" class="secondary-btn" disabled>Select All</button>
+                        <button id="vpnSpeedtestBtn" class="primary-btn" disabled>Run VPN Speedtest on Selected</button>
+                    </div>
                 </div>
-                
+
                 <div class="progress-section" id="progressSection" style="display: none;">
                     <div class="progress-bar-container">
                         <div class="progress-bar" id="progressBar"></div>
@@ -50,22 +68,27 @@
 
             <div class="results-section glass-panel">
                 <div class="results-header">
-                    <h2>Results</h2>
+                    <h2>Results <span id="resultsCount" class="count-badge"></span></h2>
                     <div class="results-actions">
-                        <input type="text" id="search" placeholder="Search domain, country, city..." class="search-input">
+                        <input type="text" id="search" placeholder="Search domain, country, city..."
+                            class="search-input">
                         <button id="refreshBtn" class="secondary-btn">Refresh Data</button>
                     </div>
                 </div>
-                
+
                 <div class="table-container">
                     <table id="resultsTable">
                         <thead>
                             <tr>
+                                <th style="width: 40px;">#</th>
+                                <th style="width: 30px;"><input type="checkbox" id="selectAllCheckbox"></th>
                                 <th data-sort="domain">Domain <span class="sort-icon"></span></th>
                                 <th data-sort="latency">Latency (ms) <span class="sort-icon"></span></th>
                                 <th data-sort="ip">IP <span class="sort-icon"></span></th>
                                 <th data-sort="country">Country <span class="sort-icon"></span></th>
                                 <th data-sort="city">City <span class="sort-icon"></span></th>
+                                <th data-sort="rx_speed">Download (Mbps) <span class="sort-icon"></span></th>
+                                <th data-sort="tx_speed">Upload (Mbps) <span class="sort-icon"></span></th>
                             </tr>
                         </thead>
                         <tbody id="resultsBody">
@@ -73,6 +96,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="pagination" class="pagination-container"></div>
                 <div class="no-results" id="noResults" style="display: none;">No results found</div>
             </div>
         </main>
@@ -83,4 +107,5 @@
 
     <script src="/static/script.js"></script>
 </body>
+
 </html>

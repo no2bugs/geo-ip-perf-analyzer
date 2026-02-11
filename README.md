@@ -6,6 +6,7 @@
 
 - **New Web UI**: Modern dashboard to trigger scans and view results with live progress.
 - **Docker Support**: Easy deployment via `docker-compose`.
+- **VPN Speedtest**: Optionally test download/upload speeds via VPN endpoints.
 - Reads list of domains/IPs, pings them and generates latency report.
 - Records IP location for each target by country and city.
 - Records number of servers in each location.

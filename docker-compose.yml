@@ -14,4 +14,14 @@ services:
       - RESULTS_FILE=/data/results.json
       - GEOIP_CITY=/data/GeoLite2-City.mmdb
       - GEOIP_COUNTRY=/data/GeoLite2-Country.mmdb
+      - VPN_OVPN_DIR=/data/ovpn
+      - VPN_USERNAME=${VPN_USERNAME}
+      - VPN_PASSWORD=${VPN_PASSWORD}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
     restart: unless-stopped

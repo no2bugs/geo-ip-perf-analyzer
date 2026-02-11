@@ -1,9 +1,9 @@
-"""Report rendering for latency scan results."""
+"""Report rendering for latency scan results with VPN speedtest support."""
 
 from format.colors import Format
 from json import loads
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
 import logging
 import sys
@@ -20,7 +20,7 @@ class Analyze:
         self.res_fl = res_fl
 
     @staticmethod
-    def read_json_file(json_file: str) -> Dict[str, List]:
+    def read_json_file(json_file: str) -> Dict[str, Any]:
         logger.info("Reading file: %s", json_file)
         with Path(json_file).open('r', encoding='utf-8') as infile:
             data = infile.read()
@@ -28,9 +28,42 @@ class Analyze:
 
         return json_data
 
+    @staticmethod
+    def _normalize_result(server_data: Any) -> Dict:
+        """Normalize results to dict format (handles both old list and new dict formats)."""
+        if isinstance(server_data, dict):
+            # New format
+            return {
+                'latency_ms': server_data.get('latency_ms', 0),
+                'ip': server_data.get('ip', 'N/A'),
+                'country': server_data.get('country', 'Unknown'),
+                'city': server_data.get('city', 'Unknown'),
+                'rx_speed_mbps': server_data.get('rx_speed_mbps'),
+                'tx_speed_mbps': server_data.get('tx_speed_mbps')
+            }
+        elif isinstance(server_data, list) and len(server_data) >= 4:
+            # Old format: [latency, ip, country, city]
+            return {
+                'latency_ms': server_data[0],
+                'ip': server_data[1],
+                'country': server_data[2],
+                'city': server_data[3],
+                'rx_speed_mbps': None,
+                'tx_speed_mbps': None
+            }
+        else:
+            return {
+                'latency_ms': 0,
+                'ip': 'N/A',
+                'country': 'Unknown',
+                'city': 'Unknown',
+                'rx_speed_mbps': None,
+                'tx_speed_mbps': None
+            }
+
     def get_top_performers(self, limit: Optional[int] = None, country: Optional[str] = None,
                            city: Optional[str] = None, sort_by: int = 1,
-                           min_latency_limit: float = 0, max_latency_limit: float = float("inf")) -> List[Tuple[str, float, str, str, str]]:
+                           min_latency_limit: float = 0, max_latency_limit: float = float("inf")) -> List:
         if not limit:
             limit = 'all'
 
@@ -38,126 +71,100 @@ class Analyze:
 
         results_json = self.read_json_file(self.res_fl)
 
-        if country and city:
-            logger.info("Searching for %s servers matching %s, %s", limit, city.capitalize(), country.capitalize())
-            for server in results_json.items():
-                if re.search(str(country), server[1][2], re.IGNORECASE) \
-                        and re.match(str(city), server[1][3], re.IGNORECASE) \
-                        and min_latency_limit <= server[1][0] <= max_latency_limit:
-                    top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
-        elif country:
-            logger.info("Searching for %s servers matching country %s", limit, country.capitalize())
-            for server in results_json.items():
-                if re.search(str(country), server[1][2], re.IGNORECASE) \
-                        and min_latency_limit <= server[1][0] <= max_latency_limit:
-                    top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
-        elif city:
-            logger.info("Searching for %s servers matching city %s", limit, city.capitalize())
-            for server in results_json.items():
-                if re.search(str(city), server[1][3], re.IGNORECASE) \
-                        and min_latency_limit <= server[1][0] <= max_latency_limit:
-                    top_servers.append((server[0], server[1][0], server[1][1], server[1][2], server[1][3]))
-        else:
-            logger.info("Searching for %s servers", limit)
-            top_servers = [(server[0], server[1][0], server[1][1], server[1][2], server[1][3]) for server in
-                           results_json.items() if min_latency_limit <= server[1][0] <= max_latency_limit]
+        for domain, data in results_json.items():
+            norm_data = self._normalize_result(data)
+            latency = norm_data['latency_ms']
+            
+            if latency < min_latency_limit or latency > max_latency_limit:
+                continue
+                
+            if country and not re.search(str(country), norm_data['country'], re.IGNORECASE):
+                continue
+            if city and not re.search(str(city), norm_data['city'], re.IGNORECASE):
+                continue
+                
+            top_servers.append((
+                domain,
+                latency,
+                norm_data['ip'],
+                norm_data['country'],
+                norm_data['city'],
+                norm_data['rx_speed_mbps'],
+                norm_data['tx_speed_mbps']
+            ))
 
         if not top_servers:
             self.formatting.output('yellow')
-            if country and city:
-                logger.info("No results found for %s, %s", city, country)
-                logger.info("Run with --country-stats to see list of all available countries")
-                logger.info("Run with --city-stats to see list of all available cities")
-            elif country:
-                logger.info("No results found for %s", country)
-                logger.info("Run with --country-stats to see list of all available countries")
-            elif city:
-                logger.info("No results found for %s", city)
-                logger.info("Run with --city-stats to see list of all available cities")
-            else:
-                logger.info("No matching results found")
+            logger.info("No matching results found")
             self.formatting.output('reset')
         else:
-            fields = {0: 'ENDPOINT',
-                      1: 'LATENCY',
-                      2: 'IP',
-                      3: 'COUNTRY',
-                      4: 'CITY'}
+            fields = {0: 'ENDPOINT', 1: 'LATENCY', 2: 'IP', 3: 'COUNTRY', 4: 'CITY', 5: 'DL(Mbps)', 6: 'UL(Mbps)'}
 
             self.formatting.output('bold', 'green')
-            logger.info("Sorted by: %s", fields[sort_by])
+            logger.info("Sorted by: %s", fields[min(sort_by, 4)])  # Limit to existing sort fields
             self.formatting.output('reset')
 
-            if fields[sort_by] == 'IP':
+            if sort_by == 2:  # IP
                 def _ipv4_key(value):
-                    parts = str(value).split('.')
+                    parts = str(value[2]).split('.')
                     if len(parts) != 4 or not all(p.isdigit() for p in parts):
                         return (999, 999, 999, 999)
                     return tuple(int(p) for p in parts)
-
-                top_servers.sort(key=lambda x: _ipv4_key(x[sort_by]))
-            else:
+                top_servers.sort(key=_ipv4_key)
+            elif sort_by <= 4:
                 top_servers.sort(key=lambda x: x[sort_by])
 
             if limit == 'all':
                 limit = len(top_servers)
+                
+            # Check if any speedtest data exists
+            has_speedtest = any(s[5] is not None or s[6] is not None for s in top_servers[:limit])
+            
             max_endpoint_len = max(len(l[0]) for l in top_servers[0:limit])
             max_latency_len = max(len(str(l[1])) for l in top_servers[0:limit])
             max_country_len = max(len(l[3]) for l in top_servers[0:limit])
             max_city_len = max(len(l[4]) for l in top_servers[0:limit])
+            
             self.formatting.output('bold', 'reverse')
-            logger.info('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
-                '#',
-                fields[0],
-                fields[1],
-                fields[2],
-                fields[3],
-                fields[4],
-                max_latency=max_latency_len + 2,
-                max_endpoint=max_endpoint_len + 2,
-                max_city=max_city_len + 2,
-                max_country=max_country_len + 2))
+            if has_speedtest:
+                logger.info('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}} {6:^10} {7:^10}'.format(
+                    '#', 'ENDPOINT', 'LATENCY', 'IP', 'COUNTRY', 'CITY', 'DL(Mbps)', 'UL(Mbps)',
+                    max_latency=max_latency_len + 2,
+                    max_endpoint=max_endpoint_len + 2,
+                    max_city=max_city_len + 2,
+                    max_country=max_country_len + 2))
+            else:
+                logger.info('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
+                    '#', 'ENDPOINT', 'LATENCY', 'IP', 'COUNTRY', 'CITY',
+                    max_latency=max_latency_len + 2,
+                    max_endpoint=max_endpoint_len + 2,
+                    max_city=max_city_len + 2,
+                    max_country=max_country_len + 2))
             self.formatting.output('reset')
-            logger.info('{0:^5} {1:^{max_endpoint}} {2:^{max_latency}} {3:^16} {4:^{max_country}} {5:^{max_city}}'.format(
-                '-' * 5,
-                '-' * (max_endpoint_len + 2),
-                '-' * 8,
-                '-' * 16,
-                '-' * (max_country_len + 2),
-                '-' * (max_city_len + 2),
-                max_latency=max_latency_len + 2,
-                max_endpoint=max_endpoint_len + 2,
-                max_city=max_city_len + 2,
-                max_country=max_country_len + 2))
 
             for i, item in enumerate(top_servers[0:limit], 1):
-                endpoint = item[0]
-                latency = round(item[1], 2)
-                ip = item[2]
-                country = item[3]
-                city = item[4]
                 self.formatting.output('bold')
-                try:
-                    logger.info('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
-                        i,
-                        endpoint,
-                        latency,
-                        ip,
-                        country,
-                        city,
+                dl_speed = f"{item[5]:.2f}" if item[5] is not None else "N/A"
+                ul_speed = f"{item[6]:.2f}" if item[6] is not None else "N/A"
+                
+                if has_speedtest:
+                    logger.info('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}} {6:<10} {7:<10}'.format(
+                        i, item[0], round(item[1], 2), item[2], item[3], item[4], dl_speed, ul_speed,
                         max_latency=max_latency_len + 2,
                         max_endpoint=max_endpoint_len + 2,
                         max_city=max_city_len + 2,
                         max_country=max_country_len + 2))
-                except (BrokenPipeError, IOError):
-                    logger.error("Caught BrokenPipeError")
+                else:
+                    logger.info('{0:<5} {1:<{max_endpoint}} {2:<{max_latency}} {3:<16} {4:<{max_country}} {5:<{max_city}}'.format(
+                        i, item[0], round(item[1], 2), item[2], item[3], item[4],
+                        max_latency=max_latency_len + 2,
+                        max_endpoint=max_endpoint_len + 2,
+                        max_city=max_city_len + 2,
+                        max_country=max_country_len + 2))
                 self.formatting.output('reset')
 
             self.formatting.output('green')
-            if limit <= len(top_servers):
-                logger.info("Found: %s results", limit)
-            else:
-                logger.info("Found: %s results", len(top_servers))
+            logger.info("Found: %s results", min(limit, len(top_servers)))
             self.formatting.output('reset')
 
         return top_servers
@@ -170,13 +177,14 @@ class Analyze:
 
         results_json = self.read_json_file(self.res_fl)
 
-        for item in results_json.items():
-            server_latency = float(item[1][0])
+        for domain, data in results_json.items():
+            norm_data = self._normalize_result(data)
+            server_latency = float(norm_data['latency_ms'])
+            
             if server_latency < min_latency_limit or server_latency > max_latency_limit:
                 continue
 
-            country = item[1][2]
-
+            country = norm_data['country']
             country_latency[country].append(server_latency)
 
             if country in country_servers:
@@ -194,12 +202,8 @@ class Analyze:
             min_latency = round(min(country_latency[country]), 2)
             country_metrics.append((country, servers, min_latency))
 
-        fields = {0: 'COUNTRY',
-                  1: 'SERVERS',
-                  2: 'LATENCY'}
-
+        fields = {0: 'COUNTRY', 1: 'SERVERS', 2: 'LATENCY'}
         rev_sort = True if fields[sort_by] == 'SERVERS' else False
-
         country_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
 
         self.formatting.output('bold', 'green')
@@ -209,32 +213,18 @@ class Analyze:
         max_country_len = max(len(str(l[0])) for l in country_metrics)
         max_latency_len = max(len(str(l[2])) for l in country_metrics)
         self.formatting.output('bold', 'reverse')
-        logger.info('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('#',
-                                                                           fields[0],
-                                                                           fields[1],
-                                                                           fields[2],
-                                                                           max_country=max_country_len + 2,
-                                                                           max_latency=max_latency_len + 2))
+        logger.info('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format(
+            '#', fields[0], fields[1], fields[2],
+            max_country=max_country_len + 2,
+            max_latency=max_latency_len + 2))
         self.formatting.output('reset')
-        logger.info('{0:^5} {1:^{max_country}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
-                                                                           '-' * (max_country_len + 2),
-                                                                           '-' * 8,
-                                                                           '-' * (max_latency_len + 2),
-                                                                           max_country=max_country_len + 2,
-                                                                           max_latency=max_latency_len + 2))
 
         for i, each in enumerate(country_metrics, 1):
-            country = each[0]
-            servers = each[1]
-            latency = round(each[2], 2)
-
             self.formatting.output('bold')
-            logger.info('{0:<5} {1:<{max_country}} {2:<8} {3:<{max_latency}}'.format(i,
-                                                                               country,
-                                                                               servers,
-                                                                               latency,
-                                                                               max_country=max_country_len + 2,
-                                                                               max_latency=max_latency_len + 2))
+            logger.info('{0:<5} {1:<{max_country}} {2:<8} {3:<{max_latency}}'.format(
+                i, each[0], each[1], round(each[2], 2),
+                max_country=max_country_len + 2,
+                max_latency=max_latency_len + 2))
             self.formatting.output('reset')
 
         self.formatting.output('bold', 'green')
@@ -249,13 +239,14 @@ class Analyze:
 
         results_json = self.read_json_file(self.res_fl)
 
-        for item in results_json.items():
-            server_latency = float(item[1][0])
+        for domain, data in results_json.items():
+            norm_data = self._normalize_result(data)
+            server_latency = float(norm_data['latency_ms'])
+            
             if server_latency < min_latency_limit or server_latency > max_latency_limit:
                 continue
 
-            city = item[1][3]
-
+            city = norm_data['city']
             city_latency[city].append(server_latency)
 
             if city in city_servers:
@@ -267,14 +258,8 @@ class Analyze:
             min_latency = round(min(city_latency[city]), 2)
             city_metrics.append((city, servers, min_latency))
 
-        city_metrics.sort(key=lambda x: x[sort_by])
-
-        fields = {0: 'CITY',
-                 1: 'SERVERS',
-                 2: 'LATENCY'}
-
+        fields = {0: 'CITY', 1: 'SERVERS', 2: 'LATENCY'}
         rev_sort = True if fields[sort_by] == 'SERVERS' else False
-
         city_metrics.sort(key=lambda x: x[sort_by], reverse=rev_sort)
 
         self.formatting.output('bold', 'green')
@@ -284,31 +269,18 @@ class Analyze:
         max_city_len = max(len(str(l[0])) for l in city_metrics)
         max_latency_len = max(len(str(l[2])) for l in city_metrics)
         self.formatting.output('bold', 'reverse')
-        logger.info('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('#',
-                                                                        fields[0],
-                                                                        fields[1],
-                                                                        fields[2],
-                                                                        max_city=max_city_len + 2,
-                                                                        max_latency=max_latency_len + 2))
+        logger.info('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format(
+            '#', fields[0], fields[1], fields[2],
+            max_city=max_city_len + 2,
+            max_latency=max_latency_len + 2))
         self.formatting.output('reset')
-        logger.info('{0:^5} {1:^{max_city}} {2:^8} {3:^{max_latency}}'.format('-' * 5,
-                                                                        '-' * (max_city_len + 2),
-                                                                        '-' * 8,
-                                                                        '-' * (max_latency_len + 2),
-                                                                        max_city=max_city_len + 2,
-                                                                        max_latency=max_latency_len + 2))
 
         for i, each in enumerate(city_metrics, 1):
-            city = each[0]
-            servers = each[1]
-            latency = round(each[2], 2)
             self.formatting.output('bold')
-            logger.info('{0:<5} {1:<{max_city}} {2:<8} {3:<{max_latency}}'.format(i,
-                                                                            city,
-                                                                            servers,
-                                                                            latency,
-                                                                            max_city=max_city_len + 2,
-                                                                            max_latency=max_latency_len + 2))
+            logger.info('{0:<5} {1:<{max_city}} {2:<8} {3:<{max_latency}}'.format(
+                i, each[0], each[1], round(each[2], 2),
+                max_city=max_city_len + 2,
+                max_latency=max_latency_len + 2))
             self.formatting.output('reset')
 
         self.formatting.output('bold', 'green')
