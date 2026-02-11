@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoIP Latency Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GeoIP Latency Analyzer</h1>
+            <div class="status-indicator" id="globalStatus">
+                <span class="dot"></span> <span id="statusText">Ready</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="controls-section glass-panel">
+                <h2>Scan Configuration</h2>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="pings">Pings per IP</label>
+                        <input type="number" id="pings" value="1" min="1" max="10">
+                    </div>
+                    <div class="control-group">
+                        <label for="timeout">Timeout (ms)</label>
+                        <input type="number" id="timeout" value="1000" min="100" step="100">
+                    </div>
+                    <div class="control-group">
+                        <label for="workers">Workers</label>
+                        <input type="number" id="workers" value="20" min="1" max="100">
+                    </div>
+                    <div class="control-group button-group">
+                        <button id="startBtn" class="primary-btn">Start Scan</button>
+                    </div>
+                </div>
+                
+                <div class="progress-section" id="progressSection" style="display: none;">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span id="progressText">0%</span>
+                        <span id="progressDetail">0/0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-section glass-panel">
+                <div class="results-header">
+                    <h2>Results</h2>
+                    <div class="results-actions">
+                        <input type="text" id="search" placeholder="Search domain, country, city..." class="search-input">
+                        <button id="refreshBtn" class="secondary-btn">Refresh Data</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th data-sort="domain">Domain <span class="sort-icon"></span></th>
+                                <th data-sort="latency">Latency (ms) <span class="sort-icon"></span></th>
+                                <th data-sort="ip">IP <span class="sort-icon"></span></th>
+                                <th data-sort="country">Country <span class="sort-icon"></span></th>
+                                <th data-sort="city">City <span class="sort-icon"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                            <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="no-results" id="noResults" style="display: none;">No results found</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

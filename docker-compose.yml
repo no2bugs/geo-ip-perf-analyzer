@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount the data directory for persistence
+      # We assume db and lists are in root for simplicity of mounting
+      - .:/data
+    environment:
+      - SERVERS_FILE=/data/servers.list
+      - RESULTS_FILE=/data/results.json
+      - GEOIP_CITY=/data/GeoLite2-City.mmdb
+      - GEOIP_COUNTRY=/data/GeoLite2-Country.mmdb
+    restart: unless-stopped
