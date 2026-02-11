@@ -13,7 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let isScanning = false;
     let pollInterval = null;
     let allResults = [];
+    let filteredResults = []; // Track filtered results separately for pagination
     let selectedDomains = new Set();
+    let currentPage = 1;
+    const rowsPerPage = 50;
 
     // Initial Load
     fetchStatus();
@@ -159,20 +162,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Default sort by latency
             allResults.sort((a, b) => a.latency - b.latency);
+            filteredResults = [...allResults];
+            currentPage = 1;
 
-            renderResults(allResults);
+            renderResults();
         } catch (e) {
             console.error("Fetch results failed", e);
         }
     }
 
-    function renderResults(results) {
+    function renderResults() {
         resultsBody.innerHTML = '';
         const countSpan = document.getElementById('resultsCount');
-        countSpan.textContent = results.length;
+        countSpan.textContent = filteredResults.length;
 
-        if (results.length === 0) {
+        if (filteredResults.length === 0) {
             document.getElementById('noResults').style.display = 'block';
+            document.getElementById('pagination').innerHTML = '';
             selectAllBtn.disabled = true;
             vpnSpeedtestBtn.disabled = true;
             return;
@@ -180,7 +186,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('noResults').style.display = 'none';
         selectAllBtn.disabled = false;
 
-        results.forEach((item, index) => {
+        // Calculate pagination
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        const pageResults = filteredResults.slice(startIndex, endIndex);
+
+        pageResults.forEach((item, index) => {
+            const actualIndex = startIndex + index;
             const row = document.createElement('tr');
             const latencyClass = item.latency < 50 ? 'latency-good' : (item.latency < 150 ? 'latency-med' : 'latency-bad');
 
@@ -189,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // # Counter column
             const indexTd = document.createElement('td');
-            indexTd.textContent = index + 1;
+            indexTd.textContent = actualIndex + 1;
             indexTd.className = 'text-secondary mono';
             row.appendChild(indexTd);
 
@@ -214,21 +226,61 @@ document.addEventListener('DOMContentLoaded', () => {
             `);
             resultsBody.appendChild(row);
         });
+
+        renderPagination();
         updateVpnButtonState();
+    }
+
+    function renderPagination() {
+        const paginationContainer = document.getElementById('pagination');
+        const totalPages = Math.ceil(filteredResults.length / rowsPerPage);
+
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        let html = `
+            <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">&laquo;</button>
+        `;
+
+        // Logic for page numbers (show few around current)
+        const range = 2;
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            } else if (i === currentPage - range - 1 || i === currentPage + range + 1) {
+                html += `<span class="page-info">...</span>`;
+            }
+        }
+
+        html += `
+            <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">&raquo;</button>
+        `;
+
+        paginationContainer.innerHTML = html;
+
+        // Expose changePage to global scope for onclick or attach listeners
+        window.changePage = (page) => {
+            currentPage = page;
+            renderResults();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
     }
 
     function filterResults() {
         const query = searchInput.value.toLowerCase();
-        const filtered = allResults.filter(item =>
+        filteredResults = allResults.filter(item =>
             item.domain.toLowerCase().includes(query) ||
             item.country.toLowerCase().includes(query) ||
             item.city.toLowerCase().includes(query)
         );
-        renderResults(filtered);
+        currentPage = 1;
+        renderResults();
     }
 
     function sortResults(field, order) {
-        const sorted = [...allResults].sort((a, b) => {
+        filteredResults.sort((a, b) => {
             let valA = a[field];
             let valB = b[field];
 
@@ -239,7 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (valA > valB) return order === 'asc' ? 1 : -1;
             return 0;
         });
-        renderResults(sorted);
+        currentPage = 1;
+        renderResults();
     }
 
     function showToast(msg, isError = false) {
