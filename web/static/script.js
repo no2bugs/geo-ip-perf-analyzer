@@ -105,9 +105,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isScanning) {
             startBtn.style.display = 'none';
             stopBtn.style.display = 'block';
+
+            // Sync stopping state with backend
+            if (data.stopping) {
+                stopBtn.disabled = true;
+                stopBtn.textContent = 'Stopping...';
+            } else {
+                stopBtn.disabled = false;
+                stopBtn.textContent = 'Stop Scan';
+            }
         } else {
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
+            // Reset stop button state when scan finishes
+            stopBtn.disabled = false;
+            stopBtn.textContent = 'Stop Scan';
+            startBtn.disabled = false;
         }
 
         if (isScanning || (data.progress && data.progress.total > 0)) {

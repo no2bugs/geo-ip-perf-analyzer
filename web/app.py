@@ -139,7 +139,8 @@ def get_status():
     return jsonify({
         "active": scan_active,
         "progress": scan_progress,
-        "error": last_error
+        "error": last_error,
+        "stopping": stop_event.is_set()
     })
 
 @app.route('/api/results')
