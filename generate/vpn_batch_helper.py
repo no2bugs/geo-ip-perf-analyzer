@@ -1,6 +1,6 @@
 """VPN speedtest helper - batch processing logic."""
 
-def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None):
+def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None):
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
     import os
     import logging
@@ -70,7 +70,14 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
     
     # Process in batches
     total_count = len(sorted_endpoints)
+    progress['total'] = total_count
+    progress['done'] = 0
+    
     for batch_start in range(0, total_count, batch_size):
+        if stop_event and stop_event.is_set():
+            logger.info("VPN speedtest stopped by user signal")
+            break
+            
         batch_end = min(batch_start + batch_size, total_count)
         batch = sorted_endpoints[batch_start:batch_end]
         
@@ -78,6 +85,8 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         logger.info(f"=== Batch {batch_start//batch_size + 1}: Testing endpoints {batch_start + 1}-{batch_end} of {total_count} ===")
         
         for idx, (domain, data) in enumerate(batch, start=batch_start + 1):
+            if stop_event and stop_event.is_set():
+                break
             try:
                 # Safely get latency for display
                 latency = data.get('latency_ms', 0) if isinstance(data, dict) else (data[0] if isinstance(data, list) and len(data) > 0 else 0)
@@ -110,6 +119,8 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
             except Exception as e:
                 print(f"DEBUG: Error testing {domain}: {e}", file=sys.stderr, flush=True)
                 vpn_manager.disconnect()
+            finally:
+                progress['done'] = idx
         
         # Ask user if they want to continue (only in interactive mode)
         if interactive and batch_end < total_count:

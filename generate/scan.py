@@ -76,7 +76,7 @@ class Scanner:
 
         return excludes
 
-    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None) -> Dict[str, List]:
+    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None, stop_event: threading.Event = None) -> Dict[str, List]:
         domains = self.get_servers_list()
         excl_countries = None
         include_countries = self.include_countries
@@ -130,6 +130,8 @@ class Scanner:
         progress = progress_container if progress_container is not None else {"done": 0, "total": 0}
         targets = []
         for domain in domains:
+            if stop_event and stop_event.is_set():
+                break
             try:
                 resolv = socket.gethostbyname_ex(domain)
                 ips = resolv[2]
@@ -161,6 +163,8 @@ class Scanner:
         tasks = []
         with ThreadPoolExecutor(max_workers=workers) as executor:
             for domain, ip in targets:
+                if stop_event and stop_event.is_set():
+                    break
                 tasks.append(executor.submit(
                     self._scan_one,
                     domain,
@@ -360,11 +364,12 @@ class Scanner:
 
         return ('ok', (domain, avg_latency, ip, country, city, None, None))
 
-    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None) -> None:
+    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None, stop_event: threading.Event = None) -> None:
         """Perform VPN speedtests on endpoints that have matching .ovpn files."""
         from generate.vpn_batch_helper import _perform_vpn_speedtests_batch
         _perform_vpn_speedtests_batch(
             endpoints_dict, ovpn_dir, username, password, progress,
-            batch_size, interactive, selected_domains, self.formatting
+            batch_size, interactive, selected_domains, self.formatting,
+            stop_event=stop_event
         )
 

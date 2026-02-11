@@ -111,6 +111,10 @@ input:focus {
     background-color: var(--accent-hover);
 }
 
+#stopBtn:hover {
+    background-color: #dc2626 !important;
+}
+
 .primary-btn:disabled {
     background-color: var(--text-secondary);
     cursor: not-allowed;

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
     const refreshBtn = document.getElementById('refreshBtn');
     const searchInput = document.getElementById('search');
     const resultsBody = document.getElementById('resultsBody');
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchResults();
 
     startBtn.addEventListener('click', startScan);
+    stopBtn.addEventListener('click', stopScan);
     refreshBtn.addEventListener('click', fetchResults);
     searchInput.addEventListener('input', filterResults);
 
@@ -99,6 +101,15 @@ document.addEventListener('DOMContentLoaded', () => {
         statusText.textContent = isScanning ? "Scanning..." : "Ready";
         globalStatus.className = 'dot ' + (isScanning ? 'running' : 'completed');
 
+        // Show/hide stop button
+        if (isScanning) {
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+        } else {
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+        }
+
         if (isScanning || (data.progress && data.progress.total > 0)) {
             progressSection.style.display = 'block';
             const { done, total } = data.progress;
@@ -113,6 +124,26 @@ document.addEventListener('DOMContentLoaded', () => {
             statusText.textContent = "Error";
             globalStatus.className = 'dot error';
             showToast(data.error, true);
+        }
+    }
+
+    async function stopScan() {
+        try {
+            stopBtn.disabled = true;
+            stopBtn.textContent = 'Stopping...';
+            const response = await fetch('/api/scan/stop', { method: 'POST' });
+            if (response.ok) {
+                showToast('Stop signal sent');
+            } else {
+                const err = await response.json();
+                showToast('Error: ' + err.message, true);
+                stopBtn.disabled = false;
+                stopBtn.textContent = 'Stop Scan';
+            }
+        } catch (e) {
+            showToast('Network error', true);
+            stopBtn.disabled = false;
+            stopBtn.textContent = 'Stop Scan';
         }
     }
 

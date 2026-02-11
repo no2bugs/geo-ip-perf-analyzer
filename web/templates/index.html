@@ -47,7 +47,11 @@
                         <input type="number" id="workers" value="20" min="1" max="100">
                     </div>
                     <div class="control-group button-group">
-                        <button id="startBtn" class="primary-btn">Start Scan</button>
+                        <div style="display: flex; gap: 1rem;">
+                            <button id="startBtn" class="primary-btn">Start Scan</button>
+                            <button id="stopBtn" class="primary-btn"
+                                style="background-color: var(--error-color); display: none;">Stop Scan</button>
+                        </div>
                     </div>
                     <div class="control-group button-group" style="margin-top: 10px;">
                         <button id="selectAllBtn" class="secondary-btn" disabled>Select All</button>

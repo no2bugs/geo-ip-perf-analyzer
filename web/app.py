@@ -63,11 +63,13 @@ VPN_PASSWORD = os.environ.get('VPN_PASSWORD', '')
 scan_lock = threading.Lock()
 scan_active = False
 scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
+stop_event = threading.Event()
 last_error = None
 
 def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
-    global scan_active, scan_progress, last_error
+    global scan_active, scan_progress, last_error, stop_event
     
+    stop_event.clear()
     scan_active = True
     scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Initializing..."}
     last_error = None
@@ -95,7 +97,8 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
             vpn_speedtest=vpn_speedtest,
             vpn_ovpn_dir=VPN_OVPN_DIR,
             vpn_username=VPN_USERNAME,
-            vpn_password=VPN_PASSWORD
+            vpn_password=VPN_PASSWORD,
+            stop_event=stop_event
         )
         scan_progress['status'] = 'completed'
         scan_progress['message'] = 'Scan completed successfully'
@@ -166,8 +169,9 @@ def vpn_speedtest():
     
     # Run VPN speedtest on selected domains
     def run_vpn_speedtest_background():
-        global scan_active, scan_progress, last_error
+        global scan_active, scan_progress, last_error, stop_event
         print("DEBUG: Background thread run_vpn_speedtest_background started", file=sys.stderr, flush=True)
+        stop_event.clear()
         scan_active = True
         scan_progress = {"done": 0, "total": len(selected_domains), "status": "running", "message": "Running VPN speedtest..."}
         last_error = None
@@ -259,7 +263,8 @@ def vpn_speedtest():
                     scan_progress,
                     batch_size=999,  # No batching in Web UI
                     interactive=False,
-                    selected_domains=valid_domains
+                    selected_domains=valid_domains,
+                    stop_event=stop_event
                 )
                 print("DEBUG: scanner._perform_vpn_speedtests finished", file=sys.stderr, flush=True)
             else:
@@ -291,6 +296,16 @@ def vpn_speedtest():
     print("DEBUG: Thread started, returning started response", file=sys.stderr, flush=True)
     
     return jsonify({"status": "started"})
+
+@app.route('/api/scan/stop', methods=['POST'])
+def stop_scan():
+    global stop_event, scan_active
+    if not scan_active:
+        return jsonify({"status": "error", "message": "No scan in progress"}), 400
+    
+    stop_event.set()
+    logging.info("Stop signal sent to scanner...")
+    return jsonify({"status": "stopping"})
 
 @app.route('/api/logs')
 def get_logs():
