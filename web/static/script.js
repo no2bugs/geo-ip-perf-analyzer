@@ -311,23 +311,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleSelectAll(e) {
-        // If triggered by button, toggle the header checkbox first
         if (e && e.target === selectAllBtn) {
-            selectAllCheckbox.checked = !selectAllCheckbox.checked;
-        }
-
-        const shouldCheck = selectAllCheckbox.checked;
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-
-        checkboxes.forEach(cb => {
-            cb.checked = shouldCheck;
-            const domain = cb.dataset.domain;
-            if (shouldCheck) {
-                selectedDomains.add(domain);
+            // GLOBAL TOGGLE (Button)
+            const allSelected = selectedDomains.size === filteredResults.length && filteredResults.length > 0;
+            if (allSelected) {
+                selectedDomains.clear();
             } else {
-                selectedDomains.delete(domain);
+                filteredResults.forEach(item => selectedDomains.add(item.domain));
             }
-        });
+            renderResults(); // Re-render to update checkboxes on current page
+        } else {
+            // LOCAL TOGGLE (Header Checkbox)
+            const shouldCheck = selectAllCheckbox.checked;
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+
+            checkboxes.forEach(cb => {
+                cb.checked = shouldCheck;
+                const domain = cb.dataset.domain;
+                if (shouldCheck) {
+                    selectedDomains.add(domain);
+                } else {
+                    selectedDomains.delete(domain);
+                }
+            });
+        }
 
         updateVpnButtonState();
     }
@@ -338,10 +345,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateVpnButtonState() {
-        vpnSpeedtestBtn.disabled = selectedDomains.size === 0;
-        const allChecked = document.querySelectorAll('.row-checkbox').length > 0 &&
-            Array.from(document.querySelectorAll('.row-checkbox')).every(cb => cb.checked);
-        selectAllBtn.textContent = allChecked ? 'Deselect All' : 'Select All';
+        const totalSelected = selectedDomains.size;
+        vpnSpeedtestBtn.disabled = totalSelected === 0;
+
+        const allSelectedGlobally = totalSelected === filteredResults.length && filteredResults.length > 0;
+        selectAllBtn.textContent = allSelectedGlobally ? `Deselect All (${totalSelected})` : `Select All (${filteredResults.length})`;
+
+        if (totalSelected > 0) {
+            vpnSpeedtestBtn.textContent = `Run VPN Speedtest on Selected (${totalSelected})`;
+        } else {
+            vpnSpeedtestBtn.textContent = `Run VPN Speedtest on Selected`;
+        }
     }
 
     async function runVpnSpeedtest() {
