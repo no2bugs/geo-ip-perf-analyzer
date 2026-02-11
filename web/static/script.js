@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedDomains = new Set();
     let currentPage = 1;
     const rowsPerPage = 50;
+    const paginationContainers = [
+        document.getElementById('pagination'),
+        document.getElementById('paginationTop')
+    ].filter(Boolean);
 
     // Initial Load
     fetchStatus();
@@ -215,6 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function setPaginationHtml(html) {
+        paginationContainers.forEach(container => {
+            container.innerHTML = html;
+        });
+    }
+
     function renderResults() {
         resultsBody.innerHTML = '';
         const countSpan = document.getElementById('resultsCount');
@@ -222,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filteredResults.length === 0) {
             document.getElementById('noResults').style.display = 'block';
-            document.getElementById('pagination').innerHTML = '';
+            setPaginationHtml('');
             selectAllBtn.disabled = true;
             vpnSpeedtestBtn.disabled = true;
             return;
@@ -276,11 +286,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPagination() {
-        const paginationContainer = document.getElementById('pagination');
         const totalPages = Math.ceil(filteredResults.length / rowsPerPage);
 
         if (totalPages <= 1) {
-            paginationContainer.innerHTML = '';
+            setPaginationHtml('');
             return;
         }
 
@@ -302,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">&raquo;</button>
         `;
 
-        paginationContainer.innerHTML = html;
+        setPaginationHtml(html);
 
         // Expose changePage to global scope for onclick or attach listeners
         window.changePage = (page) => {
