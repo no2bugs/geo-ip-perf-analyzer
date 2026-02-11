@@ -4,3 +4,4 @@ servers.list
 *.json
 *.pyc
 __pycache__
+ovpn/*
