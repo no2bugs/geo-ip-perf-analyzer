@@ -170,7 +170,16 @@ input:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
     margin-bottom: 1rem;
+}
+
+.results-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .table-container {
@@ -363,6 +372,13 @@ tr:hover td {
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+}
+
+.pagination-container.pagination-top {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+    flex: 1;
 }
 
 .page-btn {
