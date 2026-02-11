@@ -25,6 +25,7 @@ class SpeedTest:
         try:
             import sys
             print("DEBUG: SpeedTest.run_speedtest started", file=sys.stderr, flush=True)
+            logger.info("Running speedtest via speedtest-cli...")
             
             # Run speedtest-cli with JSON output
             print("DEBUG: Executing speedtest-cli --json --secure --timeout 30", file=sys.stderr, flush=True)

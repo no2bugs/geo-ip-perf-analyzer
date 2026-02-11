@@ -61,6 +61,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         print("DEBUG: Disabling formatting for background process", file=sys.stderr, flush=True)
         formatting.enabled = False
     print(f"Performing VPN speedtests on {len(sorted_endpoints)} endpoints...", file=sys.stderr, flush=True)
+    logger.info(f"Performing VPN speedtests on {len(sorted_endpoints)} endpoints...")
     
     print("DEBUG: Initializing vpn_manager and speedtest", file=sys.stderr, flush=True)
     vpn_manager = VPNManager()
@@ -74,6 +75,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         batch = sorted_endpoints[batch_start:batch_end]
         
         print(f"=== Batch {batch_start//batch_size + 1}: Testing endpoints {batch_start + 1}-{batch_end} of {total_count} ===", file=sys.stderr, flush=True)
+        logger.info(f"=== Batch {batch_start//batch_size + 1}: Testing endpoints {batch_start + 1}-{batch_end} of {total_count} ===")
         
         for idx, (domain, data) in enumerate(batch, start=batch_start + 1):
             try:
@@ -81,6 +83,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                 latency = data.get('latency_ms', 0) if isinstance(data, dict) else (data[0] if isinstance(data, list) and len(data) > 0 else 0)
                 
                 print(f"[{idx}/{total_count}] Testing {domain} (latency: {latency:.2f}ms)...", file=sys.stderr, flush=True)
+                logger.info(f"[{idx}/{total_count}] Testing {domain} (latency: {latency:.2f}ms)...")
                 
                 # Connect to VPN
                 ovpn_file = ovpn_files[domain]
@@ -95,6 +98,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                             endpoints_dict[domain]['tx_speed_mbps'] = result['upload_mbps']
                         
                         print(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
+                        logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
                     else:
                         print(f"DEBUG: Speedtest failed for {domain}", file=sys.stderr, flush=True)
                 else:

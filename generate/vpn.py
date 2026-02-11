@@ -80,6 +80,7 @@ class VPNManager:
                 if self._verify_connection():
                     self.connected = True
                     print("DEBUG: VPN connection detected on tun0!", file=sys.stderr, flush=True)
+                    logger.info("VPN connection established on tun0")
                     return True
                     
             print("DEBUG: VPN connection timed out waiting for tun0", file=sys.stderr, flush=True)

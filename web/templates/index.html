@@ -19,6 +19,18 @@
         </header>
 
         <main>
+            <div class="console-section glass-panel">
+                <div class="console-header">
+                    <h2>Log Console</h2>
+                    <div class="console-actions">
+                        <button id="clearLogsBtn" class="secondary-btn btn-sm">Clear</button>
+                    </div>
+                </div>
+                <div class="console-body" id="logConsole">
+                    <div class="log-message system">Log console initialized. Standby for progress...</div>
+                </div>
+            </div>
+
             <div class="controls-section glass-panel">
                 <h2>Scan Configuration</h2>
                 <div class="controls-grid">
@@ -56,7 +68,7 @@
 
             <div class="results-section glass-panel">
                 <div class="results-header">
-                    <h2>Results</h2>
+                    <h2>Results <span id="resultsCount" class="count-badge"></span></h2>
                     <div class="results-actions">
                         <input type="text" id="search" placeholder="Search domain, country, city..."
                             class="search-input">
@@ -68,6 +80,7 @@
                     <table id="resultsTable">
                         <thead>
                             <tr>
+                                <th style="width: 40px;">#</th>
                                 <th style="width: 30px;"><input type="checkbox" id="selectAllCheckbox"></th>
                                 <th data-sort="domain">Domain <span class="sort-icon"></span></th>
                                 <th data-sort="latency">Latency (ms) <span class="sort-icon"></span></th>
@@ -84,18 +97,6 @@
                     </table>
                 </div>
                 <div class="no-results" id="noResults" style="display: none;">No results found</div>
-            </div>
-
-            <div class="console-section glass-panel">
-                <div class="console-header">
-                    <h2>Log Console</h2>
-                    <div class="console-actions">
-                        <button id="clearLogsBtn" class="secondary-btn btn-sm">Clear</button>
-                    </div>
-                </div>
-                <div class="console-body" id="logConsole">
-                    <div class="log-message system">Log console initialized. Standby for progress...</div>
-                </div>
             </div>
         </main>
     </div>

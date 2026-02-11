@@ -28,7 +28,8 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1600px;
+    width: 95%;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -170,6 +171,17 @@ input:focus {
 
 .table-container {
     overflow-x: auto;
+    width: 100%;
+}
+
+.count-badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent-color);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
 }
 
 table {

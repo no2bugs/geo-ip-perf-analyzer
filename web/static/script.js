@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const pings = document.getElementById('pings').value;
         const timeout = document.getElementById('timeout').value;
         const workers = document.getElementById('workers').value;
-        const vpnSpeedtest = document.getElementById('vpnSpeedtest').checked;
+        const vpnSpeedtestEl = document.getElementById('vpnSpeedtest');
+        const vpnSpeedtest = vpnSpeedtestEl ? vpnSpeedtestEl.checked : false;
 
         try {
             startBtn.disabled = true;
@@ -167,6 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderResults(results) {
         resultsBody.innerHTML = '';
+        const countSpan = document.getElementById('resultsCount');
+        countSpan.textContent = results.length;
+
         if (results.length === 0) {
             document.getElementById('noResults').style.display = 'block';
             selectAllBtn.disabled = true;
@@ -176,12 +180,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('noResults').style.display = 'none';
         selectAllBtn.disabled = false;
 
-        results.forEach(item => {
+        results.forEach((item, index) => {
             const row = document.createElement('tr');
             const latencyClass = item.latency < 50 ? 'latency-good' : (item.latency < 150 ? 'latency-med' : 'latency-bad');
 
             const dlSpeed = item.rx_speed !== null && item.rx_speed !== undefined ? item.rx_speed.toFixed(2) : 'N/A';
             const ulSpeed = item.tx_speed !== null && item.tx_speed !== undefined ? item.tx_speed.toFixed(2) : 'N/A';
+
+            // # Counter column
+            const indexTd = document.createElement('td');
+            indexTd.textContent = index + 1;
+            indexTd.className = 'text-secondary mono';
+            row.appendChild(indexTd);
 
             const checkboxTd = document.createElement('td');
             const checkbox = document.createElement('input');

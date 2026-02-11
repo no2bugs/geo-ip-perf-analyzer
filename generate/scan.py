@@ -1,5 +1,6 @@
 """Latency scanning and GeoIP enrichment for target endpoints."""
 
+import os
 from validate.file import exists as file_exists
 from format.colors import Format
 from datetime import timedelta
@@ -82,6 +83,24 @@ class Scanner:
 
         endpoints_list: List[Tuple[str, float, str, str, str, Optional[float], Optional[float]]] = []
         endpoints_dict: "OrderedDict[str, List]" = OrderedDict()
+        
+        # Load existing results for merging
+        existing_results = {}
+        if self.results_json and os.path.exists(self.results_json):
+            try:
+                import json
+                with open(self.results_json, 'r', encoding='utf-8') as f:
+                    existing_results = json.load(f)
+                    # Handle old list format conversion
+                    if isinstance(existing_results, list):
+                        temp_results = {}
+                        for entry in existing_results:
+                            if isinstance(entry, dict) and 'domain' in entry:
+                                domain = entry.pop('domain')
+                                temp_results[domain] = entry
+                        existing_results = temp_results
+            except Exception as e:
+                logger.warning(f"Could not load existing results for merging: {e}")
 
         skipped_total = 0
         errors_total = 0
@@ -178,24 +197,35 @@ class Scanner:
         t_finish = timedelta(seconds=int(t_diff))
 
         self.formatting.output('bold', 'blue')
-        print("Started scan:    ", start_time)
-        print("Finished scan:   ", finish_time)
-        print("Scan duration:   ", t_finish)
+        logger.info("Started scan:    %s", start_time)
+        logger.info("Finished scan:   %s", finish_time)
+        logger.info("Scan duration:   %s", t_finish)
 
         if excl_countries:
-            print("Excluded countries:", excl_countries)
-        print("Excluded:        ", skipped_total, '/', total_targets)
-        print("Errors:          ", errors_total, '/', total_targets)
-        print("Total Retrieved: ", retrieved_total, '/', len(domains))
+            logger.info("Excluded countries: %s", excl_countries)
+        logger.info("Excluded:        %s / %s", skipped_total, total_targets)
+        logger.info("Errors:          %s / %s", errors_total, total_targets)
+        logger.info("Total Retrieved:  %s / %s", retrieved_total, len(domains))
 
         for item in endpoints_list:
-            endpoints_dict[item[0]] = {
+            domain = item[0]
+            # Merge with existing speedtest results if available
+            rx_speed = item[5]
+            tx_speed = item[6]
+            
+            if domain in existing_results:
+                old_data = existing_results[domain]
+                if isinstance(old_data, dict):
+                    if rx_speed is None: rx_speed = old_data.get('rx_speed_mbps')
+                    if tx_speed is None: tx_speed = old_data.get('tx_speed_mbps')
+            
+            endpoints_dict[domain] = {
                 'latency_ms': item[1],
                 'ip': item[2],
                 'country': item[3],
                 'city': item[4],
-                'rx_speed_mbps': item[5],
-                'tx_speed_mbps': item[6]
+                'rx_speed_mbps': rx_speed,
+                'tx_speed_mbps': tx_speed
             }
 
         if endpoints_list:
@@ -322,7 +352,10 @@ class Scanner:
             progress["done"] += 1
             total = progress.get("total", 0)
             prefix = f'({progress["done"]}/{total}) ' if total else ''
-            print(prefix + domain, avg_latency, ip, country, city)
+            # Output to both console and log buffer
+            msg = f"{prefix}{domain} {avg_latency} {ip} {country} {city}"
+            print(msg)
+            logger.info(msg)
             self.formatting.output('reset')
 
         return ('ok', (domain, avg_latency, ip, country, city, None, None))
