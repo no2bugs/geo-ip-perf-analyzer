@@ -1,23 +1,38 @@
 **_Tool for mass latency performance testing and reporting of Domains/IPs based on their location_**
 
+![Web UI](assets/web-ui.jpg)
+
 #### Features
 
-- Reads list of domains/IPs, pings them and generates latency report
-
-- Records IP location for each target by country and city
-
-- Records number of servers in each location
-
-- Optionally excludes selected country IPs from the report
-
-- Uses local maxmind geolite2 DBs if present
-
-- Shows best performing servers and their location
-
-- Allows searching results by country and/or city 
+- **New Web UI**: Modern dashboard to trigger scans and view results with live progress.
+- **Docker Support**: Easy deployment via `docker-compose`.
+- Reads list of domains/IPs, pings them and generates latency report.
+- Records IP location for each target by country and city.
+- Records number of servers in each location.
+- Optionally excludes selected country IPs from the report.
+- Uses local maxmind geolite2 DBs if present.
+- Shows best performing servers and their location.
+- Allows searching results by country and/or city.
 
 
-#### Getting Started
+#### Getting Started (Web UI)
+
+1. Ensure `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` are in the project root.
+2. Create `servers.list` in the project root if it doesn't exist (can be empty).
+3. Run the application:
+   ```bash
+   docker-compose up -d
+   ```
+4. Access the dashboard at `http://localhost:5000`
+
+To restart or rebuild after changes:
+```bash
+docker-compose up -d --build
+```
+
+
+#### Getting Started (Command Line)
+
 1. Create "servers.list" file with one domain/IP per line
 
 2. To exclude countries from scan, add one country name per line in "exclude_countries.list" file
@@ -38,48 +53,46 @@
 ```bash
 # python3 ip_analyzer.py --help
 
-Usage: ip_analyzer.py [-h] [-s] [-p SCAN_PINGS] [-f SERVERS_FILE] [-r]
-                      [-l RESULTS_LIMIT] [-c] [-t SEARCH_COUNTRY] [-i]
-                      [-y SEARCH_CITY] [-b SORT_BY] [-d] [-n MIN_LATENCY]
-                      [-m MAX_LATENCY]
+Usage: ip_analyzer.py [-h] [-s] [-p SCAN_PINGS] [-w WORKERS] [-o TIMEOUT_MS] [-a] [-f SERVERS_FILE] [-r] [-l RESULTS_LIMIT] [-c] [-t SEARCH_COUNTRY] [-i] [-y SEARCH_CITY] [-b SORT_BY] [-n MIN_LATENCY] [-m MAX_LATENCY] [--include-countries]
+                      [--update-geolite-dbs] [--verbose]
 
 Performs latency scan on each domain/ip and shows top performers by location
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -s, --scan            Perform full latency scan and generate performance report
-  -r, --results         Show top performing endpoints
-                  
-  -c, --country-stats   Show stats by country
-  -i, --city-stats      Show stats by city
-  --include-countries   Optionally include only countries listed in include_countries.list (comma delimited). Others will be skipped.
-  --update-geolite-dbs  Show instructions for updating GeoLite DBs and exit.
 
   -p SCAN_PINGS, --scan-pings SCAN_PINGS
                         Number of pings to each IP during scan (increase for better accuracy). Default is 1
-  -w WORKERS, --workers WORKERS
-  
-                        Number of concurrent workers for scanning. Default is 20
-  -o TIMEOUT_MS, --timeout-ms TIMEOUT_MS
 
+  -w WORKERS, --workers WORKERS
+                        Number of concurrent workers for scanning. Default is 20
+
+  -o TIMEOUT_MS, --timeout-ms TIMEOUT_MS
                         Ping timeout per request in milliseconds. Default is 1000
+
   -a, --all-a-records   Scan all resolved IPv4 addresses for each domain (A records). Default is False
-  --verbose             Enable verbose logging output.
 
   -f SERVERS_FILE, --servers-file SERVERS_FILE
                         Read servers list from file (one domain or ip per line). Default is "servers.list"
 
+  -r, --results         Show top performing endpoints
+
   -l RESULTS_LIMIT, --results-limit RESULTS_LIMIT
                         Number of results to show
 
+  -c, --country-stats   Show stats by country
+
   -t SEARCH_COUNTRY, --search-country SEARCH_COUNTRY
                         Search results by country name
+
+  -i, --city-stats      Show stats by city
 
   -y SEARCH_CITY, --search-city SEARCH_CITY
                         Search results by city name
 
   -b SORT_BY, --sort-by SORT_BY
-                        Sort by field/column number (integer). Default is "LATENCY"
+                        Sort --country-stats or --city-stats by field/column number. Default is 4 (LATENCY)
 
   -n MIN_LATENCY, --min-latency MIN_LATENCY
                         Filter results by minimum latency (integer/float). Default is 0
@@ -87,4 +100,7 @@ optional arguments:
   -m MAX_LATENCY, --max-latency MAX_LATENCY
                         Filter results by maximum latency (integer/float). Default is no limit
 
+  --include-countries   Optionally include only countries listed in include_countries.list (comma delimited). Others will be skipped.
+  --update-geolite-dbs  Show instructions for updating GeoLite DBs and exit.
+  --verbose             Enable verbose logging output.
 ```

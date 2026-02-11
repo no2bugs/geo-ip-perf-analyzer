@@ -53,7 +53,7 @@ class Scanner:
             self.formatting.output('bold', 'red')
             logger.error("Error: %s does not have any targets", self.targets_file)
             self.formatting.output('reset')
-            sys.exit(1)
+            raise ValueError(f"Error: {self.targets_file} does not have any targets")
 
         servers.sort(key=str.lower)
 
@@ -75,7 +75,7 @@ class Scanner:
 
         return excludes
 
-    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False) -> Dict[str, List]:
+    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False, progress_container: Dict = None) -> Dict[str, List]:
         domains = self.get_servers_list()
         excl_countries = None
         include_countries = self.include_countries
@@ -108,7 +108,7 @@ class Scanner:
         start_scan = time.time()
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
-        progress = {"done": 0, "total": 0}
+        progress = progress_container if progress_container is not None else {"done": 0, "total": 0}
         targets = []
         for domain in domains:
             try:
