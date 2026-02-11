@@ -123,6 +123,20 @@ def start_scan():
         return jsonify({"status": "error", "message": "Scan already in progress"}), 409
         
     data = request.json or {}
+    
+    # Check if servers.list exists and is not empty
+    if not os.path.exists(SERVERS_FILE):
+        return jsonify({
+            "status": "error", 
+            "message": f"Servers list file missing at: {SERVERS_FILE}. Please create a file named 'servers.list' in the project root directory on your HOST machine."
+        }), 400
+        
+    if os.path.getsize(SERVERS_FILE) == 0:
+        return jsonify({
+            "status": "error", 
+            "message": f"Servers list file is empty: {SERVERS_FILE}. Please add domains to 'servers.list' in your project root on the HOST machine (one domain per line)."
+        }), 400
+
     pings = int(data.get('pings', 1))
     timeout = int(data.get('timeout', 1000))
     workers = int(data.get('workers', 20))

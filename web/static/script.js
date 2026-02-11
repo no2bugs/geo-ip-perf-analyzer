@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.textContent = msg;
         toast.style.borderLeft = isError ? '4px solid #ef4444' : '4px solid #10b981';
         toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
+        setTimeout(() => toast.classList.remove('show'), 10000);
     }
 
     function handleCheckboxChange(e) {

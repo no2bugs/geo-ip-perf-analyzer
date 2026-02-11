@@ -1,4 +1,4 @@
-servers.list
+servers.list*
 *.mmdb
 *.list
 *.json
