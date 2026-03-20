@@ -491,6 +491,69 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchLogs, 2000);
 
     // ========================================
+    // OVPN Configs Upload
+    // ========================================
+    const updateOvpnBtn = document.getElementById('updateOvpnBtn');
+    const ovpnFileInput = document.getElementById('ovpnFileInput');
+    const ovpnTooltip = document.getElementById('ovpnTooltip');
+
+    let ovpnStatusLoaded = false;
+    const ovpnWrapper = document.querySelector('.ovpn-wrapper');
+    ovpnWrapper.addEventListener('mouseenter', () => {
+        if (!ovpnStatusLoaded) {
+            fetchOvpnStatus();
+        }
+    });
+
+    async function fetchOvpnStatus() {
+        ovpnTooltip.innerHTML = 'Checking...';
+        try {
+            const resp = await fetch('/api/ovpn/status');
+            const data = await resp.json();
+            let html = '';
+            if (data.last_updated) {
+                const localDate = new Date(data.last_updated).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                html += `<div class="tooltip-row"><span class="tooltip-label">Last updated: </span><span class="tooltip-value">${localDate}</span></div>`;
+            } else {
+                html += `<div class="tooltip-row"><span class="tooltip-label">Last updated: </span><span class="tooltip-value" style="color:var(--error-color)">No configs</span></div>`;
+            }
+            html += `<div class="tooltip-row"><span class="tooltip-label">UDP configs: </span><span class="tooltip-value">${data.count.toLocaleString()}</span></div>`;
+            ovpnTooltip.innerHTML = html;
+            ovpnStatusLoaded = true;
+        } catch (e) {
+            ovpnTooltip.innerHTML = 'Failed to check status';
+        }
+    }
+
+    updateOvpnBtn.addEventListener('click', () => ovpnFileInput.click());
+
+    ovpnFileInput.addEventListener('change', async () => {
+        const file = ovpnFileInput.files[0];
+        if (!file) return;
+        ovpnFileInput.value = '';
+
+        updateOvpnBtn.disabled = true;
+        updateOvpnBtn.textContent = 'Uploading...';
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const resp = await fetch('/api/ovpn/upload', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                showToast(`OVPN configs updated: ${data.count} UDP files extracted`);
+                ovpnStatusLoaded = false;
+            } else {
+                showToast('Upload failed: ' + data.message, true);
+            }
+        } catch (e) {
+            showToast('Network error during upload', true);
+        } finally {
+            updateOvpnBtn.disabled = false;
+            updateOvpnBtn.innerHTML = '&#x21BB; OVPN Configs';
+        }
+    });
+
+    // ========================================
     // GeoLite2 Update
     // ========================================
     const updateGeoBtn = document.getElementById('updateGeoBtn');

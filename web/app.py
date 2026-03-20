@@ -5,6 +5,8 @@ import time
 import json
 import logging
 import subprocess
+import zipfile
+import io
 from datetime import datetime, timezone
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -426,6 +428,60 @@ def save_servers():
         f.write('\n'.join(lines) + ('\n' if lines else ''))
     logging.info(f'servers.list updated: {len(lines)} entries')
     return jsonify({'status': 'ok', 'count': len(lines)})
+
+@app.route('/api/ovpn/status')
+def ovpn_status():
+    """Return ovpn folder stats: file count and newest file mtime."""
+    ovpn_path = Path(VPN_OVPN_DIR)
+    if not ovpn_path.is_dir():
+        return jsonify({'count': 0, 'last_updated': None})
+    files = list(ovpn_path.glob('*.ovpn'))
+    count = len(files)
+    newest = None
+    if files:
+        newest_mtime = max(f.stat().st_mtime for f in files)
+        newest = datetime.fromtimestamp(newest_mtime, tz=timezone.utc).isoformat()
+    return jsonify({'count': count, 'last_updated': newest})
+
+@app.route('/api/ovpn/upload', methods=['POST'])
+def ovpn_upload():
+    """Accept a ZIP upload, extract *udp*.ovpn files into the ovpn directory."""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+    uploaded = request.files['file']
+    if not uploaded.filename.lower().endswith('.zip'):
+        return jsonify({'status': 'error', 'message': 'File must be a .zip'}), 400
+
+    try:
+        zip_bytes = uploaded.read()
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+            # Validate: reject if any path tries to escape (zip-slip)
+            for name in zf.namelist():
+                if os.path.isabs(name) or '..' in name:
+                    return jsonify({'status': 'error', 'message': f'Invalid path in zip: {name}'}), 400
+
+            ovpn_path = Path(VPN_OVPN_DIR)
+            ovpn_path.mkdir(parents=True, exist_ok=True)
+
+            # Remove old .ovpn files
+            for old in ovpn_path.glob('*.ovpn'):
+                old.unlink()
+
+            extracted = 0
+            for name in zf.namelist():
+                basename = os.path.basename(name)
+                if basename.lower().endswith('.ovpn') and 'udp' in basename.lower():
+                    target = ovpn_path / basename
+                    target.write_bytes(zf.read(name))
+                    extracted += 1
+
+        logging.info(f'OVPN configs updated: {extracted} UDP files extracted')
+        return jsonify({'status': 'ok', 'count': extracted})
+    except zipfile.BadZipFile:
+        return jsonify({'status': 'error', 'message': 'Invalid ZIP file'}), 400
+    except Exception as e:
+        logging.error(f'OVPN upload failed: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/logs')
 def get_logs():

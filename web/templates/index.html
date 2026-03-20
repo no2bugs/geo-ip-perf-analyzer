@@ -18,6 +18,13 @@
                     <button id="editServersBtn" class="secondary-btn header-action-btn" title="Edit servers list">
                         &#9776; Servers List
                     </button>
+                    <div class="ovpn-wrapper">
+                        <button id="updateOvpnBtn" class="secondary-btn header-action-btn" title="Upload NordVPN OVPN configs">
+                            &#x21BB; OVPN Configs
+                        </button>
+                        <input type="file" id="ovpnFileInput" accept=".zip" style="display:none;">
+                        <div class="ovpn-tooltip" id="ovpnTooltip">Loading...</div>
+                    </div>
                     <div class="geolite-wrapper">
                         <button id="updateGeoBtn" class="secondary-btn header-action-btn" title="Update GeoLite2 databases">
                             &#x21BB; GeoLite2 DBs
