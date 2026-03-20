@@ -59,6 +59,14 @@ h1 {
     flex-shrink: 0;
 }
 
+.header-title-link {
+    text-decoration: none;
+}
+
+.header-title-link:hover h1 {
+    opacity: 0.8;
+}
+
 .glass-panel {
     background: var(--panel-bg);
     backdrop-filter: blur(12px);

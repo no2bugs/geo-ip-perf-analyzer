@@ -1,6 +1,6 @@
 **_Tool for mass latency performance testing and reporting of Domains/IPs based on their location_**
 
-![Web UI](assets/web-ui.jpg)
+![Web UI](assets/web-ui.png)
 
 #### Features
 
