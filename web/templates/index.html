@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoIP Latency Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -32,11 +33,78 @@
                         <div class="geolite-tooltip" id="geoliteTooltip">Loading...</div>
                     </div>
                 </div>
+                <button id="helpBtn" class="secondary-btn header-action-btn help-btn" title="Help">?</button>
                 <div class="status-indicator" id="globalStatus">
                     <span class="dot"></span> <span id="statusText">Ready</span>
                 </div>
             </div>
         </header>
+
+        <!-- Help Modal -->
+        <div id="helpModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content glass-panel help-modal-content">
+                <div class="modal-header">
+                    <h2>Help &amp; Usage Guide</h2>
+                    <button id="closeHelpModal" class="secondary-btn btn-sm">&times;</button>
+                </div>
+                <div class="help-body">
+                    <section>
+                        <h3>Overview</h3>
+                        <p>GeoIP Latency Analyzer performs mass latency testing against a list of domains/IPs, resolves their geographic location using GeoLite2 databases, and optionally runs VPN throughput tests via OpenVPN.</p>
+                    </section>
+
+                    <section>
+                        <h3>Quick Start</h3>
+                        <ol>
+                            <li>Add target domains/IPs using the <strong>Servers List</strong> button (one per line).</li>
+                            <li>Configure <strong>Pings per IP</strong>, <strong>Timeout</strong>, and <strong>Workers</strong> as needed.</li>
+                            <li>Click <strong>Start Scan</strong> to begin latency testing.</li>
+                            <li>Optionally select rows and run <strong>VPN Speedtest</strong> to measure download/upload via VPN.</li>
+                        </ol>
+                    </section>
+
+                    <section>
+                        <h3>Header Buttons</h3>
+                        <dl>
+                            <dt>&#9776; Servers List</dt>
+                            <dd>Open the server list editor. Enter one domain or IP address per line. Duplicates and blank lines are removed automatically on save.</dd>
+
+                            <dt>&#x21BB; OVPN Configs</dt>
+                            <dd>Upload a <code>.zip</code> file containing OpenVPN configuration files (e.g. the NordVPN <code>ovpn.zip</code> bundle from <code>downloads.nordcdn.com</code>). Only <strong>UDP</strong> <code>.ovpn</code> files are extracted. These configs are used for VPN speedtests. Hover to see the current config count and last update date.</dd>
+
+                            <dt>&#x21BB; GeoLite2 DBs</dt>
+                            <dd>Download the latest GeoLite2-City and GeoLite2-Country databases from GitHub (P3TERX/GeoLite.mmdb). Hover to see local DB date vs. latest available release.</dd>
+                        </dl>
+                    </section>
+
+                    <section>
+                        <h3>Scan Controls</h3>
+                        <dl>
+                            <dt>Pings per IP</dt>
+                            <dd>Number of ICMP pings sent to each target. Higher values give more accurate averages but take longer.</dd>
+
+                            <dt>Timeout (ms)</dt>
+                            <dd>Maximum time to wait for a ping response before marking the target as unreachable.</dd>
+
+                            <dt>Workers</dt>
+                            <dd>Number of concurrent threads used for scanning. More workers = faster scans but higher system load.</dd>
+
+                            <dt>Start / Stop Scan</dt>
+                            <dd>Begin or abort a latency scan. Progress is shown in the bar below.</dd>
+
+                            <dt>Select All / VPN Speedtest</dt>
+                            <dd>Select result rows, then run a VPN speedtest. The app connects through each server's matching <code>.ovpn</code> config and measures throughput via <code>speedtest-cli</code>.</dd>
+                        </dl>
+                    </section>
+
+                    <section>
+                        <h3>Results Table</h3>
+                        <p>Click any column header to sort. Use the search box to filter by domain, country, or city. The <strong>Refresh Data</strong> button reloads <code>results.json</code> from disk without running a new scan.</p>
+                        <p>Latency is color-coded: <span style="color:var(--success-color)">green</span> &lt; 50ms, <span style="color:#facc15">yellow</span> &lt; 150ms, <span style="color:var(--error-color)">red</span> &ge; 150ms.</p>
+                    </section>
+                </div>
+            </div>
+        </div>
 
         <!-- Servers List Modal -->
         <div id="serversModal" class="modal-overlay" style="display:none;">

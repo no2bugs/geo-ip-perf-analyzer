@@ -491,6 +491,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchLogs, 2000);
 
     // ========================================
+    // Help Modal
+    // ========================================
+    const helpBtn = document.getElementById('helpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const closeHelpModal = document.getElementById('closeHelpModal');
+
+    helpBtn.addEventListener('click', () => { helpModal.style.display = 'flex'; });
+    closeHelpModal.addEventListener('click', () => { helpModal.style.display = 'none'; });
+    helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
+
+    // ========================================
     // OVPN Configs Upload
     // ========================================
     const updateOvpnBtn = document.getElementById('updateOvpnBtn');
