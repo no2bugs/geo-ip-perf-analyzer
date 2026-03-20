@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     helpBtn.addEventListener('click', () => { helpModal.style.display = 'flex'; });
     closeHelpModal.addEventListener('click', () => { helpModal.style.display = 'none'; });
-    helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
+    helpModal.addEventListener('mousedown', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
 
     // ========================================
     // OVPN Configs Upload
@@ -679,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closeServersModal.addEventListener('click', closeServersEditor);
     cancelServersBtn.addEventListener('click', closeServersEditor);
-    serversModal.addEventListener('click', (e) => {
+    serversModal.addEventListener('mousedown', (e) => {
         if (e.target === serversModal) closeServersEditor();
     });
 
