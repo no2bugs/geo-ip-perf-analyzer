@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoIP Latency Analyzer</title>
+    <title>GeoIP Performance Analyzer</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
@@ -13,7 +13,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>GeoIP Latency Analyzer</h1>
+            <h1><img src="/static/favicon.svg" alt="" class="header-logo">GeoIP Performance Analyzer</h1>
             <div class="header-actions">
                 <div class="header-btn-group">
                     <button id="editServersBtn" class="secondary-btn header-action-btn" title="Edit servers list">
@@ -33,7 +33,7 @@
                         <div class="geolite-tooltip" id="geoliteTooltip">Loading...</div>
                     </div>
                 </div>
-                <button id="helpBtn" class="secondary-btn header-action-btn help-btn" title="Help">?</button>
+                <button id="helpBtn" class="help-btn" title="Help &amp; Usage Guide">&#9432; Help</button>
                 <div class="status-indicator" id="globalStatus">
                     <span class="dot"></span> <span id="statusText">Ready</span>
                 </div>
@@ -44,7 +44,7 @@
         <div id="helpModal" class="modal-overlay" style="display:none;">
             <div class="modal-content glass-panel help-modal-content">
                 <div class="modal-header">
-                    <h2>Help &amp; Usage Guide</h2>
+                    <h2>Help &amp; Usage</h2>
                     <button id="closeHelpModal" class="secondary-btn btn-sm">&times;</button>
                 </div>
                 <div class="help-body">

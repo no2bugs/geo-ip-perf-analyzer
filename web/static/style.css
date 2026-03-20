@@ -48,6 +48,15 @@ h1 {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.header-logo {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
 }
 
 .glass-panel {
@@ -527,16 +536,23 @@ tr:hover td {
 
 /* Help button */
 .help-btn {
-    min-width: 32px;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border-radius: 50%;
-    font-weight: 700;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: transparent;
+    border: 1px dashed var(--text-secondary);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    opacity: 0.7;
+}
+
+.help-btn:hover {
+    opacity: 1;
+    border-color: var(--text-primary);
+    color: var(--text-primary);
 }
 
 /* Help modal */
