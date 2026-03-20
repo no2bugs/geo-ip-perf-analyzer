@@ -254,6 +254,12 @@ tr:hover td {
     color: var(--error-color);
 }
 
+.ts-cell[title] {
+    cursor: help;
+    text-decoration: underline dotted var(--text-secondary);
+    text-underline-offset: 3px;
+}
+
 /* Status Indicator */
 .status-indicator {
     display: flex;

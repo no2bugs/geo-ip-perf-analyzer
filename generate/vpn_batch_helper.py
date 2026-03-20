@@ -4,6 +4,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
     import os
     import logging
+    from datetime import datetime, timezone
     from pathlib import Path
     from generate.vpn import VPNManager
     from generate.speedtest import SpeedTest
@@ -105,6 +106,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         if isinstance(endpoints_dict[domain], dict):
                             endpoints_dict[domain]['rx_speed_mbps'] = result['download_mbps']
                             endpoints_dict[domain]['tx_speed_mbps'] = result['upload_mbps']
+                            endpoints_dict[domain]['speedtest_timestamp'] = datetime.now(timezone.utc).isoformat()
                         
                         print(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
                         logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")

@@ -3,7 +3,7 @@
 import os
 from validate.file import exists as file_exists
 from format.colors import Format
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from collections import OrderedDict
 from subprocess import run, PIPE
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -223,13 +223,21 @@ class Scanner:
                     if rx_speed is None: rx_speed = old_data.get('rx_speed_mbps')
                     if tx_speed is None: tx_speed = old_data.get('tx_speed_mbps')
             
+            # Preserve existing speedtest timestamp if carrying over old speed values
+            speedtest_ts = None
+            if domain in existing_results and isinstance(existing_results[domain], dict):
+                if rx_speed is not None and rx_speed == existing_results[domain].get('rx_speed_mbps'):
+                    speedtest_ts = existing_results[domain].get('speedtest_timestamp')
+
             endpoints_dict[domain] = {
                 'latency_ms': item[1],
                 'ip': item[2],
                 'country': item[3],
                 'city': item[4],
                 'rx_speed_mbps': rx_speed,
-                'tx_speed_mbps': tx_speed
+                'tx_speed_mbps': tx_speed,
+                'scan_timestamp': datetime.now(timezone.utc).isoformat(),
+                'speedtest_timestamp': speedtest_ts
             }
 
         if endpoints_list:

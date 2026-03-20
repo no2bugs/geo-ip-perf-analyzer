@@ -193,7 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         country: entry.country || 'Unknown',
                         city: entry.city || 'Unknown',
                         rx_speed: entry.rx_speed_mbps,
-                        tx_speed: entry.tx_speed_mbps
+                        tx_speed: entry.tx_speed_mbps,
+                        scan_timestamp: entry.scan_timestamp || null,
+                        speedtest_timestamp: entry.speedtest_timestamp || null
                     };
                 }
                 // Old format (array)
@@ -269,14 +271,17 @@ document.addEventListener('DOMContentLoaded', () => {
             checkboxTd.appendChild(checkbox);
             row.appendChild(checkboxTd);
 
+            const scanTitle = item.scan_timestamp ? formatTimestamp(item.scan_timestamp) : '';
+            const speedTitle = item.speedtest_timestamp ? formatTimestamp(item.speedtest_timestamp) : '';
+
             row.insertAdjacentHTML('beforeend', `
                 <td><strong>${item.domain}</strong></td>
-                <td class="${latencyClass}">${item.latency.toFixed(2)}</td>
+                <td class="${latencyClass} ts-cell" ${scanTitle ? `title="Scanned: ${scanTitle}"` : ''}>${item.latency.toFixed(2)}</td>
                 <td class="mono">${item.ip}</td>
                 <td>${item.country}</td>
                 <td>${item.city}</td>
-                <td>${dlSpeed}</td>
-                <td>${ulSpeed}</td>
+                <td class="ts-cell" ${speedTitle ? `title="Tested: ${speedTitle}"` : ''}>${dlSpeed}</td>
+                <td class="ts-cell" ${speedTitle ? `title="Tested: ${speedTitle}"` : ''}>${ulSpeed}</td>
             `);
             resultsBody.appendChild(row);
         });
@@ -485,6 +490,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function formatTimestamp(iso) {
+        const d = new Date(iso);
+        return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     // Start log polling immediately
