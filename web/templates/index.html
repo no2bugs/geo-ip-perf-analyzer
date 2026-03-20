@@ -13,10 +13,42 @@
     <div class="container">
         <header>
             <h1>GeoIP Latency Analyzer</h1>
-            <div class="status-indicator" id="globalStatus">
-                <span class="dot"></span> <span id="statusText">Ready</span>
+            <div class="header-actions">
+                <div class="header-btn-group">
+                    <button id="editServersBtn" class="secondary-btn header-action-btn" title="Edit servers list">
+                        &#9776; Servers List
+                    </button>
+                    <div class="geolite-wrapper">
+                        <button id="updateGeoBtn" class="secondary-btn header-action-btn" title="Update GeoLite2 databases">
+                            &#x21BB; GeoLite2 DBs
+                        </button>
+                        <div class="geolite-tooltip" id="geoliteTooltip">Loading...</div>
+                    </div>
+                </div>
+                <div class="status-indicator" id="globalStatus">
+                    <span class="dot"></span> <span id="statusText">Ready</span>
+                </div>
             </div>
         </header>
+
+        <!-- Servers List Modal -->
+        <div id="serversModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h2>Edit Servers List</h2>
+                    <button id="closeServersModal" class="secondary-btn btn-sm">&times;</button>
+                </div>
+                <p class="modal-hint">One domain or IP per line</p>
+                <textarea id="serversTextarea" class="servers-textarea" placeholder="example.com&#10;1.2.3.4&#10;..."></textarea>
+                <div class="modal-footer">
+                    <span id="serversCount" class="text-secondary"></span>
+                    <div class="modal-footer-actions">
+                        <button id="cancelServersBtn" class="secondary-btn">Cancel</button>
+                        <button id="saveServersBtn" class="primary-btn">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <main>
             <div class="console-section glass-panel">

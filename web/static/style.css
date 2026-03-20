@@ -417,3 +417,144 @@ tr:hover td {
     color: var(--text-secondary);
     margin: 0 0.5rem;
 }
+
+/* Header actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-action-btn {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+/* GeoLite tooltip */
+.geolite-wrapper {
+    position: relative;
+}
+
+.geolite-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    z-index: 50;
+    min-width: 240px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.geolite-tooltip .tooltip-row {
+    margin-bottom: 0.25rem;
+}
+
+.geolite-tooltip .tooltip-label {
+    color: var(--text-secondary);
+}
+
+.geolite-tooltip .tooltip-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.geolite-tooltip .tooltip-update {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.geolite-tooltip .tooltip-current {
+    color: var(--text-secondary);
+}
+
+.geolite-wrapper:hover .geolite-tooltip {
+    display: block;
+}
+
+/* Servers modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    width: 90%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.modal-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.servers-textarea {
+    flex: 1;
+    min-height: 400px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'IBMPlexMono', 'Cascadia Code', 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.servers-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.modal-footer-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.modal-footer-actions .primary-btn {
+    width: auto;
+    padding: 0.5rem 1.5rem;
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}

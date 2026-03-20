@@ -4,8 +4,11 @@ import threading
 import time
 import json
 import logging
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request, send_from_directory
+import requests as http_requests
 
 # Add parent directory to sys.path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -321,6 +324,108 @@ def stop_scan():
     stop_event.set()
     logging.info("Stop signal sent to scanner...")
     return jsonify({"status": "stopping"})
+
+GEOLITE_RELEASE_URL = 'https://api.github.com/repos/P3TERX/GeoLite.mmdb/releases/latest'
+GEOLITE_CITY_FILENAME = 'GeoLite2-City.mmdb'
+GEOLITE_COUNTRY_FILENAME = 'GeoLite2-Country.mmdb'
+
+@app.route('/api/geolite/status')
+def geolite_status():
+    """Check local GeoLite2 file dates and latest available release."""
+    city_path = Path(GEOIP_CITY)
+    country_path = Path(GEOIP_COUNTRY)
+
+    local_city_mtime = None
+    local_country_mtime = None
+    if city_path.exists():
+        local_city_mtime = datetime.fromtimestamp(city_path.stat().st_mtime, tz=timezone.utc).isoformat()
+    if country_path.exists():
+        local_country_mtime = datetime.fromtimestamp(country_path.stat().st_mtime, tz=timezone.utc).isoformat()
+
+    # Fetch latest release info from GitHub
+    latest_release_date = None
+    latest_tag = None
+    update_available = False
+    try:
+        resp = http_requests.get(GEOLITE_RELEASE_URL, timeout=10)
+        resp.raise_for_status()
+        release = resp.json()
+        latest_tag = release.get('tag_name', '')
+        latest_release_date = release.get('published_at', '')
+        if local_city_mtime and latest_release_date:
+            local_dt = city_path.stat().st_mtime
+            release_dt = datetime.fromisoformat(latest_release_date.replace('Z', '+00:00')).timestamp()
+            update_available = release_dt > local_dt
+        elif not local_city_mtime:
+            update_available = True
+    except Exception:
+        pass
+
+    return jsonify({
+        'city_last_modified': local_city_mtime,
+        'country_last_modified': local_country_mtime,
+        'latest_release_tag': latest_tag,
+        'latest_release_date': latest_release_date,
+        'update_available': update_available
+    })
+
+@app.route('/api/geolite/update', methods=['POST'])
+def geolite_update():
+    """Download latest GeoLite2 databases from GitHub releases."""
+    try:
+        logging.info('Fetching latest GeoLite2 release info...')
+        resp = http_requests.get(GEOLITE_RELEASE_URL, timeout=10)
+        resp.raise_for_status()
+        release = resp.json()
+        assets = release.get('assets', [])
+
+        downloaded = []
+        for asset in assets:
+            name = asset.get('name', '')
+            if name in (GEOLITE_CITY_FILENAME, GEOLITE_COUNTRY_FILENAME):
+                download_url = asset.get('browser_download_url')
+                if not download_url:
+                    continue
+                target = GEOIP_CITY if name == GEOLITE_CITY_FILENAME else GEOIP_COUNTRY
+                logging.info(f'Downloading {name}...')
+                dl = http_requests.get(download_url, timeout=120, stream=True)
+                dl.raise_for_status()
+                tmp_path = target + '.tmp'
+                with open(tmp_path, 'wb') as f:
+                    for chunk in dl.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                os.replace(tmp_path, target)
+                downloaded.append(name)
+                logging.info(f'{name} updated successfully')
+
+        if not downloaded:
+            return jsonify({'status': 'error', 'message': 'No matching assets found in release'}), 404
+
+        return jsonify({'status': 'ok', 'updated': downloaded})
+    except Exception as e:
+        logging.error(f'GeoLite2 update failed: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/servers', methods=['GET'])
+def get_servers():
+    """Return the current servers.list content."""
+    if not os.path.exists(SERVERS_FILE):
+        return jsonify({'servers': ''})
+    with open(SERVERS_FILE, 'r', encoding='utf-8') as f:
+        return jsonify({'servers': f.read()})
+
+@app.route('/api/servers', methods=['POST'])
+def save_servers():
+    """Save servers.list content."""
+    data = request.json or {}
+    content = data.get('servers', '')
+    # Normalize: strip each line, remove blanks, deduplicate while preserving order
+    lines = [line.strip() for line in content.splitlines()]
+    lines = list(dict.fromkeys(line for line in lines if line))
+    with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + ('\n' if lines else ''))
+    logging.info(f'servers.list updated: {len(lines)} entries')
+    return jsonify({'status': 'ok', 'count': len(lines)})
 
 @app.route('/api/logs')
 def get_logs():

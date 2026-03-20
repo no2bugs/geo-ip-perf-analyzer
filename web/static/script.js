@@ -489,4 +489,137 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start log polling immediately
     setInterval(fetchLogs, 2000);
+
+    // ========================================
+    // GeoLite2 Update
+    // ========================================
+    const updateGeoBtn = document.getElementById('updateGeoBtn');
+    const geoliteTooltip = document.getElementById('geoliteTooltip');
+
+    // Fetch GeoLite2 status on hover (once per hover session)
+    let geoliteStatusLoaded = false;
+    const geoliteWrapper = document.querySelector('.geolite-wrapper');
+    geoliteWrapper.addEventListener('mouseenter', () => {
+        if (!geoliteStatusLoaded) {
+            fetchGeoliteStatus();
+        }
+    });
+
+    async function fetchGeoliteStatus() {
+        geoliteTooltip.innerHTML = 'Checking...';
+        try {
+            const resp = await fetch('/api/geolite/status');
+            const data = await resp.json();
+            let html = '';
+            if (data.city_last_modified) {
+                const localDate = new Date(data.city_last_modified).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                html += `<div class="tooltip-row"><span class="tooltip-label">Local DBs: </span><span class="tooltip-value">${localDate}</span></div>`;
+            } else {
+                html += `<div class="tooltip-row"><span class="tooltip-label">Local DBs: </span><span class="tooltip-value" style="color:var(--error-color)">Not found</span></div>`;
+            }
+            if (data.latest_release_date) {
+                const releaseDate = new Date(data.latest_release_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                html += `<div class="tooltip-row"><span class="tooltip-label">Latest release: </span><span class="tooltip-value">${releaseDate}</span></div>`;
+            }
+            if (data.update_available) {
+                html += `<div class="tooltip-row"><span class="tooltip-update">&#x2B06; Update available</span></div>`;
+            } else if (data.city_last_modified) {
+                html += `<div class="tooltip-row"><span class="tooltip-current">&#x2714; Up to date</span></div>`;
+            }
+            geoliteTooltip.innerHTML = html;
+            geoliteStatusLoaded = true;
+        } catch (e) {
+            geoliteTooltip.innerHTML = 'Failed to check status';
+        }
+    }
+
+    updateGeoBtn.addEventListener('click', async () => {
+        updateGeoBtn.disabled = true;
+        updateGeoBtn.textContent = 'Updating...';
+        try {
+            const resp = await fetch('/api/geolite/update', { method: 'POST' });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                showToast(`GeoLite2 updated: ${data.updated.join(', ')}`);
+                geoliteStatusLoaded = false; // Force re-fetch on next hover
+            } else {
+                showToast('Update failed: ' + data.message, true);
+            }
+        } catch (e) {
+            showToast('Network error during update', true);
+        } finally {
+            updateGeoBtn.disabled = false;
+            updateGeoBtn.innerHTML = '&#x21BB; GeoLite2 DBs';
+        }
+    });
+
+    // ========================================
+    // Servers List Editor
+    // ========================================
+    const editServersBtn = document.getElementById('editServersBtn');
+    const serversModal = document.getElementById('serversModal');
+    const closeServersModal = document.getElementById('closeServersModal');
+    const cancelServersBtn = document.getElementById('cancelServersBtn');
+    const saveServersBtn = document.getElementById('saveServersBtn');
+    const serversTextarea = document.getElementById('serversTextarea');
+    const serversCount = document.getElementById('serversCount');
+
+    function updateServersCount() {
+        const lines = serversTextarea.value.split('\n').filter(l => l.trim().length > 0);
+        serversCount.textContent = `${lines.length} server${lines.length !== 1 ? 's' : ''}`;
+    }
+
+    editServersBtn.addEventListener('click', async () => {
+        serversModal.style.display = 'flex';
+        serversTextarea.value = 'Loading...';
+        serversTextarea.disabled = true;
+        try {
+            const resp = await fetch('/api/servers');
+            const data = await resp.json();
+            serversTextarea.value = data.servers || '';
+            serversTextarea.disabled = false;
+            updateServersCount();
+            serversTextarea.focus();
+        } catch (e) {
+            serversTextarea.value = '';
+            serversTextarea.disabled = false;
+            showToast('Failed to load servers list', true);
+        }
+    });
+
+    serversTextarea.addEventListener('input', updateServersCount);
+
+    function closeServersEditor() {
+        serversModal.style.display = 'none';
+    }
+
+    closeServersModal.addEventListener('click', closeServersEditor);
+    cancelServersBtn.addEventListener('click', closeServersEditor);
+    serversModal.addEventListener('click', (e) => {
+        if (e.target === serversModal) closeServersEditor();
+    });
+
+    saveServersBtn.addEventListener('click', async () => {
+        saveServersBtn.disabled = true;
+        saveServersBtn.textContent = 'Saving...';
+        try {
+            const resp = await fetch('/api/servers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ servers: serversTextarea.value })
+            });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                showToast(`Servers list saved: ${data.count} entries`);
+                closeServersEditor();
+            } else {
+                showToast('Save failed: ' + data.message, true);
+            }
+        } catch (e) {
+            showToast('Network error', true);
+        } finally {
+            saveServersBtn.disabled = false;
+            saveServersBtn.textContent = 'Save';
+        }
+    });
 });
