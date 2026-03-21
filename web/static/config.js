@@ -302,24 +302,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="slider"></span>
                 </label>
                 <input type="text" class="cmd-label" placeholder="Comment (e.g. Switzerland servers)" value="${(cmd.label || '').replace(/"/g, '&quot;')}">
+                <div class="command-order-btns">
+                    <button type="button" class="command-move-btn" data-dir="up" title="Move up">&uarr;</button>
+                    <button type="button" class="command-move-btn" data-dir="down" title="Move down">&darr;</button>
+                </div>
                 <button type="button" class="command-remove-btn" title="Remove">&times;</button>
             </div>
             <div class="command-item-body">
-                <input type="text" class="cmd-command" placeholder="curl --silent &quot;https://api.nordvpn.com/...&quot; | jq -r '.[] | .hostname'" value="${(cmd.command || '').replace(/"/g, '&quot;')}">
+                <textarea class="cmd-command" rows="2" placeholder="Shell script — use multiple lines for complex commands">${(cmd.command || '').replace(/</g, '&lt;')}</textarea>
             </div>
         `;
         item.querySelector('.command-remove-btn').addEventListener('click', () => item.remove());
         item.querySelector('.cmd-enabled').addEventListener('change', (e) => {
             item.classList.toggle('disabled', !e.target.checked);
         });
+        const ta = item.querySelector('.cmd-command');
+        autoResizeTextarea(ta);
+        ta.addEventListener('input', () => autoResizeTextarea(ta));
+        item.querySelectorAll('.command-move-btn').forEach(btn => {
+            btn.addEventListener('click', () => moveCommandItem(item, btn.dataset.dir));
+        });
         srvCommandsContainer.appendChild(item);
+    }
+
+    function autoResizeTextarea(ta) {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+    }
+
+    function moveCommandItem(item, dir) {
+        if (dir === 'up' && item.previousElementSibling) {
+            srvCommandsContainer.insertBefore(item, item.previousElementSibling);
+        } else if (dir === 'down' && item.nextElementSibling) {
+            srvCommandsContainer.insertBefore(item.nextElementSibling, item);
+        }
     }
 
     addSrvCommandBtn.addEventListener('click', () => addCommandItem());
 
     function collectSrvCommands() {
         return Array.from(srvCommandsContainer.querySelectorAll('.command-item')).map(item => ({
-            command: item.querySelector('.cmd-command').value.trim(),
+            command: item.querySelector('.cmd-command').value.trimEnd(),
             label: item.querySelector('.cmd-label').value.trim(),
             enabled: item.querySelector('.cmd-enabled').checked
         })).filter(c => c.command);

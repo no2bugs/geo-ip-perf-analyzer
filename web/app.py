@@ -1108,7 +1108,7 @@ def _run_servers_update_commands(commands):
         label = entry.get('label', '') or 'unnamed'
         logging.info(f"Running servers update command: {label}")
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=120
+            ['bash', '-c', cmd], capture_output=True, text=True, timeout=120
         )
         if result.returncode != 0:
             raise RuntimeError(f"Command '{label}' exited with code {result.returncode}: {result.stderr.strip()}")
