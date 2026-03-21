@@ -8,6 +8,7 @@ services:
       # We assume db and lists are in root for simplicity of mounting
       - .:/data
     environment:
+      - TZ=Europe/Berlin
       - SERVERS_FILE=/data/servers.list
       - RESULTS_FILE=/data/results.json
       - GEOIP_CITY=/data/GeoLite2-City.mmdb

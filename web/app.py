@@ -242,14 +242,14 @@ def _read_scan_state():
 def _state_flusher():
     """Background thread that periodically flushes state and checks for stop requests."""
     while scan_active:
-        _flush_scan_state()
-        # Check if another worker requested stop
+        # Check for stop requests from other workers BEFORE flushing
         try:
             state = _read_scan_state()
             if state.get("stop_requested") and not stop_event.is_set():
                 stop_event.set()
         except Exception:
             pass
+        _flush_scan_state()
         time.sleep(1)
     _flush_scan_state()
 
