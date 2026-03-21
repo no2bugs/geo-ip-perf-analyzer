@@ -295,11 +295,16 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
             vpn_password=VPN_PASSWORD,
             stop_event=stop_event
         )
-        scan_progress['status'] = 'completed'
-        scan_progress['message'] = 'Scan completed successfully'
-        scan_logger.info(f'Scan completed: {scan_progress["total"]} servers')
-        send_ntfy('vpn_speedtest_complete', 'Scan Complete',
-                  f'Scanned {scan_progress["total"]} servers successfully')
+        if stop_event.is_set():
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = 'Scan interrupted by stop request'
+            scan_logger.info(f'Scan interrupted by stop request: {scan_progress["done"]}/{scan_progress["total"]} servers')
+        else:
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = 'Scan completed successfully'
+            scan_logger.info(f'Scan completed: {scan_progress["total"]} servers')
+            send_ntfy('vpn_speedtest_complete', 'Scan Complete',
+                      f'Scanned {scan_progress["total"]} servers successfully')
         
     except Exception as e:
         last_error = str(e)
@@ -518,9 +523,14 @@ def vpn_speedtest():
                 json.dump(results, f, indent=2)
             print("DEBUG: Final results saved", file=sys.stderr, flush=True)
             
-            scan_progress['status'] = 'completed'
-            scan_progress['message'] = 'VPN speedtest completed'
-            scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains ({_format_duration(time.time() - vpn_start_time)})')
+            if stop_event.is_set():
+                scan_progress['status'] = 'completed'
+                scan_progress['message'] = 'VPN speedtest interrupted by stop request'
+                scan_logger.info(f'VPN speedtest interrupted by stop request: {scan_progress["done"]}/{len(valid_domains)} domains ({_format_duration(time.time() - vpn_start_time)})')
+            else:
+                scan_progress['status'] = 'completed'
+                scan_progress['message'] = 'VPN speedtest completed'
+                scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains ({_format_duration(time.time() - vpn_start_time)})')
         except Exception as e:
             last_error = str(e)
             scan_progress['status'] = 'error'
@@ -1004,11 +1014,16 @@ def scheduled_vpn_speedtest():
         )
         with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)
-        scan_progress['status'] = 'completed'
-        scan_progress['message'] = 'Scheduled VPN speedtest completed'
-        scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({_format_duration(time.time() - vpn_start_time)})')
-        send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
-                  f'Tested {len(all_domains)} servers')
+        if stop_event.is_set():
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = 'Scheduled VPN speedtest interrupted by stop request'
+            scan_logger.info(f'Scheduled VPN speedtest interrupted by stop request: {scan_progress["done"]}/{len(all_domains)} servers ({_format_duration(time.time() - vpn_start_time)})')
+        else:
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = 'Scheduled VPN speedtest completed'
+            scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({_format_duration(time.time() - vpn_start_time)})')
+            send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
+                      f'Tested {len(all_domains)} servers')
     except Exception as e:
         last_error = str(e)
         scan_progress['status'] = 'error'
