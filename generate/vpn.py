@@ -61,8 +61,8 @@ class VPNManager:
                 "openvpn",
                 "--config", ovpn_file,
                 "--auth-user-pass", auth_file,
-                "--dev", "tun", # Explicitly request tun
-                "--writepid", "/tmp/openvpn.pid" # Track PID
+                "--nobind",
+                "--writepid", "/tmp/openvpn.pid"
             ]
             
             print(f"DEBUG: Starting OpenVPN with Popen: {' '.join(cmd)}", file=sys.stderr, flush=True)
@@ -93,7 +93,10 @@ class VPNManager:
                     combined = (out_output + '\n' + err_output).strip()
                     print(f"DEBUG: OpenVPN process exited prematurely with code {self.process.returncode}", file=sys.stderr, flush=True)
                     if combined:
-                        print(f"DEBUG: OpenVPN output: {combined[:500]}", file=sys.stderr, flush=True)
+                        print(f"DEBUG: OpenVPN output: {combined[:1000]}", file=sys.stderr, flush=True)
+                    if 'AUTH_FAILED' in combined:
+                        logger.warning(f"VPN auth failed for {os.path.basename(ovpn_file)} — server rejected credentials")
+                    elif combined:
                         logger.warning(f"OpenVPN exited with code {self.process.returncode}: {combined[:200]}")
                     return False
                     return False
