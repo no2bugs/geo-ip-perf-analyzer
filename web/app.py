@@ -217,6 +217,8 @@ scan_start_time = None
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
 
+STALE_HEARTBEAT_SECONDS = 30  # no heartbeat for 30s = stale (crashed process)
+
 def _flush_scan_state():
     """Persist current scan state to file for cross-worker access."""
     state = {
@@ -224,7 +226,8 @@ def _flush_scan_state():
         "progress": dict(scan_progress),
         "error": last_error,
         "stop_requested": stop_event.is_set(),
-        "start_time": scan_start_time
+        "start_time": scan_start_time,
+        "heartbeat": time.time()
     }
     try:
         tmp = SCAN_STATE_FILE + '.tmp'
@@ -241,6 +244,30 @@ def _read_scan_state():
             return json.load(f)
     except Exception:
         return {"active": False, "progress": {"done": 0, "total": 0, "status": "idle", "message": ""}, "error": None, "stop_requested": False}
+
+def _is_scan_active():
+    """Check if a scan is truly active, with heartbeat-based stale detection."""
+    if scan_active:
+        return True
+    state = _read_scan_state()
+    if not state.get('active'):
+        return False
+    # State file says active — verify heartbeat is fresh
+    heartbeat = state.get('heartbeat', 0)
+    if time.time() - heartbeat > STALE_HEARTBEAT_SECONDS:
+        logging.warning("Clearing stale scan state (no heartbeat for >%ds — likely container restart)", STALE_HEARTBEAT_SECONDS)
+        _clear_stale_state()
+        return False
+    return True
+
+def _clear_stale_state():
+    """Reset scan state file after detecting a stale lock from a crashed process."""
+    global scan_active, scan_progress, last_error, scan_start_time
+    scan_active = False
+    scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
+    last_error = None
+    scan_start_time = None
+    _flush_scan_state()
 
 def _state_flusher():
     """Background thread that periodically flushes state and checks for stop requests."""
@@ -338,8 +365,7 @@ def logs_page():
 def start_scan():
     global scan_active
     
-    state = _read_scan_state()
-    if scan_active or state.get('active'):
+    if _is_scan_active():
         return jsonify({"status": "error", "message": "Scan already in progress"}), 409
         
     data = request.json or {}
@@ -370,10 +396,11 @@ def start_scan():
 
 @app.route('/api/scan/status')
 def get_status():
-    # Read from shared file for cross-worker compatibility
+    # Use heartbeat-aware check so stale state from crashes is auto-cleared
+    active = _is_scan_active()
     state = _read_scan_state()
     return jsonify({
-        "active": state.get("active", scan_active),
+        "active": active,
         "progress": state.get("progress", scan_progress),
         "error": state.get("error", last_error),
         "stopping": state.get("stop_requested", stop_event.is_set()),
@@ -418,8 +445,7 @@ def get_countries():
 def vpn_speedtest():
     global scan_active
     
-    state = _read_scan_state()
-    if scan_active or state.get('active'):
+    if _is_scan_active():
         return jsonify({"status": "error", "message": "Scan already in progress"}), 409
     
     data = request.json or {}
@@ -559,12 +585,12 @@ def vpn_speedtest():
 @app.route('/api/scan/stop', methods=['POST'])
 def stop_scan():
     global stop_event, scan_active
-    state = _read_scan_state()
-    if not scan_active and not state.get('active'):
+    if not _is_scan_active():
         return jsonify({"status": "error", "message": "No scan in progress"}), 400
     
     stop_event.set()
     # Write stop request to file for cross-worker communication
+    state = _read_scan_state()
     state['stop_requested'] = True
     try:
         tmp = SCAN_STATE_FILE + '.tmp'
@@ -988,8 +1014,7 @@ DAY_MAP = {
 
 def scheduled_vpn_speedtest():
     global scan_active, scan_progress, last_error, stop_event, scan_start_time
-    state = _read_scan_state()
-    if scan_active or state.get('active'):
+    if _is_scan_active():
         logging.info("Scheduled VPN speedtest skipped: operation already in progress")
         return
     if not os.path.exists(RESULTS_FILE):
@@ -1175,6 +1200,9 @@ def apply_schedules():
 
     jobs = scheduler.get_jobs()
     logging.info(f"Scheduler updated: {len(jobs)} job(s) active")
+
+# Clear stale scan state from previous container crash/restart
+_clear_stale_state()
 
 # Initialize scheduler on startup
 apply_schedules()
