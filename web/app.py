@@ -260,6 +260,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
     scan_active = True
     scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Initializing..."}
     last_error = None
+    _flush_scan_state()
     
     flusher = threading.Thread(target=_state_flusher, daemon=True)
     flusher.start()
@@ -400,6 +401,7 @@ def vpn_speedtest():
         scan_active = True
         scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running VPN speedtest..."}
         last_error = None
+        _flush_scan_state()
         
         flusher = threading.Thread(target=_state_flusher, daemon=True)
         flusher.start()
@@ -952,6 +954,7 @@ def scheduled_vpn_speedtest():
         scan_active = True
         scan_progress = {"done": 0, "total": len(all_domains), "status": "running", "message": "Running scheduled VPN speedtest..."}
         last_error = None
+        _flush_scan_state()
         flusher = threading.Thread(target=_state_flusher, daemon=True)
         flusher.start()
         scanner = Scanner(
