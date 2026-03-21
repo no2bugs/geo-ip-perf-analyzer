@@ -42,11 +42,26 @@ document.addEventListener('DOMContentLoaded', () => {
     selectAllCheckbox.addEventListener('change', (e) => toggleSelectAll(e));
 
     // Sorting
+    let currentSortField = null;
+    let currentSortOrder = null;
+
+    function updateSortIndicators() {
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            const icon = th.querySelector('.sort-icon');
+            if (th.dataset.sort === currentSortField) {
+                th.classList.add('sort-active');
+                if (icon) icon.textContent = currentSortOrder === 'asc' ? ' ▲' : ' ▼';
+            } else {
+                th.classList.remove('sort-active');
+                if (icon) icon.textContent = '';
+            }
+        });
+    }
+
     document.querySelectorAll('th[data-sort]').forEach(th => {
         th.addEventListener('click', () => {
             const field = th.dataset.sort;
-            const order = th.dataset.order === 'asc' ? 'desc' : 'asc';
-            th.dataset.order = order;
+            const order = (currentSortField === field && currentSortOrder === 'asc') ? 'desc' : 'asc';
             sortResults(field, order);
         });
     });
@@ -214,11 +229,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const hasSpeedData = allResults.some(r => r.rx_speed !== null && r.rx_speed !== undefined);
             if (hasSpeedData) {
                 allResults.sort((a, b) => (b.rx_speed || 0) - (a.rx_speed || 0));
+                currentSortField = 'rx_speed';
+                currentSortOrder = 'desc';
             } else {
                 allResults.sort((a, b) => a.latency - b.latency);
+                currentSortField = 'latency';
+                currentSortOrder = 'asc';
             }
             filteredResults = [...allResults];
             currentPage = 1;
+            updateSortIndicators();
 
             renderResults();
         } catch (e) {
@@ -344,6 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function sortResults(field, order) {
+        currentSortField = field;
+        currentSortOrder = order;
         filteredResults.sort((a, b) => {
             let valA = a[field];
             let valB = b[field];
@@ -356,6 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return 0;
         });
         currentPage = 1;
+        updateSortIndicators();
         renderResults();
     }
 

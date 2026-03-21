@@ -234,6 +234,21 @@ th {
     transition: color 0.2s;
 }
 
+th.sort-active {
+    color: var(--accent-color, #10b981);
+}
+
+.sort-icon {
+    margin-left: 4px;
+    font-size: 0.75em;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+th.sort-active .sort-icon {
+    opacity: 1;
+}
+
 th:hover {
     color: var(--text-primary);
 }
