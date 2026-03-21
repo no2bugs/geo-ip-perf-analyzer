@@ -184,6 +184,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ========================================
+    // Test Notification
+    // ========================================
+    const testNotifBtn = document.getElementById('testNotifBtn');
+    testNotifBtn.addEventListener('click', async () => {
+        testNotifBtn.disabled = true;
+        testNotifBtn.textContent = 'Sending...';
+        try {
+            const resp = await fetch('/api/config/test-notification', { method: 'POST' });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                showToast('Test notification sent');
+            } else {
+                showToast(data.message || 'Failed to send', true);
+            }
+        } catch (e) {
+            showToast('Network error', true);
+        } finally {
+            testNotifBtn.disabled = false;
+            testNotifBtn.textContent = '\u{1F514} Send Test Notification';
+        }
+    });
+
+    // ========================================
     // Toast
     // ========================================
     function showToast(msg, isError = false) {

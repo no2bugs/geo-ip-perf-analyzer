@@ -959,6 +959,13 @@ tr:hover td {
     cursor: pointer;
 }
 
+/* Test notification button */
+.test-notif-btn {
+    margin: 0.75rem 0 0.5rem 0;
+    font-size: 0.8rem;
+    padding: 0.45rem 1rem;
+}
+
 /* Config footer */
 .config-footer {
     display: flex;

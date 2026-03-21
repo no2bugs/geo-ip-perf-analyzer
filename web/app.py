@@ -677,6 +677,24 @@ def post_config():
     apply_schedules()
     return jsonify({'status': 'ok'})
 
+@app.route('/api/config/test-notification', methods=['POST'])
+def test_notification():
+    config = load_config()
+    ntfy = config.get('notifications', {}).get('ntfy', {})
+    if not ntfy.get('enabled') or not ntfy.get('url'):
+        return jsonify({'status': 'error', 'message': 'ntfy is not enabled or URL is not set'}), 400
+    try:
+        resp = http_requests.post(
+            ntfy['url'],
+            data='This is a test notification from GeoIP Performance Analyzer.'.encode('utf-8'),
+            headers={'Title': 'Test Notification', 'Priority': 'default'},
+            timeout=10
+        )
+        resp.raise_for_status()
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 # ============================================================
 # Top Results API (for programmatic access)
 # ============================================================
