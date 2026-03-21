@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config — GeoIP Performance Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="config-page">
+        <header class="config-header">
+            <a href="/" class="back-link">&larr; Dashboard</a>
+            <h1>Config &amp; Automation</h1>
+        </header>
+
+        <nav class="config-tabs">
+            <button class="tab-btn active" data-tab="schedules">Schedules</button>
+            <button class="tab-btn" data-tab="ovpn">OVPN</button>
+            <button class="tab-btn" data-tab="notifications">Notifications</button>
+        </nav>
+
+        <!-- ==================== SCHEDULES TAB ==================== -->
+        <div class="tab-content active" id="tab-schedules">
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>VPN Speedtest</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="cfgVpnEnabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-desc">Runs VPN throughput tests on all servers in results.</p>
+                <div id="cfgVpnOptions" class="card-options">
+                    <div class="interval-row">
+                        <div class="field">
+                            <label>Interval</label>
+                            <select id="cfgVpnInterval">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgVpnDayWrap">
+                            <label>Day</label>
+                            <select id="cfgVpnDay">
+                                <option value="monday">Monday</option>
+                                <option value="tuesday">Tuesday</option>
+                                <option value="wednesday">Wednesday</option>
+                                <option value="thursday">Thursday</option>
+                                <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
+                                <option value="sunday">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Time</label>
+                            <input type="time" id="cfgVpnTime" value="03:00">
+                        </div>
+                    </div>
+                    <div class="day-picker" id="cfgVpnDays">
+                        <label>Days</label>
+                        <div class="day-btns">
+                            <button type="button" class="day-btn" data-day="monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="sunday">Sun</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>GeoLite2 DB Update</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="cfgGeoEnabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-desc">Download latest GeoLite2 databases from GitHub.</p>
+                <div id="cfgGeoOptions" class="card-options">
+                    <div class="interval-row">
+                        <div class="field">
+                            <label>Interval</label>
+                            <select id="cfgGeoInterval">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgGeoDayWrap">
+                            <label>Day</label>
+                            <select id="cfgGeoDay">
+                                <option value="monday">Monday</option>
+                                <option value="tuesday">Tuesday</option>
+                                <option value="wednesday">Wednesday</option>
+                                <option value="thursday">Thursday</option>
+                                <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
+                                <option value="sunday" selected>Sunday</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Time</label>
+                            <input type="time" id="cfgGeoTime" value="04:00">
+                        </div>
+                    </div>
+                    <div class="day-picker" id="cfgGeoDays">
+                        <label>Days</label>
+                        <div class="day-btns">
+                            <button type="button" class="day-btn" data-day="monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="sunday">Sun</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>OVPN Config Update</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="cfgOvpnSchedEnabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-desc">Download fresh OVPN configs from the configured URL.</p>
+                <div id="cfgOvpnSchedOptions" class="card-options">
+                    <div class="interval-row">
+                        <div class="field">
+                            <label>Interval</label>
+                            <select id="cfgOvpnInterval">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgOvpnDayWrap">
+                            <label>Day</label>
+                            <select id="cfgOvpnDay">
+                                <option value="monday">Monday</option>
+                                <option value="tuesday">Tuesday</option>
+                                <option value="wednesday">Wednesday</option>
+                                <option value="thursday">Thursday</option>
+                                <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
+                                <option value="sunday" selected>Sunday</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Time</label>
+                            <input type="time" id="cfgOvpnTime" value="05:00">
+                        </div>
+                    </div>
+                    <div class="day-picker" id="cfgOvpnDays">
+                        <label>Days</label>
+                        <div class="day-btns">
+                            <button type="button" class="day-btn" data-day="monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="sunday">Sun</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== OVPN TAB ==================== -->
+        <div class="tab-content" id="tab-ovpn">
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>OVPN Download URL</h3>
+                </div>
+                <p class="card-desc">When set, the OVPN Configs button on the dashboard downloads from this URL instead of asking for a ZIP upload. Also used by the OVPN update schedule.</p>
+                <div class="field field-full">
+                    <label>Download URL</label>
+                    <input type="text" id="cfgOvpnUrl" placeholder="https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip">
+                    <span class="field-hint">Leave empty to use manual ZIP upload via the OVPN button</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== NOTIFICATIONS TAB ==================== -->
+        <div class="tab-content" id="tab-notifications">
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>ntfy</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="cfgNtfyEnabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-desc">Send push notifications via <a href="https://ntfy.sh" target="_blank" rel="noopener" style="color:var(--accent-color)">ntfy</a>.</p>
+                <div id="cfgNtfyOptions" class="card-options">
+                    <div class="field field-full">
+                        <label>ntfy URL (including topic)</label>
+                        <input type="text" id="cfgNtfyUrl" placeholder="https://ntfy.sh/my-geo-ip-topic">
+                    </div>
+
+                    <div class="events-grid">
+                        <h4>Events</h4>
+                        <div class="events-cols">
+                            <div class="events-col">
+                                <span class="events-col-title">Operations</span>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtVpnComplete"> VPN speedtest complete</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtGeoUpdated"> GeoLite2 updated</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtOvpnUpdated"> OVPN configs updated</label>
+                            </div>
+                            <div class="events-col">
+                                <span class="events-col-title">Errors</span>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtVpnError" checked> VPN speedtest error</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtGeoError" checked> GeoLite2 update error</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtOvpnError" checked> OVPN update error</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="config-footer">
+            <span class="config-status" id="configStatus"></span>
+            <button id="saveConfigBtn" class="primary-btn save-btn">Save Configuration</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/config.js"></script>
+</body>
+
+</html>

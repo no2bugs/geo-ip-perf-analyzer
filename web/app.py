@@ -71,25 +71,25 @@ CONFIG_FILE = os.environ.get('CONFIG_FILE', 'config.yaml')
 
 DEFAULT_CONFIG = {
     'schedule': {
-        'scan': {
+        'vpn_speedtest': {
             'enabled': False,
             'interval': 'daily',
             'day': 'monday',
-            'time': '03:00',
-            'pings': 1,
-            'timeout': 1000,
-            'workers': 20
+            'days': [],
+            'time': '03:00'
         },
         'geolite_update': {
             'enabled': False,
             'interval': 'weekly',
             'day': 'sunday',
+            'days': [],
             'time': '04:00'
         },
         'ovpn_update': {
             'enabled': False,
             'interval': 'weekly',
             'day': 'sunday',
+            'days': [],
             'time': '05:00'
         }
     },
@@ -98,10 +98,12 @@ DEFAULT_CONFIG = {
             'enabled': False,
             'url': '',
             'events': {
-                'scan_complete': True,
-                'scan_error': True,
-                'geolite_updated': True,
-                'ovpn_updated': True
+                'vpn_speedtest_complete': False,
+                'vpn_speedtest_error': True,
+                'geolite_updated': False,
+                'geolite_update_error': True,
+                'ovpn_updated': False,
+                'ovpn_update_error': True
             }
         }
     },
@@ -185,7 +187,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         )
         scan_progress['status'] = 'completed'
         scan_progress['message'] = 'Scan completed successfully'
-        send_ntfy('scan_complete', 'Scan Complete',
+        send_ntfy('vpn_speedtest_complete', 'Scan Complete',
                   f'Scanned {scan_progress["total"]} servers successfully')
         
     except Exception as e:
@@ -193,13 +195,17 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         scan_progress['status'] = 'error'
         scan_progress['message'] = str(e)
         logging.error(f"Scan failed: {e}")
-        send_ntfy('scan_error', 'Scan Failed', str(e), priority='high')
+        send_ntfy('vpn_speedtest_error', 'Scan Failed', str(e), priority='high')
     finally:
         scan_active = False
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/config')
+def config_page():
+    return render_template('config.html')
 
 @app.route('/api/scan/start', methods=['POST'])
 def start_scan():
@@ -520,7 +526,7 @@ def geolite_update():
         return jsonify({'status': 'ok', 'updated': downloaded})
     except Exception as e:
         logging.error(f'GeoLite2 update failed: {e}')
-        send_ntfy('geolite_updated', 'GeoLite2 Update Failed', str(e), priority='high')
+        send_ntfy('geolite_update_error', 'GeoLite2 Update Failed', str(e), priority='high')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/servers', methods=['GET'])
@@ -697,18 +703,54 @@ DAY_MAP = {
     'thursday': 'thu', 'friday': 'fri', 'saturday': 'sat', 'sunday': 'sun'
 }
 
-def scheduled_scan():
-    global scan_active
+def scheduled_vpn_speedtest():
+    global scan_active, scan_progress, last_error, stop_event
     if scan_active:
-        logging.info("Scheduled scan skipped: scan already in progress")
+        logging.info("Scheduled VPN speedtest skipped: operation already in progress")
         return
-    config = load_config()
-    scan_cfg = config.get('schedule', {}).get('scan', {})
-    pings = scan_cfg.get('pings', 1)
-    timeout = scan_cfg.get('timeout', 1000)
-    workers = scan_cfg.get('workers', 20)
-    logging.info("Starting scheduled scan...")
-    run_scan_in_background(pings, timeout, workers)
+    if not os.path.exists(RESULTS_FILE):
+        logging.error("Scheduled VPN speedtest skipped: no results.json (run a scan first)")
+        send_ntfy('vpn_speedtest_error', 'VPN Speedtest Failed',
+                  'No results.json found. Run a scan first.', priority='high')
+        return
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+        all_domains = list(results.keys()) if isinstance(results, dict) else []
+        if not all_domains:
+            logging.error("Scheduled VPN speedtest skipped: no domains in results")
+            return
+        logging.info(f"Starting scheduled VPN speedtest on {len(all_domains)} servers...")
+        stop_event.clear()
+        scan_active = True
+        scan_progress = {"done": 0, "total": len(all_domains), "status": "running", "message": "Running scheduled VPN speedtest..."}
+        last_error = None
+        scanner = Scanner(
+            targets_file=SERVERS_FILE,
+            city_db=GEOIP_CITY,
+            country_db=GEOIP_COUNTRY,
+            results_json=RESULTS_FILE,
+            excl_countries_fle='exclude_countries.list'
+        )
+        scanner._perform_vpn_speedtests(
+            results, VPN_OVPN_DIR, VPN_USERNAME, VPN_PASSWORD,
+            scan_progress, batch_size=999, interactive=False,
+            selected_domains=all_domains, stop_event=stop_event
+        )
+        with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        scan_progress['status'] = 'completed'
+        scan_progress['message'] = 'Scheduled VPN speedtest completed'
+        send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
+                  f'Tested {len(all_domains)} servers')
+    except Exception as e:
+        last_error = str(e)
+        scan_progress['status'] = 'error'
+        scan_progress['message'] = str(e)
+        logging.error(f"Scheduled VPN speedtest failed: {e}")
+        send_ntfy('vpn_speedtest_error', 'VPN Speedtest Failed', str(e), priority='high')
+    finally:
+        scan_active = False
 
 def scheduled_geolite_update():
     try:
@@ -717,7 +759,7 @@ def scheduled_geolite_update():
             send_ntfy('geolite_updated', 'GeoLite2 Updated', f'Updated: {", ".join(downloaded)}')
     except Exception as e:
         logging.error(f'Scheduled GeoLite2 update failed: {e}')
-        send_ntfy('geolite_updated', 'GeoLite2 Update Failed', str(e), priority='high')
+        send_ntfy('geolite_update_error', 'GeoLite2 Update Failed', str(e), priority='high')
 
 def scheduled_ovpn_update():
     config = load_config()
@@ -730,40 +772,42 @@ def scheduled_ovpn_update():
         send_ntfy('ovpn_updated', 'OVPN Configs Updated', f'{count} UDP configs extracted')
     except Exception as e:
         logging.error(f'Scheduled OVPN update failed: {e}')
-        send_ntfy('ovpn_updated', 'OVPN Update Failed', str(e), priority='high')
+        send_ntfy('ovpn_update_error', 'OVPN Update Failed', str(e), priority='high')
+
+def _build_cron_kwargs(cfg):
+    """Build CronTrigger kwargs from a schedule config block."""
+    parts = str(cfg.get('time', '03:00')).split(':')
+    hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    kw = {'hour': hour, 'minute': minute}
+    interval = cfg.get('interval', 'daily')
+    if interval == 'weekly':
+        kw['day_of_week'] = DAY_MAP.get(cfg.get('day', 'monday'), 'mon')
+    elif interval == 'custom':
+        days = cfg.get('days', [])
+        if days:
+            kw['day_of_week'] = ','.join(DAY_MAP.get(d, d) for d in days)
+    return kw
 
 def apply_schedules():
     config = load_config()
     scheduler.remove_all_jobs()
 
-    # Scan schedule
-    scan_cfg = config.get('schedule', {}).get('scan', {})
-    if scan_cfg.get('enabled'):
-        parts = str(scan_cfg.get('time', '03:00')).split(':')
-        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
-        kw = {'hour': hour, 'minute': minute}
-        if scan_cfg.get('interval') == 'weekly':
-            kw['day_of_week'] = DAY_MAP.get(scan_cfg.get('day', 'monday'), 'mon')
-        scheduler.add_job(scheduled_scan, CronTrigger(**kw), id='scan', replace_existing=True)
+    # VPN speedtest schedule
+    vpn_cfg = config.get('schedule', {}).get('vpn_speedtest', {})
+    if vpn_cfg.get('enabled'):
+        kw = _build_cron_kwargs(vpn_cfg)
+        scheduler.add_job(scheduled_vpn_speedtest, CronTrigger(**kw), id='vpn_speedtest', replace_existing=True)
 
     # GeoLite2 schedule
     geo_cfg = config.get('schedule', {}).get('geolite_update', {})
     if geo_cfg.get('enabled'):
-        parts = str(geo_cfg.get('time', '04:00')).split(':')
-        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
-        kw = {'hour': hour, 'minute': minute}
-        if geo_cfg.get('interval') == 'weekly':
-            kw['day_of_week'] = DAY_MAP.get(geo_cfg.get('day', 'sunday'), 'sun')
+        kw = _build_cron_kwargs(geo_cfg)
         scheduler.add_job(scheduled_geolite_update, CronTrigger(**kw), id='geolite', replace_existing=True)
 
     # OVPN schedule
     ovpn_cfg = config.get('schedule', {}).get('ovpn_update', {})
     if ovpn_cfg.get('enabled'):
-        parts = str(ovpn_cfg.get('time', '05:00')).split(':')
-        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
-        kw = {'hour': hour, 'minute': minute}
-        if ovpn_cfg.get('interval') == 'weekly':
-            kw['day_of_week'] = DAY_MAP.get(ovpn_cfg.get('day', 'sunday'), 'sun')
+        kw = _build_cron_kwargs(ovpn_cfg)
         scheduler.add_job(scheduled_ovpn_update, CronTrigger(**kw), id='ovpn', replace_existing=True)
 
     jobs = scheduler.get_jobs()

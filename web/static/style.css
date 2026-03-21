@@ -705,108 +705,317 @@ tr:hover td {
     font-size: 0.85rem;
 }
 
-/* Config Modal */
-.config-modal-content {
-    max-width: 600px;
-    width: 95%;
-    max-height: 85vh;
-    overflow-y: auto;
+/* ==========================================
+   Config Page
+   ========================================== */
+.config-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
 }
 
-.config-body {
-    padding: 0 1.5rem 1rem;
-}
-
-.config-section {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-}
-
-.config-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.config-section h3 {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
-}
-
-.config-toggle-row {
-    margin-bottom: 0.75rem;
-}
-
-.toggle-label {
-    display: inline-flex;
+.config-header {
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.config-header h1 {
+    font-weight: 700;
+    font-size: 1.5rem;
+    background: linear-gradient(to right, #60a5fa, #34d399);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.back-link {
+    color: var(--text-secondary);
+    text-decoration: none;
     font-size: 0.875rem;
+    border: 1px solid var(--border-color);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.back-link:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+/* Tabs */
+.config-tabs {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.tab-btn:hover {
     color: var(--text-primary);
 }
 
-.config-collapsible {
-    margin-bottom: 0.5rem;
+.tab-btn.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
 }
 
-.config-row {
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Config Cards */
+.config-card {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.card-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.card-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.card-options {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+}
+
+/* Toggle switch */
+.switch {
+    position: relative;
+    width: 42px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    transition: 0.3s;
+}
+
+.slider::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.switch input:checked + .slider {
+    background: var(--accent-color);
+}
+
+.switch input:checked + .slider::before {
+    transform: translateX(20px);
+}
+
+/* Interval / field rows */
+.interval-row {
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
     margin-bottom: 0.75rem;
 }
 
-.config-field {
+.field {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    min-width: 120px;
+    gap: 0.3rem;
+    min-width: 130px;
 }
 
-.config-field label {
+.field label {
     font-size: 0.8rem;
     color: var(--text-secondary);
+    margin-bottom: 0;
 }
 
-.config-field input,
-.config-field select {
-    padding: 0.4rem 0.6rem;
+.field input,
+.field select {
+    padding: 0.45rem 0.6rem;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.6);
     color: var(--text-primary);
     font-size: 0.85rem;
     font-family: inherit;
 }
 
-.config-field input:focus,
-.config-field select:focus {
+.field input:focus,
+.field select:focus {
     outline: none;
     border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-.config-full-width {
+.field-full {
     width: 100%;
-    margin-top: 0.75rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
 }
 
-.config-full-width input[type="text"] {
+.field-full input[type="text"] {
     width: 100%;
 }
 
-.config-hint {
+.field-hint {
     font-size: 0.75rem;
     color: var(--text-secondary);
     opacity: 0.7;
 }
 
-.config-events-row {
-    gap: 0.75rem 1.5rem;
+/* Day picker */
+.day-picker {
+    margin-bottom: 0.5rem;
+}
+
+.day-picker > label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+.day-btns {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.day-btn {
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.day-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--text-primary);
+}
+
+.day-btn.selected {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+/* Events grid */
+.events-grid {
+    margin-top: 1rem;
+}
+
+.events-grid h4 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+}
+
+.events-cols {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.events-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 200px;
+}
+
+.events-col-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.event-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+/* Config footer */
+.config-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.5rem;
+}
+
+.config-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.save-btn {
+    width: auto;
+    padding: 0.65rem 2rem;
 }
 }
