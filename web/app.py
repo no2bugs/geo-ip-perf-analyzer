@@ -839,6 +839,7 @@ def run_schedule_now():
 @app.route('/api/v1/top/latency')
 def top_latency():
     n = request.args.get('n', 5, type=int)
+    country = request.args.get('country', '', type=str).strip()
     if not os.path.exists(RESULTS_FILE):
         return jsonify([])
     with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -846,6 +847,8 @@ def top_latency():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict):
+            if country and entry.get('country', '').lower() != country.lower():
+                continue
             items.append({
                 'domain': domain,
                 'latency_ms': entry.get('latency_ms', 9999),
@@ -861,6 +864,7 @@ def top_latency():
 @app.route('/api/v1/top/download')
 def top_download():
     n = request.args.get('n', 5, type=int)
+    country = request.args.get('country', '', type=str).strip()
     if not os.path.exists(RESULTS_FILE):
         return jsonify([])
     with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -868,6 +872,8 @@ def top_download():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict) and entry.get('rx_speed_mbps') is not None:
+            if country and entry.get('country', '').lower() != country.lower():
+                continue
             items.append({
                 'domain': domain,
                 'rx_speed_mbps': entry.get('rx_speed_mbps', 0),
@@ -883,6 +889,7 @@ def top_download():
 @app.route('/api/v1/top/upload')
 def top_upload():
     n = request.args.get('n', 5, type=int)
+    country = request.args.get('country', '', type=str).strip()
     if not os.path.exists(RESULTS_FILE):
         return jsonify([])
     with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -890,6 +897,8 @@ def top_upload():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict) and entry.get('tx_speed_mbps') is not None:
+            if country and entry.get('country', '').lower() != country.lower():
+                continue
             items.append({
                 'domain': domain,
                 'tx_speed_mbps': entry.get('tx_speed_mbps', 0),
