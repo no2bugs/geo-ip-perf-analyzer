@@ -72,8 +72,8 @@ def options():
 
     parser.add_argument('-w', '--workers',
                         type=int,
-                        help='''Number of concurrent workers for scanning. Default is 20
-                             ''', default=20)
+                        help='''Number of concurrent workers for scanning. Default is 10
+                             ''', default=10)
 
     parser.add_argument('-o', '--timeout-ms',
                         type=int,

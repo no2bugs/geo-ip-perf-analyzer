@@ -188,10 +188,10 @@
                     <div class="api-endpoint">
                         <code class="api-method post">POST</code>
                         <code class="api-path">/api/scan/start</code>
-                        <p>Start a latency scan. Body: <code>{"pings":1, "timeout":1000, "workers":20}</code></p>
+                        <p>Start a latency scan. Body: <code>{"pings":1, "timeout":1000, "workers":10}</code></p>
                         <pre class="api-example">curl -X POST http://HOST:5000/api/scan/start \
   -H "Content-Type: application/json" \
-  -d '{"pings":1,"timeout":1000,"workers":20}'</pre>
+  -d '{"pings":1,"timeout":1000,"workers":10}'</pre>
                     </div>
 
                     <div class="api-endpoint">
@@ -204,10 +204,10 @@
                     <div class="api-endpoint">
                         <code class="api-method post">POST</code>
                         <code class="api-path">/api/vpn-speedtest</code>
-                        <p>Run VPN speedtest on selected domains. Body: <code>{"domains":["ch358.nordvpn.com","de1234.nordvpn.com"]}</code></p>
+                        <p>Run VPN speedtest. Optionally specify domains, otherwise tests all servers. Body: <code>{"domains":["ch358.nordvpn.com","de1234.nordvpn.com"]}</code></p>
                         <pre class="api-example">curl -X POST http://HOST:5000/api/vpn-speedtest \
   -H "Content-Type: application/json" \
-  -d '{"domains":["ch358.nordvpn.com"]}'</pre>
+  -d '{}'</pre>
                     </div>
 
                     <div class="api-endpoint">

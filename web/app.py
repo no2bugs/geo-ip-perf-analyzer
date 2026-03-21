@@ -170,6 +170,24 @@ def save_config(config):
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
+def _format_duration(seconds):
+    """Format seconds into human-readable duration like '1 hour and 27 minutes'."""
+    seconds = int(seconds)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    parts = []
+    if hours == 1:
+        parts.append("1 hour")
+    elif hours > 1:
+        parts.append(f"{hours} hours")
+    if minutes == 1:
+        parts.append("1 minute")
+    elif minutes > 1:
+        parts.append(f"{minutes} minutes")
+    if not parts:
+        parts.append(f"{secs} seconds")
+    return " and ".join(parts)
+
 def send_ntfy(event, title, message, priority='default'):
     config = load_config()
     ntfy = config.get('notifications', {}).get('ntfy', {})
@@ -331,7 +349,7 @@ def start_scan():
 
     pings = int(data.get('pings', 1))
     timeout = int(data.get('timeout', 1000))
-    workers = int(data.get('workers', 20))
+    workers = int(data.get('workers', 10))
     vpn_speedtest = data.get('vpn_speedtest', False)
     
     thread = threading.Thread(target=run_scan_in_background, args=(pings, timeout, workers, vpn_speedtest))
@@ -374,16 +392,13 @@ def vpn_speedtest():
     data = request.json or {}
     selected_domains = data.get('domains', [])
     
-    if not selected_domains:
-        return jsonify({"status": "error", "message": "No domains selected"}), 400
-    
-    # Run VPN speedtest on selected domains
+    # Run VPN speedtest on selected (or all) domains
     def run_vpn_speedtest_background():
         global scan_active, scan_progress, last_error, stop_event
         print("DEBUG: Background thread run_vpn_speedtest_background started", file=sys.stderr, flush=True)
         stop_event.clear()
         scan_active = True
-        scan_progress = {"done": 0, "total": len(selected_domains), "status": "running", "message": "Running VPN speedtest..."}
+        scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running VPN speedtest..."}
         last_error = None
         
         flusher = threading.Thread(target=_state_flusher, daemon=True)
@@ -445,15 +460,21 @@ def vpn_speedtest():
             if not isinstance(results, dict):
                 raise ValueError("Results file is in an invalid format and could not be migrated.")
             
+            # If no domains specified, test all domains from results
+            domains_to_test = selected_domains if selected_domains else list(results.keys())
+            
             # Verify selected domains exist in results
-            missing_domains = [d for d in selected_domains if d not in results]
+            missing_domains = [d for d in domains_to_test if d not in results]
             if missing_domains:
                 print(f"DEBUG: Missing domains: {missing_domains}", file=sys.stderr, flush=True)
                 logging.warning(f"Selected domains not found in results: {missing_domains}")
             
             # Filter to only domains that exist
-            valid_domains = [d for d in selected_domains if d in results]
+            valid_domains = [d for d in domains_to_test if d in results]
             print(f"DEBUG: Valid domains for speedtest: {valid_domains}", file=sys.stderr, flush=True)
+            
+            scan_progress['total'] = len(valid_domains)
+            scan_logger.info(f'VPN speedtest started: {len(valid_domains)} domains')
             
             print("DEBUG: Initializing Scanner", file=sys.stderr, flush=True)
             scanner = Scanner(
@@ -465,6 +486,7 @@ def vpn_speedtest():
             )
             print("DEBUG: Scanner initialized", file=sys.stderr, flush=True)
             
+            vpn_start_time = time.time()
             # Perform speedtests only on selected domains
             if valid_domains:
                 print("DEBUG: Calling scanner._perform_vpn_speedtests", file=sys.stderr, flush=True)
@@ -491,7 +513,7 @@ def vpn_speedtest():
             
             scan_progress['status'] = 'completed'
             scan_progress['message'] = 'VPN speedtest completed'
-            scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains')
+            scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains ({_format_duration(time.time() - vpn_start_time)})')
         except Exception as e:
             last_error = str(e)
             scan_progress['status'] = 'error'
@@ -925,6 +947,7 @@ def scheduled_vpn_speedtest():
             return
         logging.info(f"Starting scheduled VPN speedtest on {len(all_domains)} servers...")
         scan_logger.info(f'Scheduled VPN speedtest started: {len(all_domains)} servers')
+        vpn_start_time = time.time()
         stop_event.clear()
         scan_active = True
         scan_progress = {"done": 0, "total": len(all_domains), "status": "running", "message": "Running scheduled VPN speedtest..."}
@@ -947,7 +970,7 @@ def scheduled_vpn_speedtest():
             json.dump(results, f, indent=2)
         scan_progress['status'] = 'completed'
         scan_progress['message'] = 'Scheduled VPN speedtest completed'
-        scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers')
+        scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({_format_duration(time.time() - vpn_start_time)})')
         send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
                   f'Tested {len(all_domains)} servers')
     except Exception as e:

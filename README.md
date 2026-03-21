@@ -72,7 +72,7 @@ options:
                         Number of pings to each IP during scan (increase for better accuracy). Default is 1
 
   -w WORKERS, --workers WORKERS
-                        Number of concurrent workers for scanning. Default is 20
+                        Number of concurrent workers for scanning. Default is 10
 
   -o TIMEOUT_MS, --timeout-ms TIMEOUT_MS
                         Ping timeout per request in milliseconds. Default is 1000

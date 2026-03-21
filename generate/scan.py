@@ -76,7 +76,7 @@ class Scanner:
 
         return excludes
 
-    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 20, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None, stop_event: threading.Event = None) -> Dict[str, List]:
+    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 10, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None, stop_event: threading.Event = None) -> Dict[str, List]:
         domains = self.get_servers_list()
         excl_countries = None
         include_countries = self.include_countries
