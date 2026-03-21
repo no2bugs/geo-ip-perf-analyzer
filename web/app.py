@@ -4,6 +4,7 @@ import threading
 import time
 import json
 import logging
+import logging.handlers
 import subprocess
 import zipfile
 import io
@@ -58,6 +59,33 @@ log_buffer = LogBufferHandler(capacity=200)
 log_buffer.setFormatter(logging.Formatter('%(message)s'))
 logging.getLogger().addHandler(log_buffer)
 logging.getLogger().setLevel(logging.INFO)
+
+# File-based logging with rotation
+LOG_DIR = os.environ.get('LOG_DIR', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs'))
+Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+
+_FILE_FORMAT = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+def _make_file_handler(filename, max_bytes=2*1024*1024, backup_count=3):
+    h = logging.handlers.RotatingFileHandler(
+        os.path.join(LOG_DIR, filename), maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8')
+    h.setFormatter(_FILE_FORMAT)
+    return h
+
+# general.log — everything INFO+
+_general_handler = _make_file_handler('general.log')
+_general_handler.setLevel(logging.INFO)
+logging.getLogger().addHandler(_general_handler)
+
+# error.log — ERROR+ only
+_error_handler = _make_file_handler('error.log')
+_error_handler.setLevel(logging.ERROR)
+logging.getLogger().addHandler(_error_handler)
+
+# scan.log — scan-specific logger
+scan_logger = logging.getLogger('scan')
+scan_logger.setLevel(logging.INFO)
+scan_logger.addHandler(_make_file_handler('scan.log'))
 
 # Configuration
 RESULTS_FILE = os.environ.get('RESULTS_FILE', 'results.json')
@@ -174,6 +202,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         
         # Override exclude/include if needed or just use defaults
         
+        scan_logger.info(f'Scan started: pings={pings}, timeout={timeout}, workers={workers}, vpn={vpn_speedtest}')
         scanner.scan(
             pings_num=pings,
             timeout_ms=timeout,
@@ -187,6 +216,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         )
         scan_progress['status'] = 'completed'
         scan_progress['message'] = 'Scan completed successfully'
+        scan_logger.info(f'Scan completed: {scan_progress["total"]} servers')
         send_ntfy('vpn_speedtest_complete', 'Scan Complete',
                   f'Scanned {scan_progress["total"]} servers successfully')
         
@@ -195,6 +225,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         scan_progress['status'] = 'error'
         scan_progress['message'] = str(e)
         logging.error(f"Scan failed: {e}")
+        scan_logger.error(f'Scan failed: {e}')
         send_ntfy('vpn_speedtest_error', 'Scan Failed', str(e), priority='high')
     finally:
         scan_active = False
@@ -206,6 +237,14 @@ def index():
 @app.route('/config')
 def config_page():
     return render_template('config.html')
+
+@app.route('/help')
+def help_page():
+    return render_template('help.html')
+
+@app.route('/logs')
+def logs_page():
+    return render_template('logs.html')
 
 @app.route('/api/scan/start', methods=['POST'])
 def start_scan():
@@ -385,6 +424,7 @@ def vpn_speedtest():
             
             scan_progress['status'] = 'completed'
             scan_progress['message'] = 'VPN speedtest completed'
+            scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains')
         except Exception as e:
             last_error = str(e)
             scan_progress['status'] = 'error'
@@ -684,6 +724,28 @@ def top_download():
     items.sort(key=lambda x: x['rx_speed_mbps'], reverse=True)
     return jsonify(items[:n])
 
+@app.route('/api/v1/top/upload')
+def top_upload():
+    n = request.args.get('n', 5, type=int)
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify([])
+    with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    items = []
+    for domain, entry in data.items():
+        if isinstance(entry, dict) and entry.get('tx_speed_mbps') is not None:
+            items.append({
+                'domain': domain,
+                'tx_speed_mbps': entry.get('tx_speed_mbps', 0),
+                'rx_speed_mbps': entry.get('rx_speed_mbps', 0),
+                'latency_ms': entry.get('latency_ms', 0),
+                'ip': entry.get('ip', ''),
+                'country': entry.get('country', ''),
+                'city': entry.get('city', '')
+            })
+    items.sort(key=lambda x: x['tx_speed_mbps'], reverse=True)
+    return jsonify(items[:n])
+
 @app.route('/api/logs')
 def get_logs():
     return jsonify(log_buffer.get_logs())
@@ -692,6 +754,35 @@ def get_logs():
 def clear_logs():
     log_buffer.clear()
     return jsonify({"status": "cleared"})
+
+LOG_FILE_MAP = {'general': 'general.log', 'error': 'error.log', 'scan': 'scan.log'}
+
+@app.route('/api/logs/files')
+def list_log_files():
+    """List available log files with sizes."""
+    files = []
+    for key, fname in LOG_FILE_MAP.items():
+        fpath = os.path.join(LOG_DIR, fname)
+        if os.path.exists(fpath):
+            files.append({'name': key, 'file': fname, 'size': os.path.getsize(fpath)})
+        else:
+            files.append({'name': key, 'file': fname, 'size': 0})
+    return jsonify(files)
+
+@app.route('/api/logs/file/<name>')
+def get_log_file(name):
+    """Return tail of a log file. ?lines=N (default 200)."""
+    fname = LOG_FILE_MAP.get(name)
+    if not fname:
+        return jsonify({'error': 'Unknown log file'}), 404
+    fpath = os.path.join(LOG_DIR, fname)
+    if not os.path.exists(fpath):
+        return jsonify({'lines': [], 'total': 0})
+    lines_n = request.args.get('lines', 500, type=int)
+    with open(fpath, 'r', encoding='utf-8', errors='replace') as f:
+        all_lines = f.readlines()
+    tail = all_lines[-lines_n:] if len(all_lines) > lines_n else all_lines
+    return jsonify({'lines': [l.rstrip() for l in tail], 'total': len(all_lines)})
 
 # ============================================================
 # Scheduler
@@ -721,6 +812,7 @@ def scheduled_vpn_speedtest():
             logging.error("Scheduled VPN speedtest skipped: no domains in results")
             return
         logging.info(f"Starting scheduled VPN speedtest on {len(all_domains)} servers...")
+        scan_logger.info(f'Scheduled VPN speedtest started: {len(all_domains)} servers')
         stop_event.clear()
         scan_active = True
         scan_progress = {"done": 0, "total": len(all_domains), "status": "running", "message": "Running scheduled VPN speedtest..."}
@@ -741,6 +833,7 @@ def scheduled_vpn_speedtest():
             json.dump(results, f, indent=2)
         scan_progress['status'] = 'completed'
         scan_progress['message'] = 'Scheduled VPN speedtest completed'
+        scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers')
         send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
                   f'Tested {len(all_domains)} servers')
     except Exception as e:

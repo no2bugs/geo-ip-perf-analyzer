@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help — GeoIP Performance Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="config-page">
+        <header class="config-header">
+            <a href="/" class="back-link">&larr; Dashboard</a>
+            <h1>Help &amp; API</h1>
+        </header>
+
+        <nav class="config-tabs">
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="api">API</button>
+        </nav>
+
+        <!-- ==================== OVERVIEW TAB ==================== -->
+        <div class="tab-content active" id="tab-overview">
+
+            <section class="config-card help-card">
+                <h3>Overview</h3>
+                <p>GeoIP Performance Analyzer performs mass latency testing against a list of domains/IPs, resolves their geographic location using GeoLite2 databases, and optionally runs VPN throughput tests via OpenVPN.</p>
+            </section>
+
+            <section class="config-card help-card">
+                <h3>Quick Start</h3>
+                <ol>
+                    <li>Add target domains/IPs using the <strong>Servers List</strong> button (one per line).</li>
+                    <li>Configure <strong>Pings per IP</strong>, <strong>Timeout</strong>, and <strong>Workers</strong> as needed.</li>
+                    <li>Click <strong>Start Scan</strong> to begin latency testing.</li>
+                    <li>Optionally select rows and run <strong>VPN Speedtest</strong> to measure download/upload via VPN.</li>
+                </ol>
+            </section>
+
+            <section class="config-card help-card">
+                <h3>Header Buttons</h3>
+                <dl>
+                    <dt>&#9776; Servers List</dt>
+                    <dd>Open the server list editor. One domain or IP per line. Duplicates and blank lines are removed on save.</dd>
+
+                    <dt>&#x21BB; OVPN Configs</dt>
+                    <dd>Upload a <code>.zip</code> containing OpenVPN configs (e.g. NordVPN <code>ovpn.zip</code>). Only <strong>UDP</strong> <code>.ovpn</code> files are extracted. If a download URL is configured in Config, the button downloads automatically instead.</dd>
+
+                    <dt>&#x21BB; GeoLite2 DBs</dt>
+                    <dd>Download latest GeoLite2-City and GeoLite2-Country databases from GitHub. Hover to compare local vs. latest release date.</dd>
+
+                    <dt>&#9881; Config</dt>
+                    <dd>Open the configuration page for scheduled automation, OVPN download URL, and ntfy notification settings.</dd>
+                </dl>
+            </section>
+
+            <section class="config-card help-card">
+                <h3>Scan Controls</h3>
+                <dl>
+                    <dt>Pings per IP</dt>
+                    <dd>ICMP pings per target. Higher values give more accurate averages.</dd>
+
+                    <dt>Timeout (ms)</dt>
+                    <dd>Max wait time for a ping response.</dd>
+
+                    <dt>Workers</dt>
+                    <dd>Concurrent threads for scanning.</dd>
+
+                    <dt>Start / Stop Scan</dt>
+                    <dd>Begin or abort a latency scan.</dd>
+
+                    <dt>Select All / VPN Speedtest</dt>
+                    <dd>Select rows, then run VPN speedtest through each server's <code>.ovpn</code> config.</dd>
+                </dl>
+            </section>
+
+            <section class="config-card help-card">
+                <h3>Results Table</h3>
+                <p>Click column headers to sort. Search filters by domain, country, or city.</p>
+                <p>Latency color: <span style="color:var(--success-color)">green</span> &lt; 50ms, <span style="color:#facc15">yellow</span> &lt; 150ms, <span style="color:var(--error-color)">red</span> &ge; 150ms.</p>
+                <p>Hover latency/speed cells to see scan/speedtest timestamps.</p>
+            </section>
+        </div>
+
+        <!-- ==================== API TAB ==================== -->
+        <div class="tab-content" id="tab-api">
+
+            <section class="config-card help-card">
+                <h3>GET Endpoints</h3>
+                <div class="api-section">
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/results</code>
+                        <p>Returns all scan results as a JSON object keyed by domain.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/results</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/scan/status</code>
+                        <p>Current scan status: active, progress, error, stopping.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/scan/status</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/v1/top/latency?n=5</code>
+                        <p>Top <em>N</em> servers by lowest latency.</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/latency?n=3"</pre>
+                        <pre class="api-response">[
+  {"domain":"ch358.nordvpn.com","latency_ms":14.62,"ip":"217.138.203.219",
+   "country":"Switzerland","city":"Zurich","rx_speed_mbps":251.56,"tx_speed_mbps":59.48},
+  ...
+]</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/v1/top/download?n=5</code>
+                        <p>Top <em>N</em> servers by highest download speed (Mbps).</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/download?n=3"</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/v1/top/upload?n=5</code>
+                        <p>Top <em>N</em> servers by highest upload speed (Mbps).</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/upload?n=3"</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/config</code>
+                        <p>Returns current configuration (schedules, notifications, OVPN settings).</p>
+                        <pre class="api-example">curl http://HOST:5000/api/config</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/servers</code>
+                        <p>Returns current servers list content.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/servers</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/geolite/status</code>
+                        <p>Local GeoLite2 DB dates vs. latest GitHub release.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/geolite/status</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/ovpn/status</code>
+                        <p>OVPN folder stats: file count and last update date.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/ovpn/status</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/logs</code>
+                        <p>Returns in-memory log buffer (last 200 entries, used by Log Console).</p>
+                        <pre class="api-example">curl http://HOST:5000/api/logs</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/logs/files</code>
+                        <p>Lists available log files with sizes.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/logs/files</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/logs/file/{name}?lines=500</code>
+                        <p>Returns tail of a log file. Names: <code>general</code>, <code>error</code>, <code>scan</code>.</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/logs/file/error?lines=100"</pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card help-card">
+                <h3>POST Endpoints</h3>
+                <div class="api-section">
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/scan/start</code>
+                        <p>Start a latency scan. Body: <code>{"pings":1, "timeout":1000, "workers":20}</code></p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/scan/start \
+  -H "Content-Type: application/json" \
+  -d '{"pings":1,"timeout":1000,"workers":20}'</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/scan/stop</code>
+                        <p>Send stop signal to a running scan.</p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/scan/stop</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/vpn-speedtest</code>
+                        <p>Run VPN speedtest on selected domains. Body: <code>{"domains":["ch358.nordvpn.com","de1234.nordvpn.com"]}</code></p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/vpn-speedtest \
+  -H "Content-Type: application/json" \
+  -d '{"domains":["ch358.nordvpn.com"]}'</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/config</code>
+                        <p>Save configuration. Body: full config JSON object.</p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"schedule":{...},"notifications":{...},"ovpn":{...}}'</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/servers</code>
+                        <p>Save servers list. Body: <code>{"servers":"domain1.com\ndomain2.com"}</code></p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/servers \
+  -H "Content-Type: application/json" \
+  -d '{"servers":"ch358.nordvpn.com\nde1234.nordvpn.com"}'</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/geolite/update</code>
+                        <p>Trigger GeoLite2 database download.</p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/geolite/update</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/ovpn/upload</code>
+                        <p>Upload a ZIP file with OVPN configs (multipart form).</p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/ovpn/upload \
+  -F "file=@ovpn.zip"</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/ovpn/download</code>
+                        <p>Download OVPN configs from URL. Body: <code>{"url":"https://..."}</code> (optional, uses config if empty).</p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/ovpn/download \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip"}'</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method post">POST</code>
+                        <code class="api-path">/api/logs/clear</code>
+                        <p>Clear the in-memory log buffer (Log Console).</p>
+                        <pre class="api-example">curl -X POST http://HOST:5000/api/logs/clear</pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+    </script>
+</body>
+
+</html>

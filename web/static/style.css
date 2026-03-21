@@ -548,8 +548,8 @@ tr:hover td {
     display: block;
 }
 
-/* Help button */
-.help-btn {
+/* Header link buttons (Config, Help) */
+.header-link-btn {
     background: transparent;
     border: 1px dashed var(--text-secondary);
     color: var(--text-secondary);
@@ -561,74 +561,30 @@ tr:hover td {
     transition: all 0.2s;
     white-space: nowrap;
     opacity: 0.7;
+    text-decoration: none;
+    display: inline-block;
 }
 
-.help-btn:hover {
+.header-link-btn:hover {
     opacity: 1;
     border-color: var(--text-primary);
     color: var(--text-primary);
 }
 
-/* Help modal */
-.help-modal-content {
-    max-width: 750px;
-    max-height: 85vh;
-    overflow-y: auto;
-}
-
-.help-body {
-    overflow-y: auto;
-    padding-right: 0.5rem;
-}
-
-.help-body section {
-    margin-bottom: 1.5rem;
-}
-
-.help-body h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.help-body p,
-.help-body li,
-.help-body dd {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    line-height: 1.7;
-}
-
-.help-body ol {
-    padding-left: 1.25rem;
-    margin-bottom: 0.5rem;
-}
-
-.help-body dl {
-    margin: 0;
-}
-
-.help-body dt {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    margin-top: 0.75rem;
-}
-
-.help-body dd {
-    margin-left: 0;
-    margin-bottom: 0.25rem;
-}
-
-.help-body code {
-    background: rgba(59, 130, 246, 0.15);
+/* All Logs link next to Log Console */
+.all-logs-link {
+    font-size: 0.75rem;
+    font-weight: 500;
     color: var(--accent-color);
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
+    text-decoration: none;
+    margin-left: 0.75rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.all-logs-link:hover {
+    opacity: 1;
+    text-decoration: underline;
 }
 
 /* Servers modal */
@@ -1017,5 +973,216 @@ tr:hover td {
 .save-btn {
     width: auto;
     padding: 0.65rem 2rem;
+}
+
+/* ========================================
+   Help Page: API Documentation
+   ======================================== */
+.help-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.help-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.help-card p,
+.help-card li,
+.help-card dd {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.help-card ol,
+.help-card ul {
+    padding-left: 1.25rem;
+    margin: 0.5rem 0;
+}
+
+.help-card dl { margin: 0; }
+
+.help-card dt {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.help-card dd {
+    margin-left: 0;
+    margin-bottom: 0.25rem;
+}
+
+.help-card code {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-color);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.api-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 1.5rem 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.api-section-title:first-child { margin-top: 0; }
+
+.api-endpoint {
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.api-endpoint-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.api-method {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.api-method.get {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success-color);
+}
+
+.api-method.post {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-color);
+}
+
+.api-method.delete {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error-color);
+}
+
+.api-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.api-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.5;
+}
+
+.api-example {
+    margin-top: 0.5rem;
+}
+
+.api-example summary {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.api-example summary:hover {
+    color: var(--text-primary);
+}
+
+.api-example pre {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.4rem 0 0 0;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* ========================================
+   Logs Page
+   ======================================== */
+.logs-page .tab-content { padding-top: 0.5rem; }
+
+.log-viewer-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.log-viewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.log-file-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.log-refresh-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.log-refresh-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.log-viewer-body {
+    height: 65vh;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+    background: rgba(0, 0, 0, 0.2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-empty {
+    color: var(--text-secondary);
+    opacity: 0.5;
+    font-style: italic;
 }
 }

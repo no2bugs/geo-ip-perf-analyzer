@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs — GeoIP Performance Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="config-page logs-page">
+        <header class="config-header">
+            <a href="/" class="back-link">&larr; Dashboard</a>
+            <h1>Logs</h1>
+        </header>
+
+        <nav class="config-tabs">
+            <button class="tab-btn active" data-tab="general">General</button>
+            <button class="tab-btn" data-tab="error">Error</button>
+            <button class="tab-btn" data-tab="scan">Scan</button>
+        </nav>
+
+        <div class="tab-content active" id="tab-general">
+            <div class="log-viewer-card config-card">
+                <div class="log-viewer-header">
+                    <span class="log-file-info" id="generalInfo">general.log</span>
+                    <button class="secondary-btn btn-sm" onclick="refreshLog('general')">Refresh</button>
+                </div>
+                <pre class="log-viewer-body" id="generalBody">Loading...</pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-error">
+            <div class="log-viewer-card config-card">
+                <div class="log-viewer-header">
+                    <span class="log-file-info" id="errorInfo">error.log</span>
+                    <button class="secondary-btn btn-sm" onclick="refreshLog('error')">Refresh</button>
+                </div>
+                <pre class="log-viewer-body" id="errorBody">Loading...</pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-scan">
+            <div class="log-viewer-card config-card">
+                <div class="log-viewer-header">
+                    <span class="log-file-info" id="scanInfo">scan.log</span>
+                    <button class="secondary-btn btn-sm" onclick="refreshLog('scan')">Refresh</button>
+                </div>
+                <pre class="log-viewer-body" id="scanBody">Loading...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function refreshLog(name) {
+            const body = document.getElementById(name + 'Body');
+            const info = document.getElementById(name + 'Info');
+            body.textContent = 'Loading...';
+            try {
+                const resp = await fetch('/api/logs/file/' + name + '?lines=500');
+                const data = await resp.json();
+                if (data.lines && data.lines.length) {
+                    body.innerHTML = data.lines.map(l => escapeHtml(l)).join('\n');
+                    info.textContent = name + '.log — ' + data.total + ' total lines';
+                } else {
+                    body.textContent = '(empty)';
+                    info.textContent = name + '.log — empty';
+                }
+                body.scrollTop = body.scrollHeight;
+            } catch (e) {
+                body.textContent = 'Failed to load log file.';
+            }
+        }
+
+        // Load the active tab on startup
+        refreshLog('general');
+
+        // Load other tabs when clicked
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => refreshLog(btn.dataset.tab));
+        });
+    </script>
+</body>
+
+</html>

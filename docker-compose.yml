@@ -14,6 +14,7 @@ services:
       - GEOIP_COUNTRY=/data/GeoLite2-Country.mmdb
       - VPN_OVPN_DIR=/data/ovpn
       - CONFIG_FILE=/data/config.yaml
+      - LOG_DIR=/data/logs
       - VPN_USERNAME=${VPN_USERNAME}
       - VPN_PASSWORD=${VPN_PASSWORD}
     dns:
