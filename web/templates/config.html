@@ -39,6 +39,19 @@
                 </div>
                 <p class="card-desc">Runs VPN throughput tests on all servers in results.</p>
                 <div id="cfgVpnOptions" class="card-options">
+                    <div class="field" style="margin-bottom: 0.75rem;">
+                        <label>Countries</label>
+                        <div class="country-picker" id="cfgVpnCountryPicker">
+                            <button type="button" class="secondary-btn btn-sm" id="cfgVpnCountryBtn">All Countries</button>
+                            <div class="country-dropdown" id="cfgVpnCountryDropdown" style="display:none;">
+                                <div class="country-dropdown-header">
+                                    <input type="text" class="country-search" placeholder="Filter countries..." id="cfgVpnCountrySearch">
+                                    <button type="button" class="secondary-btn btn-sm" id="cfgVpnCountryClear">Clear All</button>
+                                </div>
+                                <div class="country-list" id="cfgVpnCountryList"></div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="interval-row">
                         <div class="field">
                             <label>Interval</label>
@@ -214,13 +227,10 @@
                         </label>
                     </div>
                 </div>
-                <p class="card-desc">Run a shell command and update the servers list from its output (one hostname per line).</p>
+                <p class="card-desc">Run shell commands and merge their output into the servers list (one hostname per line).</p>
                 <div id="cfgSrvOptions" class="card-options">
-                    <div class="field field-full">
-                        <label>Command</label>
-                        <input type="text" id="cfgSrvCommand" placeholder="curl --silent &quot;https://api.nordvpn.com/v1/servers/...&quot; | jq -r '.[] | .hostname'">
-                        <span class="field-hint">Shell command whose stdout produces one hostname per line</span>
-                    </div>
+                    <div class="commands-list" id="cfgSrvCommands"></div>
+                    <button type="button" class="secondary-btn btn-sm" id="addSrvCommandBtn" style="margin-bottom: 0.75rem;">+ Add Command</button>
                     <div class="interval-row">
                         <div class="field">
                             <label>Interval</label>

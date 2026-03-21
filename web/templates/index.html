@@ -122,6 +122,16 @@
                     <div class="results-actions">
                         <input type="text" id="search" placeholder="Search domain, IP, country, city..."
                             class="search-input">
+                        <div class="country-filter-wrapper">
+                            <button id="countryFilterBtn" class="secondary-btn" title="Filter by country">&#127760; All Countries</button>
+                            <div class="country-filter-dropdown" id="countryFilterDropdown" style="display:none;">
+                                <div class="country-dropdown-header">
+                                    <input type="text" class="country-search" id="countryFilterSearch" placeholder="Filter countries...">
+                                    <button type="button" class="secondary-btn btn-sm" id="countryFilterClear">Clear</button>
+                                </div>
+                                <div class="country-list" id="countryFilterList"></div>
+                            </div>
+                        </div>
                         <button id="refreshBtn" class="secondary-btn">Refresh Data</button>
                     </div>
                 </div>

@@ -24,6 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('paginationTop')
     ].filter(Boolean);
 
+    // Country filter state
+    let selectedCountries = new Set();
+    const countryFilterBtn = document.getElementById('countryFilterBtn');
+    const countryFilterDropdown = document.getElementById('countryFilterDropdown');
+    const countryFilterList = document.getElementById('countryFilterList');
+    const countryFilterSearch = document.getElementById('countryFilterSearch');
+    const countryFilterClear = document.getElementById('countryFilterClear');
+
     // Initial Load
     fetchStatus();
     fetchResults();
@@ -385,15 +393,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function filterResults() {
         const query = searchInput.value.toLowerCase();
-        filteredResults = allResults.filter(item =>
-            item.domain.toLowerCase().includes(query) ||
-            (item.ip && item.ip.toLowerCase().includes(query)) ||
-            item.country.toLowerCase().includes(query) ||
-            item.city.toLowerCase().includes(query)
-        );
+        filteredResults = allResults.filter(item => {
+            if (selectedCountries.size > 0 && !selectedCountries.has(item.country)) return false;
+            if (!query) return true;
+            return item.domain.toLowerCase().includes(query) ||
+                (item.ip && item.ip.toLowerCase().includes(query)) ||
+                item.country.toLowerCase().includes(query) ||
+                item.city.toLowerCase().includes(query);
+        });
         currentPage = 1;
         renderResults();
     }
+
+    // ========================================
+    // Country Filter (Dashboard)
+    // ========================================
+    function buildCountryFilter() {
+        const counts = {};
+        allResults.forEach(r => { counts[r.country] = (counts[r.country] || 0) + 1; });
+        const sorted = Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]));
+        return sorted;
+    }
+
+    function renderCountryFilter(filter = '') {
+        const countries = buildCountryFilter();
+        const lf = filter.toLowerCase();
+        countryFilterList.innerHTML = '';
+        countries
+            .filter(([c]) => !lf || c.toLowerCase().includes(lf))
+            .forEach(([country, count]) => {
+                const label = document.createElement('label');
+                label.className = 'country-option';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = selectedCountries.has(country);
+                cb.addEventListener('change', () => {
+                    if (cb.checked) selectedCountries.add(country);
+                    else selectedCountries.delete(country);
+                    updateCountryFilterBtn();
+                    filterResults();
+                });
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(country));
+                const span = document.createElement('span');
+                span.className = 'country-count';
+                span.textContent = count;
+                label.appendChild(span);
+                countryFilterList.appendChild(label);
+            });
+    }
+
+    function updateCountryFilterBtn() {
+        if (selectedCountries.size === 0) {
+            countryFilterBtn.textContent = '\u{1F310} All Countries';
+        } else {
+            const total = allResults.filter(r => selectedCountries.has(r.country)).length;
+            countryFilterBtn.textContent = `\u{1F310} ${selectedCountries.size} countries (${total})`;
+        }
+    }
+
+    countryFilterBtn.addEventListener('click', () => {
+        const visible = countryFilterDropdown.style.display !== 'none';
+        countryFilterDropdown.style.display = visible ? 'none' : 'flex';
+        if (!visible) {
+            renderCountryFilter();
+            countryFilterSearch.focus();
+        }
+    });
+
+    countryFilterSearch.addEventListener('input', () => renderCountryFilter(countryFilterSearch.value));
+
+    countryFilterClear.addEventListener('click', () => {
+        selectedCountries.clear();
+        renderCountryFilter(countryFilterSearch.value);
+        updateCountryFilterBtn();
+        filterResults();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!document.querySelector('.country-filter-wrapper').contains(e.target)) {
+            countryFilterDropdown.style.display = 'none';
+        }
+    });
 
     function sortResults(field, order) {
         currentSortField = field;

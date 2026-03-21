@@ -1033,6 +1033,159 @@ tr:hover td {
 }
 
 /* ========================================
+   Multi-command list (Servers List Update)
+   ======================================== */
+.commands-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.command-item {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.75rem;
+    position: relative;
+}
+
+.command-item.disabled {
+    opacity: 0.5;
+}
+
+.command-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.command-item-header input[type="text"] {
+    flex: 1;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-family: inherit;
+    font-style: italic;
+}
+
+.command-item-body input[type="text"] {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.command-item-body input[type="text"]:focus,
+.command-item-header input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.command-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.command-remove-btn:hover {
+    color: var(--error-color);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* ========================================
+   Country Picker (Config & Dashboard)
+   ======================================== */
+.country-picker,
+.country-filter-wrapper {
+    position: relative;
+}
+
+.country-dropdown,
+.country-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    width: 300px;
+    max-height: 350px;
+    display: flex;
+    flex-direction: column;
+}
+
+.country-dropdown-header {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.country-dropdown-header .country-search {
+    flex: 1;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-family: inherit;
+}
+
+.country-dropdown-header .country-search:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.country-list {
+    overflow-y: auto;
+    max-height: 280px;
+    padding: 0.25rem 0;
+}
+
+.country-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    transition: background 0.15s;
+}
+
+.country-option:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.country-option input[type="checkbox"] {
+    margin: 0;
+}
+
+.country-option .country-count {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+/* ========================================
    Help Page: API Documentation
    ======================================== */
 .help-card {

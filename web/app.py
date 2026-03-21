@@ -106,7 +106,8 @@ DEFAULT_CONFIG = {
             'day': 'monday',
             'days': [],
             'dom': 1,
-            'time': '03:00'
+            'time': '03:00',
+            'countries': []
         },
         'geolite_update': {
             'enabled': False,
@@ -131,7 +132,7 @@ DEFAULT_CONFIG = {
             'days': [],
             'dom': 1,
             'time': '06:00',
-            'command': ''
+            'commands': []
         }
     },
     'notifications': {
@@ -388,6 +389,28 @@ def get_results():
         with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/countries')
+def get_countries():
+    """Return list of countries with server counts from results.json."""
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify([])
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        counts = {}
+        for domain, entry in data.items():
+            if isinstance(entry, dict):
+                country = entry.get('country', 'Unknown')
+            elif isinstance(entry, list) and len(entry) > 2:
+                country = entry[2] or 'Unknown'
+            else:
+                country = 'Unknown'
+            counts[country] = counts.get(country, 0) + 1
+        result = [{'country': c, 'count': n} for c, n in sorted(counts.items())]
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -989,6 +1012,15 @@ def scheduled_vpn_speedtest():
         if not all_domains:
             logging.error("Scheduled VPN speedtest skipped: no domains in results")
             return
+        # Filter by countries if configured
+        config = load_config()
+        vpn_countries = config.get('schedule', {}).get('vpn_speedtest', {}).get('countries', [])
+        if vpn_countries:
+            country_set = {c.casefold() for c in vpn_countries}
+            all_domains = [d for d in all_domains if isinstance(results.get(d), dict) and results[d].get('country', '').casefold() in country_set]
+            if not all_domains:
+                logging.error("Scheduled VPN speedtest skipped: no servers match selected countries")
+                return
         logging.info(f"Starting scheduled VPN speedtest on {len(all_domains)} servers...")
         scan_logger.info(f'Scheduled VPN speedtest started: {len(all_domains)} servers')
         vpn_start_time = time.time()
@@ -1056,31 +1088,50 @@ def scheduled_ovpn_update():
         logging.error(f'Scheduled OVPN update failed: {e}')
         send_ntfy('ovpn_update_error', 'OVPN Update Failed', str(e), priority='high')
 
-def _run_servers_update_command(command):
-    """Run a shell command and update servers.list from its stdout."""
-    logging.info(f"Running servers update command...")
-    result = subprocess.run(
-        command, shell=True, capture_output=True, text=True, timeout=120
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Command exited with code {result.returncode}: {result.stderr.strip()}")
-    lines = [line.strip() for line in result.stdout.splitlines()]
-    lines = list(dict.fromkeys(line for line in lines if line))
-    if not lines:
-        raise RuntimeError("Command produced no output")
+def _get_servers_commands(config):
+    """Get list of enabled commands from config, with backward compat for single 'command' field."""
+    srv = config.get('schedule', {}).get('servers_update', {})
+    commands = srv.get('commands', [])
+    if commands:
+        return [c for c in commands if c.get('enabled', True) and c.get('command', '').strip()]
+    # Backward compat: single command string
+    cmd = srv.get('command', '').strip()
+    if cmd:
+        return [{'command': cmd, 'label': '', 'enabled': True}]
+    return []
+
+def _run_servers_update_commands(commands):
+    """Run multiple shell commands and merge their output into servers.list."""
+    all_hosts = []
+    for entry in commands:
+        cmd = entry['command']
+        label = entry.get('label', '') or 'unnamed'
+        logging.info(f"Running servers update command: {label}")
+        result = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=120
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Command '{label}' exited with code {result.returncode}: {result.stderr.strip()}")
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        logging.info(f"  {label}: {len(lines)} hosts")
+        all_hosts.extend(lines)
+    # Deduplicate while preserving order
+    all_hosts = list(dict.fromkeys(all_hosts))
+    if not all_hosts:
+        raise RuntimeError("All commands produced no output")
     with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines) + '\n')
-    logging.info(f"servers.list updated from command: {len(lines)} entries")
-    return len(lines)
+        f.write('\n'.join(all_hosts) + '\n')
+    logging.info(f"servers.list updated: {len(all_hosts)} unique entries")
+    return len(all_hosts)
 
 def scheduled_servers_update():
     config = load_config()
-    command = config.get('schedule', {}).get('servers_update', {}).get('command', '')
-    if not command:
-        logging.info("Scheduled servers update skipped: no command configured")
+    commands = _get_servers_commands(config)
+    if not commands:
+        logging.info("Scheduled servers update skipped: no commands configured")
         return
     try:
-        count = _run_servers_update_command(command)
+        count = _run_servers_update_commands(commands)
         send_ntfy('servers_updated', 'Servers List Updated', f'{count} servers loaded')
     except Exception as e:
         logging.error(f'Scheduled servers update failed: {e}')
@@ -1126,7 +1177,7 @@ def apply_schedules():
 
     # Servers update schedule
     srv_cfg = config.get('schedule', {}).get('servers_update', {})
-    if srv_cfg.get('enabled') and srv_cfg.get('command'):
+    if srv_cfg.get('enabled') and _get_servers_commands(config):
         kw = _build_cron_kwargs(srv_cfg)
         scheduler.add_job(scheduled_servers_update, CronTrigger(**kw), id='servers_update', replace_existing=True)
 

@@ -80,6 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgVpnDom').value = vpn.dom || 1;
         document.getElementById('cfgVpnTime').value = vpn.time || '03:00';
         setDayButtons('cfgVpnDays', vpn.days);
+        vpnSelectedCountries = vpn.countries || [];
+        loadVpnCountries();
 
         const geo = config.schedule?.geolite_update || {};
         document.getElementById('cfgGeoEnabled').checked = geo.enabled || false;
@@ -99,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const srv = config.schedule?.servers_update || {};
         document.getElementById('cfgSrvEnabled').checked = srv.enabled || false;
-        document.getElementById('cfgSrvCommand').value = srv.command || '';
+        renderSrvCommands(srv.commands || (srv.command ? [{command: srv.command, label: '', enabled: true}] : []));
         document.getElementById('cfgSrvInterval').value = srv.interval || 'weekly';
         document.getElementById('cfgSrvDay').value = srv.day || 'sunday';
         document.getElementById('cfgSrvDom').value = srv.dom || 1;
@@ -135,7 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     day: document.getElementById('cfgVpnDay').value,
                     days: getDayButtons('cfgVpnDays'),
                     dom: parseInt(document.getElementById('cfgVpnDom').value) || 1,
-                    time: document.getElementById('cfgVpnTime').value
+                    time: document.getElementById('cfgVpnTime').value,
+                    countries: vpnSelectedCountries
                 },
                 geolite_update: {
                     enabled: document.getElementById('cfgGeoEnabled').checked,
@@ -155,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 servers_update: {
                     enabled: document.getElementById('cfgSrvEnabled').checked,
-                    command: document.getElementById('cfgSrvCommand').value.trim(),
+                    commands: collectSrvCommands(),
                     interval: document.getElementById('cfgSrvInterval').value,
                     day: document.getElementById('cfgSrvDay').value,
                     days: getDayButtons('cfgSrvDays'),
@@ -276,6 +279,135 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 5000);
     }
+
+    // ========================================
+    // Multi-command list (Servers List Update)
+    // ========================================
+    const srvCommandsContainer = document.getElementById('cfgSrvCommands');
+    const addSrvCommandBtn = document.getElementById('addSrvCommandBtn');
+
+    function renderSrvCommands(commands) {
+        srvCommandsContainer.innerHTML = '';
+        if (!commands || commands.length === 0) return;
+        commands.forEach((cmd, idx) => addCommandItem(cmd, idx));
+    }
+
+    function addCommandItem(cmd = {command: '', label: '', enabled: true}) {
+        const item = document.createElement('div');
+        item.className = 'command-item' + (cmd.enabled === false ? ' disabled' : '');
+        item.innerHTML = `
+            <div class="command-item-header">
+                <label class="switch" style="transform: scale(0.8);">
+                    <input type="checkbox" class="cmd-enabled" ${cmd.enabled !== false ? 'checked' : ''}>
+                    <span class="slider"></span>
+                </label>
+                <input type="text" class="cmd-label" placeholder="Comment (e.g. Switzerland servers)" value="${(cmd.label || '').replace(/"/g, '&quot;')}">
+                <button type="button" class="command-remove-btn" title="Remove">&times;</button>
+            </div>
+            <div class="command-item-body">
+                <input type="text" class="cmd-command" placeholder="curl --silent &quot;https://api.nordvpn.com/...&quot; | jq -r '.[] | .hostname'" value="${(cmd.command || '').replace(/"/g, '&quot;')}">
+            </div>
+        `;
+        item.querySelector('.command-remove-btn').addEventListener('click', () => item.remove());
+        item.querySelector('.cmd-enabled').addEventListener('change', (e) => {
+            item.classList.toggle('disabled', !e.target.checked);
+        });
+        srvCommandsContainer.appendChild(item);
+    }
+
+    addSrvCommandBtn.addEventListener('click', () => addCommandItem());
+
+    function collectSrvCommands() {
+        return Array.from(srvCommandsContainer.querySelectorAll('.command-item')).map(item => ({
+            command: item.querySelector('.cmd-command').value.trim(),
+            label: item.querySelector('.cmd-label').value.trim(),
+            enabled: item.querySelector('.cmd-enabled').checked
+        })).filter(c => c.command);
+    }
+
+    // ========================================
+    // VPN Speedtest Country Picker
+    // ========================================
+    let vpnSelectedCountries = [];
+    let vpnCountriesData = [];
+    const vpnCountryBtn = document.getElementById('cfgVpnCountryBtn');
+    const vpnCountryDropdown = document.getElementById('cfgVpnCountryDropdown');
+    const vpnCountryList = document.getElementById('cfgVpnCountryList');
+    const vpnCountrySearch = document.getElementById('cfgVpnCountrySearch');
+    const vpnCountryClear = document.getElementById('cfgVpnCountryClear');
+
+    function updateVpnCountryBtn() {
+        if (vpnSelectedCountries.length === 0) {
+            vpnCountryBtn.textContent = 'All Countries';
+        } else {
+            const total = vpnSelectedCountries.reduce((sum, c) => {
+                const found = vpnCountriesData.find(d => d.country === c);
+                return sum + (found ? found.count : 0);
+            }, 0);
+            vpnCountryBtn.textContent = `${vpnSelectedCountries.length} countries (${total} servers)`;
+        }
+    }
+
+    function renderVpnCountryList(filter = '') {
+        vpnCountryList.innerHTML = '';
+        const lf = filter.toLowerCase();
+        vpnCountriesData
+            .filter(d => !lf || d.country.toLowerCase().includes(lf))
+            .forEach(d => {
+                const label = document.createElement('label');
+                label.className = 'country-option';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = vpnSelectedCountries.includes(d.country);
+                cb.addEventListener('change', () => {
+                    if (cb.checked) {
+                        if (!vpnSelectedCountries.includes(d.country)) vpnSelectedCountries.push(d.country);
+                    } else {
+                        vpnSelectedCountries = vpnSelectedCountries.filter(c => c !== d.country);
+                    }
+                    updateVpnCountryBtn();
+                });
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(d.country));
+                const span = document.createElement('span');
+                span.className = 'country-count';
+                span.textContent = d.count;
+                label.appendChild(span);
+                vpnCountryList.appendChild(label);
+            });
+    }
+
+    async function loadVpnCountries() {
+        try {
+            const resp = await fetch('/api/countries');
+            vpnCountriesData = await resp.json();
+        } catch (e) {
+            vpnCountriesData = [];
+        }
+        renderVpnCountryList();
+        updateVpnCountryBtn();
+    }
+
+    vpnCountryBtn.addEventListener('click', () => {
+        const visible = vpnCountryDropdown.style.display !== 'none';
+        vpnCountryDropdown.style.display = visible ? 'none' : 'flex';
+        if (!visible) vpnCountrySearch.focus();
+    });
+
+    vpnCountrySearch.addEventListener('input', () => renderVpnCountryList(vpnCountrySearch.value));
+
+    vpnCountryClear.addEventListener('click', () => {
+        vpnSelectedCountries = [];
+        renderVpnCountryList(vpnCountrySearch.value);
+        updateVpnCountryBtn();
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+        if (!document.getElementById('cfgVpnCountryPicker').contains(e.target)) {
+            vpnCountryDropdown.style.display = 'none';
+        }
+    });
 
     // Init
     loadConfig();
