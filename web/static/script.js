@@ -210,8 +210,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             });
 
-            // Default sort by latency
-            allResults.sort((a, b) => a.latency - b.latency);
+            // Default sort: by download speed (descending), fallback to latency (ascending)
+            const hasSpeedData = allResults.some(r => r.rx_speed !== null && r.rx_speed !== undefined);
+            if (hasSpeedData) {
+                allResults.sort((a, b) => (b.rx_speed || 0) - (a.rx_speed || 0));
+            } else {
+                allResults.sort((a, b) => a.latency - b.latency);
+            }
             filteredResults = [...allResults];
             currentPage = 1;
 

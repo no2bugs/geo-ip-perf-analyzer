@@ -101,7 +101,12 @@ class Analyze:
             fields = {0: 'ENDPOINT', 1: 'LATENCY', 2: 'IP', 3: 'COUNTRY', 4: 'CITY', 5: 'DL(Mbps)', 6: 'UL(Mbps)'}
 
             self.formatting.output('bold', 'green')
-            logger.info("Sorted by: %s", fields[min(sort_by, 4)])  # Limit to existing sort fields
+            # If sorting by speed but no speed data exists, fall back to latency
+            has_any_speed = any(s[5] is not None or s[6] is not None for s in top_servers)
+            if sort_by in (5, 6) and not has_any_speed:
+                sort_by = 1
+
+            logger.info("Sorted by: %s", fields.get(sort_by, fields[1]))
             self.formatting.output('reset')
 
             if sort_by == 2:  # IP
@@ -111,6 +116,8 @@ class Analyze:
                         return (999, 999, 999, 999)
                     return tuple(int(p) for p in parts)
                 top_servers.sort(key=_ipv4_key)
+            elif sort_by in (5, 6):  # Speed (descending, None treated as 0)
+                top_servers.sort(key=lambda x: x[sort_by] or 0, reverse=True)
             elif sort_by <= 4:
                 top_servers.sort(key=lambda x: x[sort_by])
 

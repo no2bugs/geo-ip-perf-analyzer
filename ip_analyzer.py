@@ -122,7 +122,7 @@ def options():
 
     parser.add_argument('-b', '--sort-by',
                         type=int,
-                        help='''Sort --country-stats or --city-stats by field/column number. Default is 4 (LATENCY)
+                        help='''Sort --country-stats or --city-stats by field/column number. Default is 6 (DL speed, fallback to LATENCY)
                              ''', default=None)
 
     parser.add_argument('-n', '--min-latency',
@@ -220,7 +220,7 @@ def validate_inputs(args, report_args, filter_args, results_limit, sort_by, mn_l
         logger.error("Error: invalid stats field number")
         formatting.output('reset')
         sys.exit(1)
-    elif sort_by and not 0 <= sort_by <= 4:
+    elif sort_by and not 0 <= sort_by <= 6:
         formatting.output('bold', 'red')
         logger.error("Error: invalid results field number")
         formatting.output('reset')
@@ -322,7 +322,7 @@ if __name__ == "__main__":
     pings = selections.scan_pings
     top_ips_limit = selections.results_limit
     sort_stats = 2 if not selections.sort_by else selections.sort_by - 1
-    sort_results = 1 if not selections.sort_by else selections.sort_by - 1
+    sort_results = 5 if not selections.sort_by else selections.sort_by - 1
     max_latency = float("inf") if not selections.max_latency else round(float(selections.max_latency), 2)
     min_latency = 0 if not selections.min_latency else round(float(selections.min_latency), 2)
 
