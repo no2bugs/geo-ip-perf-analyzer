@@ -66,11 +66,11 @@ class VPNManager:
             ]
             
             print(f"DEBUG: Starting OpenVPN with Popen: {' '.join(cmd)}", file=sys.stderr, flush=True)
-            # Use subprocess.Popen so it doesn't block
+            # Use subprocess.Popen - capture stderr for diagnostics
             self.process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
                 preexec_fn=os.setsid # Create process group for easy cleanup
             )
             
@@ -78,7 +78,16 @@ class VPNManager:
             print(f"DEBUG: Waiting up to {timeout}s for tun0 interface", file=sys.stderr, flush=True)
             for i in range(timeout):
                 if self.process.poll() is not None:
+                    err_output = ''
+                    if self.process.stderr:
+                        try:
+                            err_output = self.process.stderr.read().decode('utf-8', errors='ignore').strip()
+                        except Exception:
+                            pass
                     print(f"DEBUG: OpenVPN process exited prematurely with code {self.process.returncode}", file=sys.stderr, flush=True)
+                    if err_output:
+                        print(f"DEBUG: OpenVPN stderr: {err_output[:500]}", file=sys.stderr, flush=True)
+                        logger.warning(f"OpenVPN exited with code {self.process.returncode}: {err_output[:200]}")
                     return False
                 
                 time.sleep(1)

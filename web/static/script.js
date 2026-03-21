@@ -276,11 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSortField = 'latency';
                 currentSortOrder = 'asc';
             }
-            filteredResults = [...allResults];
             currentPage = 1;
             updateSortIndicators();
-
-            renderResults();
+            filterResults();
         } catch (e) {
             console.error("Fetch results failed", e);
         }
