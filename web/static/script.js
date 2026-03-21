@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Build tooltip with elapsed / ETA
         const statusIndicator = document.getElementById('globalStatus');
         const progressContainer = document.querySelector('.progress-bar-container');
+        const _tipTargets = [statusIndicator, progressContainer, progressText, progressDetail].filter(Boolean);
         if (isScanning && scanStartTime && data.progress) {
             const { done, total } = data.progress;
             const elapsed = (Date.now() - scanStartTime) / 1000;
@@ -148,13 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (done > 0 && total > 0) {
                 const avgPerItem = elapsed / done;
                 const remaining = avgPerItem * (total - done);
-                tip += '\nETA: ' + _fmtDuration(remaining);
+                tip += '\nETA: ~' + _fmtDuration(remaining);
             }
-            statusIndicator.title = tip;
-            if (progressContainer) progressContainer.title = tip;
+            _tipTargets.forEach(el => { if (el.title !== tip) el.title = tip; });
         } else {
-            statusIndicator.title = '';
-            if (progressContainer) progressContainer.title = '';
+            _tipTargets.forEach(el => { if (el.title) el.title = ''; });
         }
 
         // Show/hide stop button
