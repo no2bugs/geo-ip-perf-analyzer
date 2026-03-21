@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgOvpnDom').value = ovpn.dom || 1;
         document.getElementById('cfgOvpnTime').value = ovpn.time || '05:00';
         setDayButtons('cfgOvpnDays', ovpn.days);
+        document.getElementById('cfgOvpnUrl').value = ovpn.download_url || config.ovpn?.download_url || '';
 
         const srv = config.schedule?.servers_update || {};
         document.getElementById('cfgSrvEnabled').checked = srv.enabled || false;
@@ -107,8 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgSrvDom').value = srv.dom || 1;
         document.getElementById('cfgSrvTime').value = srv.time || '06:00';
         setDayButtons('cfgSrvDays', srv.days);
-
-        document.getElementById('cfgOvpnUrl').value = config.ovpn?.download_url || '';
 
         const ntfy = config.notifications?.ntfy || {};
         document.getElementById('cfgNtfyEnabled').checked = ntfy.enabled || false;
@@ -154,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     day: document.getElementById('cfgOvpnDay').value,
                     days: getDayButtons('cfgOvpnDays'),
                     dom: parseInt(document.getElementById('cfgOvpnDom').value) || 1,
-                    time: document.getElementById('cfgOvpnTime').value
+                    time: document.getElementById('cfgOvpnTime').value,
+                    download_url: document.getElementById('cfgOvpnUrl').value.trim()
                 },
                 servers_update: {
                     enabled: document.getElementById('cfgSrvEnabled').checked,
@@ -181,9 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         servers_update_error: document.getElementById('cfgEvtSrvError').checked
                     }
                 }
-            },
-            ovpn: {
-                download_url: document.getElementById('cfgOvpnUrl').value.trim()
             }
         };
     }
@@ -434,6 +431,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ========================================
+    // Credentials Tab
+    // ========================================
+    const credsStatus = document.getElementById('credsStatus');
+    const saveCredsBtn = document.getElementById('saveCredsBtn');
+    const togglePwdBtn = document.getElementById('togglePwdBtn');
+    const pwdInput = document.getElementById('cfgVpnPassword');
+
+    togglePwdBtn.addEventListener('click', () => {
+        pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
+    });
+
+    async function loadCredentials() {
+        try {
+            const resp = await fetch('/api/credentials');
+            const data = await resp.json();
+            document.getElementById('cfgVpnUsername').value = data.vpn_username || '';
+            // Don't populate password — show placeholder if one is set
+            pwdInput.value = '';
+            pwdInput.placeholder = data.vpn_password_set ? '••••••••  (unchanged)' : 'VPN service password';
+        } catch (e) { /* ignore */ }
+    }
+
+    saveCredsBtn.addEventListener('click', async () => {
+        saveCredsBtn.disabled = true;
+        saveCredsBtn.textContent = 'Saving...';
+        try {
+            const payload = { vpn_username: document.getElementById('cfgVpnUsername').value.trim() };
+            const pwd = pwdInput.value;
+            if (pwd) payload.vpn_password = pwd;
+            const resp = await fetch('/api/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                showToast('Credentials saved');
+                credsStatus.textContent = 'Saved ' + new Date().toLocaleTimeString();
+                pwdInput.value = '';
+                pwdInput.placeholder = '••••••••  (unchanged)';
+            } else {
+                showToast('Save failed: ' + data.message, true);
+            }
+        } catch (e) {
+            showToast('Network error', true);
+        } finally {
+            saveCredsBtn.disabled = false;
+            saveCredsBtn.textContent = 'Save Credentials';
+        }
+    });
+
     // Init
     loadConfig();
+    loadCredentials();
 });

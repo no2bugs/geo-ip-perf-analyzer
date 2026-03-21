@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!cachedConfig) {
             try { const r = await fetch('/api/config'); cachedConfig = await r.json(); } catch(e) {}
         }
-        const downloadUrl = cachedConfig?.ovpn?.download_url;
+        const downloadUrl = cachedConfig?.schedule?.ovpn_update?.download_url || cachedConfig?.ovpn?.download_url;
         if (downloadUrl) {
             updateOvpnBtn.disabled = true;
             updateOvpnBtn.textContent = 'Downloading...';

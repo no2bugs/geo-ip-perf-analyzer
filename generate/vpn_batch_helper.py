@@ -66,6 +66,10 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
     total_count = len(sorted_endpoints)
     progress['total'] = total_count
     progress['done'] = 0
+    succeeded = 0
+    vpn_failed = 0
+    speedtest_failed = 0
+    errors = 0
     
     for batch_start in range(0, total_count, batch_size):
         if stop_event and stop_event.is_set():
@@ -102,15 +106,19 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         
                         print(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
                         logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
+                        succeeded += 1
                     else:
                         logger.info(f"✗ {domain}: Speedtest failed (no result)")
+                        speedtest_failed += 1
                 else:
                     logger.info(f"✗ {domain}: VPN connection failed")
+                    vpn_failed += 1
                     
                 # Disconnect VPN
                 vpn_manager.disconnect()
                 
             except Exception as e:
+                errors += 1
                 vpn_manager.disconnect()
         
         # Ask user if they want to continue (only in interactive mode)
@@ -137,3 +145,9 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                 if formatting:
                     formatting.output('reset')
                 break
+
+    # Summary report
+    tested = succeeded + vpn_failed + speedtest_failed + errors
+    summary = f"VPN Speedtest Report: {tested}/{total_count} tested — {succeeded} succeeded, {vpn_failed} VPN connection failed, {speedtest_failed} speedtest failed, {errors} errors"
+    logger.info(summary)
+    return {'total': total_count, 'tested': tested, 'succeeded': succeeded, 'vpn_failed': vpn_failed, 'speedtest_failed': speedtest_failed, 'errors': errors}

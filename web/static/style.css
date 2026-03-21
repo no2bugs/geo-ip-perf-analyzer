@@ -684,7 +684,8 @@ tr:hover td {
    Config Page
    ========================================== */
 .config-page {
-    max-width: 800px;
+    max-width: 70%;
+    min-width: 600px;
     margin: 0 auto;
     padding: 2rem;
 }

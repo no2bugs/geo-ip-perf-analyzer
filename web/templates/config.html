@@ -19,7 +19,7 @@
 
         <nav class="config-tabs">
             <button class="tab-btn active" data-tab="schedules">Schedules</button>
-            <button class="tab-btn" data-tab="ovpn">OVPN</button>
+            <button class="tab-btn" data-tab="credentials">Credentials</button>
             <button class="tab-btn" data-tab="notifications">Notifications</button>
         </nav>
 
@@ -170,6 +170,11 @@
                 </div>
                 <p class="card-desc">Download fresh OVPN configs from the configured URL.</p>
                 <div id="cfgOvpnSchedOptions" class="card-options">
+                    <div class="field field-full" style="margin-bottom: 0.75rem;">
+                        <label>Download URL</label>
+                        <input type="text" id="cfgOvpnUrl" placeholder="https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip">
+                        <span class="field-hint">Required when this schedule is enabled</span>
+                    </div>
                     <div class="interval-row">
                         <div class="field">
                             <label>Interval</label>
@@ -278,17 +283,27 @@
             </section>
         </div>
 
-        <!-- ==================== OVPN TAB ==================== -->
-        <div class="tab-content" id="tab-ovpn">
+        <!-- ==================== CREDENTIALS TAB ==================== -->
+        <div class="tab-content" id="tab-credentials">
             <section class="config-card">
                 <div class="card-header">
-                    <h3>OVPN Download URL</h3>
+                    <h3>VPN Credentials</h3>
                 </div>
-                <p class="card-desc">When set, the OVPN Configs button on the dashboard downloads from this URL instead of asking for a ZIP upload. Also used by the OVPN update schedule.</p>
-                <div class="field field-full">
-                    <label>Download URL</label>
-                    <input type="text" id="cfgOvpnUrl" placeholder="https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip">
-                    <span class="field-hint">Leave empty to use manual ZIP upload via the OVPN button</span>
+                <p class="card-desc">Username and password for OpenVPN authentication. Stored in <code>.env</code> file on the host (not tracked in code).</p>
+                <div class="field field-full" style="margin-bottom: 0.75rem;">
+                    <label>VPN Username</label>
+                    <input type="text" id="cfgVpnUsername" placeholder="VPN service username" autocomplete="off">
+                </div>
+                <div class="field field-full" style="margin-bottom: 0.75rem;">
+                    <label>VPN Password</label>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="password" id="cfgVpnPassword" placeholder="VPN service password" autocomplete="new-password" style="flex:1;">
+                        <button type="button" class="secondary-btn btn-sm" id="togglePwdBtn" title="Show/hide password">&#128065;</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.75rem; align-items:center;">
+                    <button type="button" id="saveCredsBtn" class="primary-btn">Save Credentials</button>
+                    <span class="config-status" id="credsStatus"></span>
                 </div>
             </section>
         </div>

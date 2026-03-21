@@ -123,7 +123,8 @@ DEFAULT_CONFIG = {
             'day': 'sunday',
             'days': [],
             'dom': 1,
-            'time': '05:00'
+            'time': '05:00',
+            'download_url': ''
         },
         'servers_update': {
             'enabled': False,
@@ -150,9 +151,6 @@ DEFAULT_CONFIG = {
                 'servers_update_error': True
             }
         }
-    },
-    'ovpn': {
-        'download_url': ''
     }
 }
 
@@ -162,6 +160,11 @@ def load_config():
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f)
                 if isinstance(cfg, dict):
+                    # Migrate: move ovpn.download_url -> schedule.ovpn_update.download_url
+                    old_url = cfg.get('ovpn', {}).get('download_url', '')
+                    if old_url and not cfg.get('schedule', {}).get('ovpn_update', {}).get('download_url'):
+                        cfg.setdefault('schedule', {}).setdefault('ovpn_update', {})['download_url'] = old_url
+                    cfg.pop('ovpn', None)
                     return cfg
         except Exception as e:
             logging.error(f"Failed to load config: {e}")
@@ -539,7 +542,7 @@ def vpn_speedtest():
             vpn_start_time = time.time()
             # Perform speedtests only on selected domains
             if valid_domains:
-                scanner._perform_vpn_speedtests(
+                report = scanner._perform_vpn_speedtests(
                     results,
                     VPN_OVPN_DIR,
                     VPN_USERNAME,
@@ -549,7 +552,7 @@ def vpn_speedtest():
                     interactive=False,
                     selected_domains=valid_domains,
                     stop_event=stop_event
-                )
+                ) or {}
             else:
                 raise ValueError("None of the selected domains were found in the scan results")
             
@@ -557,14 +560,18 @@ def vpn_speedtest():
             with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(results, f, indent=2)
             
+            duration = _format_duration(time.time() - vpn_start_time)
+            report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
             if stop_event.is_set():
                 scan_progress['status'] = 'completed'
-                scan_progress['message'] = 'VPN speedtest interrupted by stop request'
-                scan_logger.info(f'VPN speedtest interrupted by stop request: {scan_progress["done"]}/{len(valid_domains)} domains ({_format_duration(time.time() - vpn_start_time)})')
+                scan_progress['message'] = f'VPN speedtest interrupted \u2014 {report_msg}'
+                scan_logger.info(f'VPN speedtest interrupted: {scan_progress["done"]}/{len(valid_domains)} domains ({duration}) \u2014 {report_msg}')
             else:
                 scan_progress['status'] = 'completed'
-                scan_progress['message'] = 'VPN speedtest completed'
-                scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains ({_format_duration(time.time() - vpn_start_time)})')
+                scan_progress['message'] = f'VPN speedtest completed \u2014 {report_msg}'
+                scan_logger.info(f'VPN speedtest completed: {len(valid_domains)} domains ({duration}) \u2014 {report_msg}')
+                send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
+                          f'{len(valid_domains)} servers tested ({duration})\n{report_msg}')
         except Exception as e:
             last_error = str(e)
             scan_progress['status'] = 'error'
@@ -798,7 +805,7 @@ def ovpn_download():
     url = data.get('url', '')
     if not url:
         config = load_config()
-        url = config.get('ovpn', {}).get('download_url', '')
+        url = config.get('schedule', {}).get('ovpn_update', {}).get('download_url', '')
     if not url:
         return jsonify({'status': 'error', 'message': 'No download URL configured'}), 400
     try:
@@ -821,8 +828,66 @@ def post_config():
     data = request.json
     if not data:
         return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+    # Validate: OVPN schedule requires download URL
+    ovpn_sched = data.get('schedule', {}).get('ovpn_update', {})
+    if ovpn_sched.get('enabled') and not ovpn_sched.get('download_url', '').strip():
+        return jsonify({'status': 'error', 'message': 'OVPN Config Update requires a Download URL. Disable the schedule or provide a URL.'}), 400
+    # Strip legacy ovpn top-level key
+    data.pop('ovpn', None)
     save_config(data)
     apply_schedules()
+    return jsonify({'status': 'ok'})
+
+# ============================================================
+# VPN Credentials API (stored in .env, not in config.yaml)
+# ============================================================
+ENV_FILE = os.path.join(os.path.dirname(CONFIG_FILE) if os.path.dirname(CONFIG_FILE) else '.', '.env')
+
+def _read_env_file():
+    """Read key=value pairs from .env file."""
+    env = {}
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, _, val = line.partition('=')
+                    env[key.strip()] = val.strip()
+    return env
+
+def _write_env_file(env):
+    """Write key=value pairs to .env file, preserving unknown keys."""
+    with open(ENV_FILE, 'w', encoding='utf-8') as f:
+        for key, val in env.items():
+            f.write(f"{key}={val}\n")
+
+@app.route('/api/credentials')
+def get_credentials():
+    env = _read_env_file()
+    username = env.get('VPN_USERNAME', '')
+    password = env.get('VPN_PASSWORD', '')
+    return jsonify({
+        'vpn_username': username,
+        'vpn_password_set': bool(password),
+        'vpn_username_masked': (username[:3] + '***') if len(username) > 3 else ('***' if username else '')
+    })
+
+@app.route('/api/credentials', methods=['POST'])
+def post_credentials():
+    global VPN_USERNAME, VPN_PASSWORD
+    data = request.json or {}
+    username = data.get('vpn_username')
+    password = data.get('vpn_password')
+    if username is None and password is None:
+        return jsonify({'status': 'error', 'message': 'No credentials provided'}), 400
+    env = _read_env_file()
+    if username is not None:
+        env['VPN_USERNAME'] = username
+        VPN_USERNAME = username
+    if password is not None:
+        env['VPN_PASSWORD'] = password
+        VPN_PASSWORD = password
+    _write_env_file(env)
     return jsonify({'status': 'ok'})
 
 @app.route('/api/config/test-notification', methods=['POST'])
@@ -1056,23 +1121,25 @@ def scheduled_vpn_speedtest():
             results_json=RESULTS_FILE,
             excl_countries_fle='exclude_countries.list'
         )
-        scanner._perform_vpn_speedtests(
+        report = scanner._perform_vpn_speedtests(
             results, VPN_OVPN_DIR, VPN_USERNAME, VPN_PASSWORD,
             scan_progress, batch_size=999, interactive=False,
             selected_domains=all_domains, stop_event=stop_event
-        )
+        ) or {}
         with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)
+        duration = _format_duration(time.time() - vpn_start_time)
+        report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
         if stop_event.is_set():
             scan_progress['status'] = 'completed'
-            scan_progress['message'] = 'Scheduled VPN speedtest interrupted by stop request'
-            scan_logger.info(f'Scheduled VPN speedtest interrupted by stop request: {scan_progress["done"]}/{len(all_domains)} servers ({_format_duration(time.time() - vpn_start_time)})')
+            scan_progress['message'] = f'Scheduled VPN speedtest interrupted \u2014 {report_msg}'
+            scan_logger.info(f'Scheduled VPN speedtest interrupted: {scan_progress["done"]}/{len(all_domains)} servers ({duration}) \u2014 {report_msg}')
         else:
             scan_progress['status'] = 'completed'
-            scan_progress['message'] = 'Scheduled VPN speedtest completed'
-            scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({_format_duration(time.time() - vpn_start_time)})')
+            scan_progress['message'] = f'Scheduled VPN speedtest completed \u2014 {report_msg}'
+            scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({duration}) \u2014 {report_msg}')
             send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
-                      f'Tested {len(all_domains)} servers')
+                      f'{len(all_domains)} servers tested ({duration})\n{report_msg}')
     except Exception as e:
         last_error = str(e)
         scan_progress['status'] = 'error'
@@ -1094,7 +1161,7 @@ def scheduled_geolite_update():
 
 def scheduled_ovpn_update():
     config = load_config()
-    url = config.get('ovpn', {}).get('download_url', '')
+    url = config.get('schedule', {}).get('ovpn_update', {}).get('download_url', '')
     if not url:
         logging.info("Scheduled OVPN update skipped: no download URL configured")
         return
