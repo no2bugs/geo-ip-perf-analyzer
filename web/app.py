@@ -244,6 +244,7 @@ def _read_scan_state():
 
 def _state_flusher():
     """Background thread that periodically flushes state and checks for stop requests."""
+    _flush_count = 0
     while scan_active:
         # Check for stop requests from other workers BEFORE flushing
         try:
@@ -252,6 +253,9 @@ def _state_flusher():
                 stop_event.set()
         except Exception:
             pass
+        _flush_count += 1
+        if _flush_count % 5 == 0:
+            print(f"DEBUG FLUSHER: scan_progress id={id(scan_progress)} done={scan_progress.get('done')} total={scan_progress.get('total')}", file=sys.stderr, flush=True)
         _flush_scan_state()
         time.sleep(1)
     _flush_scan_state()
@@ -265,6 +269,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
     scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Initializing..."}
     last_error = None
     _flush_scan_state()
+    print(f"DEBUG SCAN START: scan_progress id={id(scan_progress)}", file=sys.stderr, flush=True)
     
     flusher = threading.Thread(target=_state_flusher, daemon=True)
     flusher.start()

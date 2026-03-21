@@ -130,6 +130,7 @@ class Scanner:
         progress = progress_container if progress_container is not None else {"done": 0, "total": 0}
         progress["total"] = len(domains)
         progress["message"] = f"Resolving DNS for {len(domains)} servers..."
+        print(f"DEBUG SCAN: progress id={id(progress)}, progress_container id={id(progress_container) if progress_container else 'None'}", file=sys.stderr, flush=True)
         targets = []
         for domain in domains:
             if stop_event and stop_event.is_set():
