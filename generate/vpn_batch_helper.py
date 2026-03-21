@@ -88,6 +88,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         for idx, (domain, data) in enumerate(batch, start=batch_start + 1):
             if stop_event and stop_event.is_set():
                 break
+            progress['done'] = idx
             try:
                 # Safely get latency for display
                 latency = data.get('latency_ms', 0) if isinstance(data, dict) else (data[0] if isinstance(data, list) and len(data) > 0 else 0)
@@ -121,8 +122,6 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
             except Exception as e:
                 print(f"DEBUG: Error testing {domain}: {e}", file=sys.stderr, flush=True)
                 vpn_manager.disconnect()
-            finally:
-                progress['done'] = idx
         
         # Ask user if they want to continue (only in interactive mode)
         if interactive and batch_end < total_count:
