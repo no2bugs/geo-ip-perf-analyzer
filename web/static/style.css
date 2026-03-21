@@ -573,18 +573,22 @@ tr:hover td {
 
 /* All Logs link next to Log Console */
 .all-logs-link {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--accent-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f97316;
     text-decoration: none;
     margin-left: 0.75rem;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    padding: 0.25rem 0.7rem;
+    border: 1px solid #f97316;
+    border-radius: 6px;
+    transition: all 0.2s;
+    vertical-align: middle;
 }
 
 .all-logs-link:hover {
-    opacity: 1;
-    text-decoration: underline;
+    background: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+    border-color: #fb923c;
 }
 
 /* Servers modal */
@@ -1049,6 +1053,7 @@ tr:hover td {
     border-radius: 10px;
     padding: 1rem 1.25rem;
     margin-bottom: 1rem;
+    overflow: hidden;
 }
 
 .api-endpoint-header {
@@ -1123,6 +1128,8 @@ tr:hover td {
     line-height: 1.6;
     color: var(--text-secondary);
     overflow-x: auto;
+    word-break: break-all;
+    white-space: pre-wrap;
     font-family: 'JetBrains Mono', monospace;
 }
 
