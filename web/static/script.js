@@ -330,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const query = searchInput.value.toLowerCase();
         filteredResults = allResults.filter(item =>
             item.domain.toLowerCase().includes(query) ||
+            (item.ip && item.ip.toLowerCase().includes(query)) ||
             item.country.toLowerCase().includes(query) ||
             item.city.toLowerCase().includes(query)
         );
