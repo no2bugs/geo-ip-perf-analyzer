@@ -13,6 +13,7 @@ services:
       - GEOIP_CITY=/data/GeoLite2-City.mmdb
       - GEOIP_COUNTRY=/data/GeoLite2-Country.mmdb
       - VPN_OVPN_DIR=/data/ovpn
+      - CONFIG_FILE=/data/config.yaml
       - VPN_USERNAME=${VPN_USERNAME}
       - VPN_PASSWORD=${VPN_PASSWORD}
     dns:

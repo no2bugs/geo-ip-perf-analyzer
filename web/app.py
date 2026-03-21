@@ -7,10 +7,14 @@ import logging
 import subprocess
 import zipfile
 import io
+import copy
 from datetime import datetime, timezone
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request, send_from_directory
 import requests as http_requests
+import yaml
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 # Add parent directory to sys.path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -63,6 +67,80 @@ GEOIP_COUNTRY = os.environ.get('GEOIP_COUNTRY', 'GeoLite2-Country.mmdb')
 VPN_OVPN_DIR = os.environ.get('VPN_OVPN_DIR', 'ovpn')
 VPN_USERNAME = os.environ.get('VPN_USERNAME', '')
 VPN_PASSWORD = os.environ.get('VPN_PASSWORD', '')
+CONFIG_FILE = os.environ.get('CONFIG_FILE', 'config.yaml')
+
+DEFAULT_CONFIG = {
+    'schedule': {
+        'scan': {
+            'enabled': False,
+            'interval': 'daily',
+            'day': 'monday',
+            'time': '03:00',
+            'pings': 1,
+            'timeout': 1000,
+            'workers': 20
+        },
+        'geolite_update': {
+            'enabled': False,
+            'interval': 'weekly',
+            'day': 'sunday',
+            'time': '04:00'
+        },
+        'ovpn_update': {
+            'enabled': False,
+            'interval': 'weekly',
+            'day': 'sunday',
+            'time': '05:00'
+        }
+    },
+    'notifications': {
+        'ntfy': {
+            'enabled': False,
+            'url': '',
+            'events': {
+                'scan_complete': True,
+                'scan_error': True,
+                'geolite_updated': True,
+                'ovpn_updated': True
+            }
+        }
+    },
+    'ovpn': {
+        'download_url': ''
+    }
+}
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                cfg = yaml.safe_load(f)
+                if isinstance(cfg, dict):
+                    return cfg
+        except Exception as e:
+            logging.error(f"Failed to load config: {e}")
+    return copy.deepcopy(DEFAULT_CONFIG)
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+def send_ntfy(event, title, message, priority='default'):
+    config = load_config()
+    ntfy = config.get('notifications', {}).get('ntfy', {})
+    if not ntfy.get('enabled') or not ntfy.get('url'):
+        return
+    if not ntfy.get('events', {}).get(event, False):
+        return
+    try:
+        http_requests.post(
+            ntfy['url'],
+            data=message.encode('utf-8'),
+            headers={'Title': title, 'Priority': priority},
+            timeout=10
+        )
+    except Exception as e:
+        logging.error(f"ntfy notification failed: {e}")
 
 # Global state
 scan_lock = threading.Lock()
@@ -107,12 +185,15 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         )
         scan_progress['status'] = 'completed'
         scan_progress['message'] = 'Scan completed successfully'
+        send_ntfy('scan_complete', 'Scan Complete',
+                  f'Scanned {scan_progress["total"]} servers successfully')
         
     except Exception as e:
         last_error = str(e)
         scan_progress['status'] = 'error'
         scan_progress['message'] = str(e)
         logging.error(f"Scan failed: {e}")
+        send_ntfy('scan_error', 'Scan Failed', str(e), priority='high')
     finally:
         scan_active = False
 
@@ -331,6 +412,63 @@ GEOLITE_RELEASE_URL = 'https://api.github.com/repos/P3TERX/GeoLite.mmdb/releases
 GEOLITE_CITY_FILENAME = 'GeoLite2-City.mmdb'
 GEOLITE_COUNTRY_FILENAME = 'GeoLite2-Country.mmdb'
 
+def _do_geolite_update():
+    """Download latest GeoLite2 databases. Returns list of updated filenames."""
+    logging.info('Fetching latest GeoLite2 release info...')
+    resp = http_requests.get(GEOLITE_RELEASE_URL, timeout=10)
+    resp.raise_for_status()
+    release = resp.json()
+    assets = release.get('assets', [])
+
+    downloaded = []
+    for asset in assets:
+        name = asset.get('name', '')
+        if name in (GEOLITE_CITY_FILENAME, GEOLITE_COUNTRY_FILENAME):
+            download_url = asset.get('browser_download_url')
+            if not download_url:
+                continue
+            target = GEOIP_CITY if name == GEOLITE_CITY_FILENAME else GEOIP_COUNTRY
+            logging.info(f'Downloading {name}...')
+            dl = http_requests.get(download_url, timeout=120, stream=True)
+            dl.raise_for_status()
+            tmp_path = target + '.tmp'
+            with open(tmp_path, 'wb') as f:
+                for chunk in dl.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            os.replace(tmp_path, target)
+            downloaded.append(name)
+            logging.info(f'{name} updated successfully')
+    return downloaded
+
+def _download_ovpn_from_url(url):
+    """Download and extract OVPN configs from a URL. Returns count of extracted files."""
+    logging.info(f'Downloading OVPN configs from URL...')
+    resp = http_requests.get(url, timeout=120, stream=True)
+    resp.raise_for_status()
+
+    zip_bytes = resp.content
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        for name in zf.namelist():
+            if os.path.isabs(name) or '..' in name:
+                raise ValueError(f'Invalid path in zip: {name}')
+
+        ovpn_path = Path(VPN_OVPN_DIR)
+        ovpn_path.mkdir(parents=True, exist_ok=True)
+
+        for old in ovpn_path.glob('*.ovpn'):
+            old.unlink()
+
+        extracted = 0
+        for name in zf.namelist():
+            basename = os.path.basename(name)
+            if basename.lower().endswith('.ovpn') and 'udp' in basename.lower():
+                target = ovpn_path / basename
+                target.write_bytes(zf.read(name))
+                extracted += 1
+
+    logging.info(f'OVPN configs updated: {extracted} UDP files extracted')
+    return extracted
+
 @app.route('/api/geolite/status')
 def geolite_status():
     """Check local GeoLite2 file dates and latest available release."""
@@ -375,37 +513,14 @@ def geolite_status():
 def geolite_update():
     """Download latest GeoLite2 databases from GitHub releases."""
     try:
-        logging.info('Fetching latest GeoLite2 release info...')
-        resp = http_requests.get(GEOLITE_RELEASE_URL, timeout=10)
-        resp.raise_for_status()
-        release = resp.json()
-        assets = release.get('assets', [])
-
-        downloaded = []
-        for asset in assets:
-            name = asset.get('name', '')
-            if name in (GEOLITE_CITY_FILENAME, GEOLITE_COUNTRY_FILENAME):
-                download_url = asset.get('browser_download_url')
-                if not download_url:
-                    continue
-                target = GEOIP_CITY if name == GEOLITE_CITY_FILENAME else GEOIP_COUNTRY
-                logging.info(f'Downloading {name}...')
-                dl = http_requests.get(download_url, timeout=120, stream=True)
-                dl.raise_for_status()
-                tmp_path = target + '.tmp'
-                with open(tmp_path, 'wb') as f:
-                    for chunk in dl.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                os.replace(tmp_path, target)
-                downloaded.append(name)
-                logging.info(f'{name} updated successfully')
-
+        downloaded = _do_geolite_update()
         if not downloaded:
             return jsonify({'status': 'error', 'message': 'No matching assets found in release'}), 404
-
+        send_ntfy('geolite_updated', 'GeoLite2 Updated', f'Updated: {", ".join(downloaded)}')
         return jsonify({'status': 'ok', 'updated': downloaded})
     except Exception as e:
         logging.error(f'GeoLite2 update failed: {e}')
+        send_ntfy('geolite_updated', 'GeoLite2 Update Failed', str(e), priority='high')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/servers', methods=['GET'])
@@ -455,7 +570,6 @@ def ovpn_upload():
     try:
         zip_bytes = uploaded.read()
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
-            # Validate: reject if any path tries to escape (zip-slip)
             for name in zf.namelist():
                 if os.path.isabs(name) or '..' in name:
                     return jsonify({'status': 'error', 'message': f'Invalid path in zip: {name}'}), 400
@@ -463,7 +577,6 @@ def ovpn_upload():
             ovpn_path = Path(VPN_OVPN_DIR)
             ovpn_path.mkdir(parents=True, exist_ok=True)
 
-            # Remove old .ovpn files
             for old in ovpn_path.glob('*.ovpn'):
                 old.unlink()
 
@@ -476,12 +589,94 @@ def ovpn_upload():
                     extracted += 1
 
         logging.info(f'OVPN configs updated: {extracted} UDP files extracted')
+        send_ntfy('ovpn_updated', 'OVPN Configs Updated', f'{extracted} UDP configs extracted')
         return jsonify({'status': 'ok', 'count': extracted})
     except zipfile.BadZipFile:
         return jsonify({'status': 'error', 'message': 'Invalid ZIP file'}), 400
     except Exception as e:
         logging.error(f'OVPN upload failed: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/ovpn/download', methods=['POST'])
+def ovpn_download():
+    """Download OVPN configs from configured or provided URL."""
+    data = request.json or {}
+    url = data.get('url', '')
+    if not url:
+        config = load_config()
+        url = config.get('ovpn', {}).get('download_url', '')
+    if not url:
+        return jsonify({'status': 'error', 'message': 'No download URL configured'}), 400
+    try:
+        count = _download_ovpn_from_url(url)
+        send_ntfy('ovpn_updated', 'OVPN Configs Updated', f'{count} UDP configs extracted')
+        return jsonify({'status': 'ok', 'count': count})
+    except Exception as e:
+        logging.error(f'OVPN download failed: {e}')
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# ============================================================
+# Config API
+# ============================================================
+@app.route('/api/config')
+def get_config():
+    return jsonify(load_config())
+
+@app.route('/api/config', methods=['POST'])
+def post_config():
+    data = request.json
+    if not data:
+        return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+    save_config(data)
+    apply_schedules()
+    return jsonify({'status': 'ok'})
+
+# ============================================================
+# Top Results API (for programmatic access)
+# ============================================================
+@app.route('/api/v1/top/latency')
+def top_latency():
+    n = request.args.get('n', 5, type=int)
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify([])
+    with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    items = []
+    for domain, entry in data.items():
+        if isinstance(entry, dict):
+            items.append({
+                'domain': domain,
+                'latency_ms': entry.get('latency_ms', 9999),
+                'ip': entry.get('ip', ''),
+                'country': entry.get('country', ''),
+                'city': entry.get('city', ''),
+                'rx_speed_mbps': entry.get('rx_speed_mbps'),
+                'tx_speed_mbps': entry.get('tx_speed_mbps')
+            })
+    items.sort(key=lambda x: x['latency_ms'])
+    return jsonify(items[:n])
+
+@app.route('/api/v1/top/download')
+def top_download():
+    n = request.args.get('n', 5, type=int)
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify([])
+    with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    items = []
+    for domain, entry in data.items():
+        if isinstance(entry, dict) and entry.get('rx_speed_mbps') is not None:
+            items.append({
+                'domain': domain,
+                'rx_speed_mbps': entry.get('rx_speed_mbps', 0),
+                'tx_speed_mbps': entry.get('tx_speed_mbps', 0),
+                'latency_ms': entry.get('latency_ms', 0),
+                'ip': entry.get('ip', ''),
+                'country': entry.get('country', ''),
+                'city': entry.get('city', '')
+            })
+    items.sort(key=lambda x: x['rx_speed_mbps'], reverse=True)
+    return jsonify(items[:n])
 
 @app.route('/api/logs')
 def get_logs():
@@ -491,6 +686,92 @@ def get_logs():
 def clear_logs():
     log_buffer.clear()
     return jsonify({"status": "cleared"})
+
+# ============================================================
+# Scheduler
+# ============================================================
+scheduler = BackgroundScheduler(daemon=True)
+
+DAY_MAP = {
+    'monday': 'mon', 'tuesday': 'tue', 'wednesday': 'wed',
+    'thursday': 'thu', 'friday': 'fri', 'saturday': 'sat', 'sunday': 'sun'
+}
+
+def scheduled_scan():
+    global scan_active
+    if scan_active:
+        logging.info("Scheduled scan skipped: scan already in progress")
+        return
+    config = load_config()
+    scan_cfg = config.get('schedule', {}).get('scan', {})
+    pings = scan_cfg.get('pings', 1)
+    timeout = scan_cfg.get('timeout', 1000)
+    workers = scan_cfg.get('workers', 20)
+    logging.info("Starting scheduled scan...")
+    run_scan_in_background(pings, timeout, workers)
+
+def scheduled_geolite_update():
+    try:
+        downloaded = _do_geolite_update()
+        if downloaded:
+            send_ntfy('geolite_updated', 'GeoLite2 Updated', f'Updated: {", ".join(downloaded)}')
+    except Exception as e:
+        logging.error(f'Scheduled GeoLite2 update failed: {e}')
+        send_ntfy('geolite_updated', 'GeoLite2 Update Failed', str(e), priority='high')
+
+def scheduled_ovpn_update():
+    config = load_config()
+    url = config.get('ovpn', {}).get('download_url', '')
+    if not url:
+        logging.info("Scheduled OVPN update skipped: no download URL configured")
+        return
+    try:
+        count = _download_ovpn_from_url(url)
+        send_ntfy('ovpn_updated', 'OVPN Configs Updated', f'{count} UDP configs extracted')
+    except Exception as e:
+        logging.error(f'Scheduled OVPN update failed: {e}')
+        send_ntfy('ovpn_updated', 'OVPN Update Failed', str(e), priority='high')
+
+def apply_schedules():
+    config = load_config()
+    scheduler.remove_all_jobs()
+
+    # Scan schedule
+    scan_cfg = config.get('schedule', {}).get('scan', {})
+    if scan_cfg.get('enabled'):
+        parts = str(scan_cfg.get('time', '03:00')).split(':')
+        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+        kw = {'hour': hour, 'minute': minute}
+        if scan_cfg.get('interval') == 'weekly':
+            kw['day_of_week'] = DAY_MAP.get(scan_cfg.get('day', 'monday'), 'mon')
+        scheduler.add_job(scheduled_scan, CronTrigger(**kw), id='scan', replace_existing=True)
+
+    # GeoLite2 schedule
+    geo_cfg = config.get('schedule', {}).get('geolite_update', {})
+    if geo_cfg.get('enabled'):
+        parts = str(geo_cfg.get('time', '04:00')).split(':')
+        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+        kw = {'hour': hour, 'minute': minute}
+        if geo_cfg.get('interval') == 'weekly':
+            kw['day_of_week'] = DAY_MAP.get(geo_cfg.get('day', 'sunday'), 'sun')
+        scheduler.add_job(scheduled_geolite_update, CronTrigger(**kw), id='geolite', replace_existing=True)
+
+    # OVPN schedule
+    ovpn_cfg = config.get('schedule', {}).get('ovpn_update', {})
+    if ovpn_cfg.get('enabled'):
+        parts = str(ovpn_cfg.get('time', '05:00')).split(':')
+        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+        kw = {'hour': hour, 'minute': minute}
+        if ovpn_cfg.get('interval') == 'weekly':
+            kw['day_of_week'] = DAY_MAP.get(ovpn_cfg.get('day', 'sunday'), 'sun')
+        scheduler.add_job(scheduled_ovpn_update, CronTrigger(**kw), id='ovpn', replace_existing=True)
+
+    jobs = scheduler.get_jobs()
+    logging.info(f"Scheduler updated: {len(jobs)} job(s) active")
+
+# Initialize scheduler on startup
+apply_schedules()
+scheduler.start()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

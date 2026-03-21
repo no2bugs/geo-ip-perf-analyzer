@@ -704,3 +704,109 @@ tr:hover td {
     color: var(--text-secondary);
     font-size: 0.85rem;
 }
+
+/* Config Modal */
+.config-modal-content {
+    max-width: 600px;
+    width: 95%;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.config-body {
+    padding: 0 1.5rem 1rem;
+}
+
+.config-section {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.config-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.config-section h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.config-toggle-row {
+    margin-bottom: 0.75rem;
+}
+
+.toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.config-collapsible {
+    margin-bottom: 0.5rem;
+}
+
+.config-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 120px;
+}
+
+.config-field label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.config-field input,
+.config-field select {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.config-field input:focus,
+.config-field select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.config-full-width {
+    width: 100%;
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.config-full-width input[type="text"] {
+    width: 100%;
+}
+
+.config-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.config-events-row {
+    gap: 0.75rem 1.5rem;
+}
+}
