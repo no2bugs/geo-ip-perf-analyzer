@@ -66,10 +66,10 @@ class VPNManager:
             ]
             
             print(f"DEBUG: Starting OpenVPN with Popen: {' '.join(cmd)}", file=sys.stderr, flush=True)
-            # Use subprocess.Popen - capture stderr for diagnostics
+            # Use subprocess.Popen - capture output for diagnostics
             self.process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 preexec_fn=os.setsid # Create process group for easy cleanup
             )
@@ -79,15 +79,23 @@ class VPNManager:
             for i in range(timeout):
                 if self.process.poll() is not None:
                     err_output = ''
+                    out_output = ''
+                    if self.process.stdout:
+                        try:
+                            out_output = self.process.stdout.read().decode('utf-8', errors='ignore').strip()
+                        except Exception:
+                            pass
                     if self.process.stderr:
                         try:
                             err_output = self.process.stderr.read().decode('utf-8', errors='ignore').strip()
                         except Exception:
                             pass
+                    combined = (out_output + '\n' + err_output).strip()
                     print(f"DEBUG: OpenVPN process exited prematurely with code {self.process.returncode}", file=sys.stderr, flush=True)
-                    if err_output:
-                        print(f"DEBUG: OpenVPN stderr: {err_output[:500]}", file=sys.stderr, flush=True)
-                        logger.warning(f"OpenVPN exited with code {self.process.returncode}: {err_output[:200]}")
+                    if combined:
+                        print(f"DEBUG: OpenVPN output: {combined[:500]}", file=sys.stderr, flush=True)
+                        logger.warning(f"OpenVPN exited with code {self.process.returncode}: {combined[:200]}")
+                    return False
                     return False
                 
                 time.sleep(1)
