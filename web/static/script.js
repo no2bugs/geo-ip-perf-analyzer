@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isScanning = false;
     let pollInterval = null;
-    let scanStartTime = null;
+    let scanStartTime = null; // epoch seconds from server
     let allResults = [];
     let filteredResults = []; // Track filtered results separately for pagination
     let selectedDomains = new Set();
@@ -124,16 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateStatusUI(data) {
-        const wasScanning = isScanning;
         isScanning = data.active;
         startBtn.disabled = isScanning;
 
         statusText.textContent = isScanning ? "Scanning..." : "Ready";
         globalStatus.className = 'dot ' + (isScanning ? 'running' : 'completed');
 
-        // Track scan start time
-        if (isScanning && !wasScanning) {
-            scanStartTime = Date.now();
+        // Track scan start time from server
+        if (isScanning && data.start_time) {
+            scanStartTime = data.start_time;
         } else if (!isScanning) {
             scanStartTime = null;
         }
@@ -142,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const progressEta = document.getElementById('progressEta');
         if (isScanning && scanStartTime && data.progress) {
             const { done, total } = data.progress;
-            const elapsed = (Date.now() - scanStartTime) / 1000;
+            const elapsed = Date.now() / 1000 - scanStartTime;
             let etaText = 'Elapsed: ' + _fmtDuration(elapsed);
             if (done > 0 && total > 0) {
                 const remaining = (elapsed / done) * (total - done);

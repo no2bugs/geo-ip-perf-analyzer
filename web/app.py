@@ -211,6 +211,7 @@ scan_active = False
 scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
 stop_event = threading.Event()
 last_error = None
+scan_start_time = None
 
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
@@ -221,7 +222,8 @@ def _flush_scan_state():
         "active": scan_active,
         "progress": dict(scan_progress),
         "error": last_error,
-        "stop_requested": stop_event.is_set()
+        "stop_requested": stop_event.is_set(),
+        "start_time": scan_start_time
     }
     try:
         tmp = SCAN_STATE_FILE + '.tmp'
@@ -254,10 +256,11 @@ def _state_flusher():
     _flush_scan_state()
 
 def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
-    global scan_active, scan_progress, last_error, stop_event
+    global scan_active, scan_progress, last_error, stop_event, scan_start_time
     
     stop_event.clear()
     scan_active = True
+    scan_start_time = time.time()
     scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Initializing..."}
     last_error = None
     _flush_scan_state()
@@ -367,7 +370,8 @@ def get_status():
         "active": state.get("active", scan_active),
         "progress": state.get("progress", scan_progress),
         "error": state.get("error", last_error),
-        "stopping": state.get("stop_requested", stop_event.is_set())
+        "stopping": state.get("stop_requested", stop_event.is_set()),
+        "start_time": state.get("start_time")
     })
 
 @app.route('/api/results')
@@ -395,10 +399,11 @@ def vpn_speedtest():
     
     # Run VPN speedtest on selected (or all) domains
     def run_vpn_speedtest_background():
-        global scan_active, scan_progress, last_error, stop_event
+        global scan_active, scan_progress, last_error, stop_event, scan_start_time
         print("DEBUG: Background thread run_vpn_speedtest_background started", file=sys.stderr, flush=True)
         stop_event.clear()
         scan_active = True
+        scan_start_time = time.time()
         scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running VPN speedtest..."}
         last_error = None
         _flush_scan_state()
@@ -957,7 +962,7 @@ DAY_MAP = {
 }
 
 def scheduled_vpn_speedtest():
-    global scan_active, scan_progress, last_error, stop_event
+    global scan_active, scan_progress, last_error, stop_event, scan_start_time
     state = _read_scan_state()
     if scan_active or state.get('active'):
         logging.info("Scheduled VPN speedtest skipped: operation already in progress")
@@ -979,6 +984,7 @@ def scheduled_vpn_speedtest():
         vpn_start_time = time.time()
         stop_event.clear()
         scan_active = True
+        scan_start_time = vpn_start_time
         scan_progress = {"done": 0, "total": len(all_domains), "status": "running", "message": "Running scheduled VPN speedtest..."}
         last_error = None
         _flush_scan_state()
