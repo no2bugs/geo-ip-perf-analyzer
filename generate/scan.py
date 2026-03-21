@@ -128,6 +128,8 @@ class Scanner:
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
         progress = progress_container if progress_container is not None else {"done": 0, "total": 0}
+        progress["total"] = len(domains)
+        progress["message"] = f"Resolving DNS for {len(domains)} servers..."
         targets = []
         for domain in domains:
             if stop_event and stop_event.is_set():
@@ -159,6 +161,8 @@ class Scanner:
 
         total_targets = len(targets)
         progress["total"] = total_targets
+        progress["done"] = 0
+        progress["message"] = f"Scanning {total_targets} targets..."
 
         tasks = []
         with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -324,7 +328,9 @@ class Scanner:
                 progress["done"] += 1
                 total = progress.get("total", 0)
                 prefix = f'({progress["done"]}/{total}) ' if total else ''
-                print(prefix + 'Error with endpoint:', domain, 'Skipping...')
+                msg = prefix + 'Error with endpoint: ' + domain + ' Skipping...'
+                print(msg)
+                logger.info(msg)
                 print(error)
                 self.formatting.output('reset')
             return ('error', None)
@@ -335,7 +341,9 @@ class Scanner:
                 progress["done"] += 1
                 total = progress.get("total", 0)
                 prefix = f'({progress["done"]}/{total}) ' if total else ''
-                print(prefix + 'Excluding', domain, 'in', country)
+                msg = f'{prefix}Excluding {domain} in {country}'
+                print(msg)
+                logger.info(msg)
                 self.formatting.output('reset')
             return ('skipped', None)
         if include_countries is not None and (not country or country.casefold() not in include_countries):
@@ -344,7 +352,9 @@ class Scanner:
                 progress["done"] += 1
                 total = progress.get("total", 0)
                 prefix = f'({progress["done"]}/{total}) ' if total else ''
-                print(prefix + 'Skipping', domain, 'in', country, '(not in include_countries)')
+                msg = f'{prefix}Skipping {domain} in {country} (not in include_countries)'
+                print(msg)
+                logger.info(msg)
                 self.formatting.output('reset')
             return ('skipped', None)
 
@@ -355,7 +365,9 @@ class Scanner:
                 progress["done"] += 1
                 total = progress.get("total", 0)
                 prefix = f'({progress["done"]}/{total}) ' if total else ''
-                print(prefix + 'Error: No response time received from', domain, 'Skipping...')
+                msg = f'{prefix}Error: No response time received from {domain} Skipping...'
+                print(msg)
+                logger.info(msg)
                 self.formatting.output('reset')
             return ('error', None)
 
