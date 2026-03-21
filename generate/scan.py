@@ -130,7 +130,6 @@ class Scanner:
         progress = progress_container if progress_container is not None else {"done": 0, "total": 0}
         progress["total"] = len(domains)
         progress["message"] = f"Resolving DNS for {len(domains)} servers..."
-        print(f"DEBUG SCAN: progress id={id(progress)}, progress_container id={id(progress_container) if progress_container else 'None'}", file=sys.stderr, flush=True)
         targets = []
         for domain in domains:
             if stop_event and stop_event.is_set():
@@ -279,9 +278,14 @@ class Scanner:
             cmd = ["ping", "-n", str(pings_num), "-w", str(timeout_ms), ip]
         else:
             timeout_s = max(1, int(round(timeout_ms / 1000)))
-            cmd = ["ping", "-c", str(pings_num), "-W", str(timeout_s), ip]
+            cmd = ["ping", "-n", "-c", str(pings_num), "-W", str(timeout_s), ip]
 
-        result = run(cmd, stdout=PIPE).stdout.decode('UTF-8', errors='ignore')
+        # Guard against ping hanging: hard timeout = ping timeout + 5s safety margin
+        proc_timeout = (timeout_ms / 1000) * pings_num + 5
+        try:
+            result = run(cmd, stdout=PIPE, timeout=proc_timeout).stdout.decode('UTF-8', errors='ignore')
+        except Exception:
+            return None
 
         if system == 'windows':
             # Example: "Average = 23ms"
@@ -299,6 +303,9 @@ class Scanner:
     def _scan_one(self, domain: str, ip: str, pings_num: int, timeout_ms: int,
                   excl_countries: Optional[set], include_countries: Optional[set], city_reader, country_reader,
                   lock: threading.Lock, progress: Dict[str, int]) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str, Optional[float], Optional[float]]]]]:
+        if progress.get("done", 0) == 0 and progress.get("_first_task_started") is None:
+            progress["_first_task_started"] = True
+            print(f"DEBUG _scan_one: first task started for {domain} ({ip})", file=sys.stderr, flush=True)
         try:
             try:
                 country_result = country_reader.country(ip)
