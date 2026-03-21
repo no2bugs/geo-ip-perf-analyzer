@@ -767,6 +767,8 @@ tr:hover td {
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.25rem;
+    position: relative;
+    overflow: visible;
 }
 
 .card-header {
@@ -1139,6 +1141,7 @@ tr:hover td {
 .country-picker,
 .country-filter-wrapper {
     position: relative;
+    z-index: 50;
 }
 
 .country-dropdown,
@@ -1146,12 +1149,12 @@ tr:hover td {
     position: absolute;
     top: 100%;
     left: 0;
-    z-index: 100;
-    background: #1e293b;
-    border: 1px solid var(--border-color);
+    z-index: 200;
+    background: #0f1729;
+    border: 1px solid #3b82f6;
     border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    width: 300px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    width: 340px;
     max-height: 350px;
     display: flex;
     flex-direction: column;
