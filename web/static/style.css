@@ -1189,6 +1189,7 @@ tr:hover td {
 /* ========================================
    Logs Page
    ======================================== */
+.logs-page { max-width: 95%; }
 .logs-page .tab-content { padding-top: 0.5rem; }
 
 .log-viewer-card {
