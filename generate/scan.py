@@ -128,12 +128,16 @@ class Scanner:
         start_time = time.strftime("%d/%m/%Y %H:%M:%S")
 
         progress = progress_container if progress_container is not None else {"done": 0, "total": 0}
-        progress["total"] = len(domains)
-        progress["message"] = f"Resolving DNS for {len(domains)} servers..."
+        num_domains = len(domains)
+        progress["total"] = num_domains
+        progress["done"] = 0
+        progress["message"] = f"Resolving DNS for {num_domains} servers..."
         targets = []
-        for domain in domains:
+        for idx, domain in enumerate(domains, 1):
             if stop_event and stop_event.is_set():
                 break
+            progress["done"] = idx
+            progress["message"] = f"Resolving DNS... ({idx}/{num_domains})"
             try:
                 resolv = socket.gethostbyname_ex(domain)
                 ips = resolv[2]
