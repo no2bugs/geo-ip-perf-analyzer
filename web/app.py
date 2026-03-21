@@ -881,13 +881,40 @@ def top_upload():
     items.sort(key=lambda x: x['tx_speed_mbps'], reverse=True)
     return jsonify(items[:n])
 
+import re as _re
+_LOG_LINE_RE = _re.compile(r'^(\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2}:\d{2}))\s+\[(\w+)]\s+(.*)')
+
 @app.route('/api/logs')
 def get_logs():
-    return jsonify(log_buffer.get_logs())
+    """Return last 200 log entries from the shared general.log file."""
+    fpath = os.path.join(LOG_DIR, 'general.log')
+    if not os.path.exists(fpath):
+        return jsonify([])
+    with open(fpath, 'r', encoding='utf-8', errors='replace') as f:
+        all_lines = f.readlines()
+    tail = all_lines[-200:]
+    entries = []
+    for line in tail:
+        line = line.rstrip()
+        if not line:
+            continue
+        m = _LOG_LINE_RE.match(line)
+        if m:
+            entries.append({"timestamp": m.group(2), "level": m.group(3), "message": m.group(4)})
+        elif entries:
+            # Continuation line — append to previous entry
+            entries[-1]["message"] += "\n" + line
+    return jsonify(entries)
 
 @app.route('/api/logs/clear', methods=['POST'])
 def clear_logs():
-    log_buffer.clear()
+    """Truncate the general.log file."""
+    fpath = os.path.join(LOG_DIR, 'general.log')
+    try:
+        with open(fpath, 'w', encoding='utf-8') as f:
+            pass
+    except Exception:
+        pass
     return jsonify({"status": "cleared"})
 
 LOG_FILE_MAP = {'general': 'general.log', 'error': 'error.log', 'scan': 'scan.log'}
