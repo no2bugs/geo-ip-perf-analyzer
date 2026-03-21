@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isScanning = false;
     let pollInterval = null;
+    let scanStartTime = null;
     let allResults = [];
     let filteredResults = []; // Track filtered results separately for pagination
     let selectedDomains = new Set();
@@ -113,12 +114,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function _fmtDuration(sec) {
+        sec = Math.round(sec);
+        if (sec < 60) return sec + 's';
+        const m = Math.floor(sec / 60), s = sec % 60;
+        if (m < 60) return m + 'm ' + s + 's';
+        const h = Math.floor(m / 60);
+        return h + 'h ' + (m % 60) + 'm';
+    }
+
     function updateStatusUI(data) {
+        const wasScanning = isScanning;
         isScanning = data.active;
         startBtn.disabled = isScanning;
 
         statusText.textContent = isScanning ? "Scanning..." : "Ready";
         globalStatus.className = 'dot ' + (isScanning ? 'running' : 'completed');
+
+        // Track scan start time
+        if (isScanning && !wasScanning) {
+            scanStartTime = Date.now();
+        } else if (!isScanning) {
+            scanStartTime = null;
+        }
+
+        // Build tooltip with elapsed / ETA
+        const statusIndicator = document.getElementById('globalStatus');
+        const progressContainer = document.querySelector('.progress-bar-container');
+        if (isScanning && scanStartTime && data.progress) {
+            const { done, total } = data.progress;
+            const elapsed = (Date.now() - scanStartTime) / 1000;
+            let tip = 'Elapsed: ' + _fmtDuration(elapsed);
+            if (done > 0 && total > 0) {
+                const avgPerItem = elapsed / done;
+                const remaining = avgPerItem * (total - done);
+                tip += '\nETA: ' + _fmtDuration(remaining);
+            }
+            statusIndicator.title = tip;
+            if (progressContainer) progressContainer.title = tip;
+        } else {
+            statusIndicator.title = '';
+            if (progressContainer) progressContainer.title = '';
+        }
 
         // Show/hide stop button
         if (isScanning) {
