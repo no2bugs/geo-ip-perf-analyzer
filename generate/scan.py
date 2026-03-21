@@ -307,9 +307,6 @@ class Scanner:
     def _scan_one(self, domain: str, ip: str, pings_num: int, timeout_ms: int,
                   excl_countries: Optional[set], include_countries: Optional[set], city_reader, country_reader,
                   lock: threading.Lock, progress: Dict[str, int]) -> Optional[Tuple[str, Optional[Tuple[str, float, str, str, str, Optional[float], Optional[float]]]]]:
-        if progress.get("done", 0) == 0 and progress.get("_first_task_started") is None:
-            progress["_first_task_started"] = True
-            print(f"DEBUG _scan_one: first task started for {domain} ({ip})", file=sys.stderr, flush=True)
         try:
             try:
                 country_result = country_reader.country(ip)
