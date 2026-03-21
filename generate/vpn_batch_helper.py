@@ -113,8 +113,10 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
                     else:
                         print(f"DEBUG: Speedtest failed for {domain}", file=sys.stderr, flush=True)
+                        logger.info(f"✗ {domain}: Speedtest failed (no result)")
                 else:
                     print(f"DEBUG: VPN connection failed for {domain}", file=sys.stderr, flush=True)
+                    logger.info(f"✗ {domain}: VPN connection failed")
                     
                 # Disconnect VPN
                 vpn_manager.disconnect()
