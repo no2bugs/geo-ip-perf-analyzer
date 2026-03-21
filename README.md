@@ -5,8 +5,13 @@
 #### Features
 
 - **New Web UI**: Modern dashboard to trigger scans and view results with live progress.
+- **Config & Automation**: Dedicated `/config` page with schedules (daily/weekly/monthly/custom), OVPN settings, and ntfy push notifications.
+- **Help & Logs Pages**: `/help` page with usage guide and API docs. `/logs` page with General/Error/Scan log viewer.
+- **REST API**: Endpoints for scan control, results, config, schedule management, and programmatic upload.
 - **Docker Support**: Easy deployment via `docker-compose`.
 - **VPN Speedtest**: Optionally test download/upload speeds via VPN endpoints.
+- **Smart Sorting**: Default sort by download speed (fallback to latency). Active column highlighted with arrow indicator.
+- **Search**: Filter results by domain, IP address, country, or city.
 - Reads list of domains/IPs, pings them and generates latency report.
 - Records IP location for each target by country and city.
 - Records number of servers in each location.
@@ -93,7 +98,7 @@ options:
                         Search results by city name
 
   -b SORT_BY, --sort-by SORT_BY
-                        Sort --country-stats or --city-stats by field/column number. Default is 4 (LATENCY)
+                        Sort --country-stats or --city-stats by field/column number. Default is 6 (DL speed, fallback to LATENCY)
 
   -n MIN_LATENCY, --min-latency MIN_LATENCY
                         Filter results by minimum latency (integer/float). Default is 0
