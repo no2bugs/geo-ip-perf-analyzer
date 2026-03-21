@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setDayButtons('cfgVpnDays', vpn.days);
         vpnSelectedCountries = vpn.countries || [];
         loadVpnCountries();
+        document.getElementById('cfgVpnLastRun').textContent = vpn.last_run ? `Last run: ${vpn.last_run}` : '';
 
         const geo = config.schedule?.geolite_update || {};
         document.getElementById('cfgGeoEnabled').checked = geo.enabled || false;
@@ -90,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgGeoDom').value = geo.dom || 1;
         document.getElementById('cfgGeoTime').value = geo.time || '04:00';
         setDayButtons('cfgGeoDays', geo.days);
+        document.getElementById('cfgGeoLastRun').textContent = geo.last_run ? `Last run: ${geo.last_run}` : '';
 
         const ovpn = config.schedule?.ovpn_update || {};
         document.getElementById('cfgOvpnSchedEnabled').checked = ovpn.enabled || false;
@@ -99,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgOvpnTime').value = ovpn.time || '05:00';
         setDayButtons('cfgOvpnDays', ovpn.days);
         document.getElementById('cfgOvpnUrl').value = ovpn.download_url || config.ovpn?.download_url || '';
+        document.getElementById('cfgOvpnLastRun').textContent = ovpn.last_run ? `Last run: ${ovpn.last_run}` : '';
 
         const srv = config.schedule?.servers_update || {};
         document.getElementById('cfgSrvEnabled').checked = srv.enabled || false;
@@ -108,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgSrvDom').value = srv.dom || 1;
         document.getElementById('cfgSrvTime').value = srv.time || '06:00';
         setDayButtons('cfgSrvDays', srv.days);
+        document.getElementById('cfgSrvLastRun').textContent = srv.last_run ? `Last run: ${srv.last_run}` : '';
 
         const ntfy = config.notifications?.ntfy || {};
         document.getElementById('cfgNtfyEnabled').checked = ntfy.enabled || false;
@@ -371,9 +375,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderVpnCountryList(filter = '') {
         vpnCountryList.innerHTML = '';
         const lf = filter.toLowerCase();
-        vpnCountriesData
-            .filter(d => !lf || d.country.toLowerCase().includes(lf))
-            .forEach(d => {
+        const filtered = vpnCountriesData.filter(d => !lf || d.country.toLowerCase().includes(lf));
+        // Sort: checked countries first, then alphabetical
+        filtered.sort((a, b) => {
+            const aChecked = vpnSelectedCountries.includes(a.country);
+            const bChecked = vpnSelectedCountries.includes(b.country);
+            if (aChecked !== bChecked) return aChecked ? -1 : 1;
+            return a.country.localeCompare(b.country);
+        });
+        filtered.forEach(d => {
                 const label = document.createElement('label');
                 label.className = 'country-option';
                 const cb = document.createElement('input');

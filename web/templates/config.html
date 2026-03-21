@@ -19,8 +19,8 @@
 
         <nav class="config-tabs">
             <button class="tab-btn active" data-tab="schedules">Schedules</button>
-            <button class="tab-btn" data-tab="credentials">Credentials</button>
             <button class="tab-btn" data-tab="notifications">Notifications</button>
+            <button class="tab-btn" data-tab="credentials">Credentials</button>
         </nav>
 
         <!-- ==================== SCHEDULES TAB ==================== -->
@@ -38,6 +38,7 @@
                     </div>
                 </div>
                 <p class="card-desc">Runs VPN throughput tests on all servers in results.</p>
+                <p class="card-last-run" id="cfgVpnLastRun"></p>
                 <div id="cfgVpnOptions" class="card-options">
                     <div class="interval-row">
                         <div class="field">
@@ -110,6 +111,7 @@
                     </div>
                 </div>
                 <p class="card-desc">Download latest GeoLite2 databases from GitHub.</p>
+                <p class="card-last-run" id="cfgGeoLastRun"></p>
                 <div id="cfgGeoOptions" class="card-options">
                     <div class="interval-row">
                         <div class="field">
@@ -169,6 +171,7 @@
                     </div>
                 </div>
                 <p class="card-desc">Download fresh OVPN configs from the configured URL.</p>
+                <p class="card-last-run" id="cfgOvpnLastRun"></p>
                 <div id="cfgOvpnSchedOptions" class="card-options">
                     <div class="field field-full" style="margin-bottom: 0.75rem;">
                         <label>Download URL</label>
@@ -233,6 +236,7 @@
                     </div>
                 </div>
                 <p class="card-desc">Run shell scripts and merge their output into the servers list (one hostname per line).</p>
+                <p class="card-last-run" id="cfgSrvLastRun"></p>
                 <div id="cfgSrvOptions" class="card-options">
                     <div class="commands-list" id="cfgSrvCommands"></div>
                     <button type="button" class="secondary-btn btn-sm" id="addSrvCommandBtn" style="margin-bottom: 0.75rem;">+ Add Step</button>
@@ -283,31 +287,6 @@
             </section>
         </div>
 
-        <!-- ==================== CREDENTIALS TAB ==================== -->
-        <div class="tab-content" id="tab-credentials">
-            <section class="config-card">
-                <div class="card-header">
-                    <h3>VPN Credentials</h3>
-                </div>
-                <p class="card-desc">Username and password for OpenVPN authentication. Stored in <code>.env</code> file on the host (not tracked in code).</p>
-                <div class="field field-full" style="margin-bottom: 0.75rem;">
-                    <label>VPN Username</label>
-                    <input type="text" id="cfgVpnUsername" placeholder="VPN service username" autocomplete="off">
-                </div>
-                <div class="field field-full" style="margin-bottom: 0.75rem;">
-                    <label>VPN Password</label>
-                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                        <input type="password" id="cfgVpnPassword" placeholder="VPN service password" autocomplete="new-password" style="flex:1;">
-                        <button type="button" class="secondary-btn btn-sm" id="togglePwdBtn" title="Show/hide password">&#128065;</button>
-                    </div>
-                </div>
-                <div style="display:flex; gap:0.75rem; align-items:center;">
-                    <button type="button" id="saveCredsBtn" class="primary-btn">Save Credentials</button>
-                    <span class="config-status" id="credsStatus"></span>
-                </div>
-            </section>
-        </div>
-
         <!-- ==================== NOTIFICATIONS TAB ==================== -->
         <div class="tab-content" id="tab-notifications">
             <section class="config-card">
@@ -346,6 +325,31 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== CREDENTIALS TAB ==================== -->
+        <div class="tab-content" id="tab-credentials">
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>VPN Credentials</h3>
+                </div>
+                <p class="card-desc">Username and password for OpenVPN authentication. Stored in <code>.env</code> file on the host (not tracked in code).</p>
+                <div class="field field-full" style="margin-bottom: 0.75rem;">
+                    <label>VPN Username</label>
+                    <input type="text" id="cfgVpnUsername" placeholder="VPN service username" autocomplete="off">
+                </div>
+                <div class="field field-full" style="margin-bottom: 0.75rem;">
+                    <label>VPN Password</label>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="password" id="cfgVpnPassword" placeholder="VPN service password" autocomplete="new-password" style="flex:1;">
+                        <button type="button" class="secondary-btn btn-sm" id="togglePwdBtn" title="Show/hide password">&#128065;</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.75rem; align-items:center;">
+                    <button type="button" id="saveCredsBtn" class="primary-btn">Save Credentials</button>
+                    <span class="config-status" id="credsStatus"></span>
                 </div>
             </section>
         </div>

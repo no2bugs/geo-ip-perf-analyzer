@@ -192,6 +192,16 @@ def _format_duration(seconds):
         parts.append(f"{secs} seconds")
     return " and ".join(parts)
 
+_config_lock = threading.Lock()
+
+def _update_last_run(schedule_key):
+    """Update last_run timestamp for a schedule."""
+    from datetime import datetime
+    with _config_lock:
+        config = load_config()
+        config.setdefault('schedule', {}).setdefault(schedule_key, {})['last_run'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+        save_config(config)
+
 def send_ntfy(event, title, message, priority='default'):
     config = load_config()
     ntfy = config.get('notifications', {}).get('ntfy', {})
@@ -582,6 +592,7 @@ def vpn_speedtest():
         finally:
             scan_active = False
             _flush_scan_state()
+            _update_last_run('vpn_speedtest')
     
     thread = threading.Thread(target=run_vpn_speedtest_background)
     thread.daemon = True
@@ -834,6 +845,12 @@ def post_config():
         return jsonify({'status': 'error', 'message': 'OVPN Config Update requires a Download URL. Disable the schedule or provide a URL.'}), 400
     # Strip legacy ovpn top-level key
     data.pop('ovpn', None)
+    # Preserve last_run timestamps from existing config
+    existing = load_config()
+    for key in ['vpn_speedtest', 'geolite_update', 'ovpn_update', 'servers_update']:
+        lr = existing.get('schedule', {}).get(key, {}).get('last_run')
+        if lr:
+            data.setdefault('schedule', {}).setdefault(key, {}).setdefault('last_run', lr)
     save_config(data)
     apply_schedules()
     return jsonify({'status': 'ok'})
@@ -1149,6 +1166,7 @@ def scheduled_vpn_speedtest():
     finally:
         scan_active = False
         _flush_scan_state()
+        _update_last_run('vpn_speedtest')
 
 def scheduled_geolite_update():
     try:
@@ -1158,6 +1176,8 @@ def scheduled_geolite_update():
     except Exception as e:
         logging.error(f'Scheduled GeoLite2 update failed: {e}')
         send_ntfy('geolite_update_error', 'GeoLite2 Update Failed', str(e), priority='high')
+    finally:
+        _update_last_run('geolite_update')
 
 def scheduled_ovpn_update():
     config = load_config()
@@ -1171,6 +1191,8 @@ def scheduled_ovpn_update():
     except Exception as e:
         logging.error(f'Scheduled OVPN update failed: {e}')
         send_ntfy('ovpn_update_error', 'OVPN Update Failed', str(e), priority='high')
+    finally:
+        _update_last_run('ovpn_update')
 
 def _get_servers_commands(config):
     """Get list of enabled commands from config, with backward compat for single 'command' field."""
@@ -1220,6 +1242,8 @@ def scheduled_servers_update():
     except Exception as e:
         logging.error(f'Scheduled servers update failed: {e}')
         send_ntfy('servers_update_error', 'Servers List Update Failed', str(e), priority='high')
+    finally:
+        _update_last_run('servers_update')
 
 def _build_cron_kwargs(cfg):
     """Build CronTrigger kwargs from a schedule config block."""

@@ -417,9 +417,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const countries = buildCountryFilter();
         const lf = filter.toLowerCase();
         countryFilterList.innerHTML = '';
-        countries
-            .filter(([c]) => !lf || c.toLowerCase().includes(lf))
-            .forEach(([country, count]) => {
+        const filtered = countries.filter(([c]) => !lf || c.toLowerCase().includes(lf));
+        // Sort: checked countries first, then alphabetical
+        filtered.sort((a, b) => {
+            const aChecked = selectedCountries.has(a[0]);
+            const bChecked = selectedCountries.has(b[0]);
+            if (aChecked !== bChecked) return aChecked ? -1 : 1;
+            return a[0].localeCompare(b[0]);
+        });
+        filtered.forEach(([country, count]) => {
                 const label = document.createElement('label');
                 label.className = 'country-option';
                 const cb = document.createElement('input');
