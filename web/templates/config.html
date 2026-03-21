@@ -39,19 +39,6 @@
                 </div>
                 <p class="card-desc">Runs VPN throughput tests on all servers in results.</p>
                 <div id="cfgVpnOptions" class="card-options">
-                    <div class="field" style="margin-bottom: 0.75rem;">
-                        <label>Countries</label>
-                        <div class="country-picker" id="cfgVpnCountryPicker">
-                            <button type="button" class="secondary-btn btn-sm" id="cfgVpnCountryBtn">All Countries</button>
-                            <div class="country-dropdown" id="cfgVpnCountryDropdown" style="display:none;">
-                                <div class="country-dropdown-header">
-                                    <input type="text" class="country-search" placeholder="Filter countries..." id="cfgVpnCountrySearch">
-                                    <button type="button" class="secondary-btn btn-sm" id="cfgVpnCountryClear">Clear All</button>
-                                </div>
-                                <div class="country-list" id="cfgVpnCountryList"></div>
-                            </div>
-                        </div>
-                    </div>
                     <div class="interval-row">
                         <div class="field">
                             <label>Interval</label>
@@ -81,6 +68,19 @@
                         <div class="field">
                             <label>Time</label>
                             <input type="time" id="cfgVpnTime" value="03:00">
+                        </div>
+                        <div class="field">
+                            <label>Countries</label>
+                            <div class="country-picker" id="cfgVpnCountryPicker">
+                                <button type="button" class="secondary-btn btn-sm" id="cfgVpnCountryBtn">All Countries</button>
+                                <div class="country-dropdown" id="cfgVpnCountryDropdown" style="display:none;">
+                                    <div class="country-dropdown-header">
+                                        <input type="text" class="country-search" placeholder="Filter countries..." id="cfgVpnCountrySearch">
+                                        <button type="button" class="secondary-btn btn-sm" id="cfgVpnCountryClear">Clear All</button>
+                                    </div>
+                                    <div class="country-list" id="cfgVpnCountryList"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="day-picker" id="cfgVpnDays">
