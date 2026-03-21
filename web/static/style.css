@@ -966,6 +966,37 @@ tr:hover td {
     padding: 0.45rem 1rem;
 }
 
+/* Card header with actions */
+.card-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Run Now button */
+.run-now-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.run-now-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.run-now-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Config footer */
 .config-footer {
     display: flex;

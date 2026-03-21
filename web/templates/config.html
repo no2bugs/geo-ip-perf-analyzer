@@ -29,10 +29,13 @@
             <section class="config-card">
                 <div class="card-header">
                     <h3>VPN Speedtest</h3>
-                    <label class="switch">
-                        <input type="checkbox" id="cfgVpnEnabled">
-                        <span class="slider"></span>
-                    </label>
+                    <div class="card-header-actions">
+                        <button type="button" class="run-now-btn" data-job="vpn_speedtest" title="Run now">&#9654; Run Now</button>
+                        <label class="switch">
+                            <input type="checkbox" id="cfgVpnEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
                 <p class="card-desc">Runs VPN throughput tests on all servers in results.</p>
                 <div id="cfgVpnOptions" class="card-options">
@@ -42,6 +45,7 @@
                             <select id="cfgVpnInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
                                 <option value="custom">Custom</option>
                             </select>
                         </div>
@@ -56,6 +60,10 @@
                                 <option value="saturday">Saturday</option>
                                 <option value="sunday">Sunday</option>
                             </select>
+                        </div>
+                        <div class="field" id="cfgVpnDomWrap">
+                            <label>Day of Month</label>
+                            <input type="number" id="cfgVpnDom" min="1" max="28" value="1">
                         </div>
                         <div class="field">
                             <label>Time</label>
@@ -80,10 +88,13 @@
             <section class="config-card">
                 <div class="card-header">
                     <h3>GeoLite2 DB Update</h3>
-                    <label class="switch">
-                        <input type="checkbox" id="cfgGeoEnabled">
-                        <span class="slider"></span>
-                    </label>
+                    <div class="card-header-actions">
+                        <button type="button" class="run-now-btn" data-job="geolite_update" title="Run now">&#9654; Run Now</button>
+                        <label class="switch">
+                            <input type="checkbox" id="cfgGeoEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
                 <p class="card-desc">Download latest GeoLite2 databases from GitHub.</p>
                 <div id="cfgGeoOptions" class="card-options">
@@ -93,6 +104,7 @@
                             <select id="cfgGeoInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly" selected>Weekly</option>
+                                <option value="monthly">Monthly</option>
                                 <option value="custom">Custom</option>
                             </select>
                         </div>
@@ -107,6 +119,10 @@
                                 <option value="saturday">Saturday</option>
                                 <option value="sunday" selected>Sunday</option>
                             </select>
+                        </div>
+                        <div class="field" id="cfgGeoDomWrap">
+                            <label>Day of Month</label>
+                            <input type="number" id="cfgGeoDom" min="1" max="28" value="1">
                         </div>
                         <div class="field">
                             <label>Time</label>
@@ -131,10 +147,13 @@
             <section class="config-card">
                 <div class="card-header">
                     <h3>OVPN Config Update</h3>
-                    <label class="switch">
-                        <input type="checkbox" id="cfgOvpnSchedEnabled">
-                        <span class="slider"></span>
-                    </label>
+                    <div class="card-header-actions">
+                        <button type="button" class="run-now-btn" data-job="ovpn_update" title="Run now">&#9654; Run Now</button>
+                        <label class="switch">
+                            <input type="checkbox" id="cfgOvpnSchedEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
                 <p class="card-desc">Download fresh OVPN configs from the configured URL.</p>
                 <div id="cfgOvpnSchedOptions" class="card-options">
@@ -144,6 +163,7 @@
                             <select id="cfgOvpnInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly" selected>Weekly</option>
+                                <option value="monthly">Monthly</option>
                                 <option value="custom">Custom</option>
                             </select>
                         </div>
@@ -159,12 +179,80 @@
                                 <option value="sunday" selected>Sunday</option>
                             </select>
                         </div>
+                        <div class="field" id="cfgOvpnDomWrap">
+                            <label>Day of Month</label>
+                            <input type="number" id="cfgOvpnDom" min="1" max="28" value="1">
+                        </div>
                         <div class="field">
                             <label>Time</label>
                             <input type="time" id="cfgOvpnTime" value="05:00">
                         </div>
                     </div>
                     <div class="day-picker" id="cfgOvpnDays">
+                        <label>Days</label>
+                        <div class="day-btns">
+                            <button type="button" class="day-btn" data-day="monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="sunday">Sun</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Servers List Update</h3>
+                    <div class="card-header-actions">
+                        <button type="button" class="run-now-btn" data-job="servers_update" title="Run now">&#9654; Run Now</button>
+                        <label class="switch">
+                            <input type="checkbox" id="cfgSrvEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <p class="card-desc">Run a shell command and update the servers list from its output (one hostname per line).</p>
+                <div id="cfgSrvOptions" class="card-options">
+                    <div class="field field-full">
+                        <label>Command</label>
+                        <input type="text" id="cfgSrvCommand" placeholder="curl --silent &quot;https://api.nordvpn.com/v1/servers/...&quot; | jq -r '.[] | .hostname'">
+                        <span class="field-hint">Shell command whose stdout produces one hostname per line</span>
+                    </div>
+                    <div class="interval-row">
+                        <div class="field">
+                            <label>Interval</label>
+                            <select id="cfgSrvInterval">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgSrvDayWrap">
+                            <label>Day</label>
+                            <select id="cfgSrvDay">
+                                <option value="monday">Monday</option>
+                                <option value="tuesday">Tuesday</option>
+                                <option value="wednesday">Wednesday</option>
+                                <option value="thursday">Thursday</option>
+                                <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
+                                <option value="sunday" selected>Sunday</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgSrvDomWrap">
+                            <label>Day of Month</label>
+                            <input type="number" id="cfgSrvDom" min="1" max="28" value="1">
+                        </div>
+                        <div class="field">
+                            <label>Time</label>
+                            <input type="time" id="cfgSrvTime" value="06:00">
+                        </div>
+                    </div>
+                    <div class="day-picker" id="cfgSrvDays">
                         <label>Days</label>
                         <div class="day-btns">
                             <button type="button" class="day-btn" data-day="monday">Mon</button>
@@ -222,12 +310,14 @@
                                 <label class="event-label"><input type="checkbox" id="cfgEvtVpnComplete"> VPN speedtest complete</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtGeoUpdated"> GeoLite2 updated</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtOvpnUpdated"> OVPN configs updated</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtSrvUpdated"> Servers list updated</label>
                             </div>
                             <div class="events-col">
                                 <span class="events-col-title">Errors</span>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtVpnError" checked> VPN speedtest error</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtGeoError" checked> GeoLite2 update error</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtOvpnError" checked> OVPN update error</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtSrvError" checked> Servers list update error</label>
                             </div>
                         </div>
                     </div>

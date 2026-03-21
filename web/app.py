@@ -104,6 +104,7 @@ DEFAULT_CONFIG = {
             'interval': 'daily',
             'day': 'monday',
             'days': [],
+            'dom': 1,
             'time': '03:00'
         },
         'geolite_update': {
@@ -111,6 +112,7 @@ DEFAULT_CONFIG = {
             'interval': 'weekly',
             'day': 'sunday',
             'days': [],
+            'dom': 1,
             'time': '04:00'
         },
         'ovpn_update': {
@@ -118,7 +120,17 @@ DEFAULT_CONFIG = {
             'interval': 'weekly',
             'day': 'sunday',
             'days': [],
+            'dom': 1,
             'time': '05:00'
+        },
+        'servers_update': {
+            'enabled': False,
+            'interval': 'weekly',
+            'day': 'sunday',
+            'days': [],
+            'dom': 1,
+            'time': '06:00',
+            'command': ''
         }
     },
     'notifications': {
@@ -131,7 +143,9 @@ DEFAULT_CONFIG = {
                 'geolite_updated': False,
                 'geolite_update_error': True,
                 'ovpn_updated': False,
-                'ovpn_update_error': True
+                'ovpn_update_error': True,
+                'servers_updated': False,
+                'servers_update_error': True
             }
         }
     },
@@ -695,6 +709,22 @@ def test_notification():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/api/schedule/run', methods=['POST'])
+def run_schedule_now():
+    data = request.json or {}
+    job_name = data.get('job', '')
+    runners = {
+        'vpn_speedtest': lambda: threading.Thread(target=scheduled_vpn_speedtest, daemon=True).start(),
+        'geolite_update': lambda: threading.Thread(target=scheduled_geolite_update, daemon=True).start(),
+        'ovpn_update': lambda: threading.Thread(target=scheduled_ovpn_update, daemon=True).start(),
+        'servers_update': lambda: threading.Thread(target=scheduled_servers_update, daemon=True).start(),
+    }
+    runner = runners.get(job_name)
+    if not runner:
+        return jsonify({'status': 'error', 'message': f'Unknown job: {job_name}'}), 400
+    runner()
+    return jsonify({'status': 'ok', 'message': f'{job_name} started'})
+
 # ============================================================
 # Top Results API (for programmatic access)
 # ============================================================
@@ -885,6 +915,36 @@ def scheduled_ovpn_update():
         logging.error(f'Scheduled OVPN update failed: {e}')
         send_ntfy('ovpn_update_error', 'OVPN Update Failed', str(e), priority='high')
 
+def _run_servers_update_command(command):
+    """Run a shell command and update servers.list from its stdout."""
+    logging.info(f"Running servers update command...")
+    result = subprocess.run(
+        command, shell=True, capture_output=True, text=True, timeout=120
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Command exited with code {result.returncode}: {result.stderr.strip()}")
+    lines = [line.strip() for line in result.stdout.splitlines()]
+    lines = list(dict.fromkeys(line for line in lines if line))
+    if not lines:
+        raise RuntimeError("Command produced no output")
+    with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+    logging.info(f"servers.list updated from command: {len(lines)} entries")
+    return len(lines)
+
+def scheduled_servers_update():
+    config = load_config()
+    command = config.get('schedule', {}).get('servers_update', {}).get('command', '')
+    if not command:
+        logging.info("Scheduled servers update skipped: no command configured")
+        return
+    try:
+        count = _run_servers_update_command(command)
+        send_ntfy('servers_updated', 'Servers List Updated', f'{count} servers loaded')
+    except Exception as e:
+        logging.error(f'Scheduled servers update failed: {e}')
+        send_ntfy('servers_update_error', 'Servers List Update Failed', str(e), priority='high')
+
 def _build_cron_kwargs(cfg):
     """Build CronTrigger kwargs from a schedule config block."""
     parts = str(cfg.get('time', '03:00')).split(':')
@@ -893,6 +953,8 @@ def _build_cron_kwargs(cfg):
     interval = cfg.get('interval', 'daily')
     if interval == 'weekly':
         kw['day_of_week'] = DAY_MAP.get(cfg.get('day', 'monday'), 'mon')
+    elif interval == 'monthly':
+        kw['day'] = max(1, min(28, int(cfg.get('dom', 1))))
     elif interval == 'custom':
         days = cfg.get('days', [])
         if days:
@@ -920,6 +982,12 @@ def apply_schedules():
     if ovpn_cfg.get('enabled'):
         kw = _build_cron_kwargs(ovpn_cfg)
         scheduler.add_job(scheduled_ovpn_update, CronTrigger(**kw), id='ovpn', replace_existing=True)
+
+    # Servers update schedule
+    srv_cfg = config.get('schedule', {}).get('servers_update', {})
+    if srv_cfg.get('enabled') and srv_cfg.get('command'):
+        kw = _build_cron_kwargs(srv_cfg)
+        scheduler.add_job(scheduled_servers_update, CronTrigger(**kw), id='servers_update', replace_existing=True)
 
     jobs = scheduler.get_jobs()
     logging.info(f"Scheduler updated: {len(jobs)} job(s) active")

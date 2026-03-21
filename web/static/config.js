@@ -23,9 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     function updateVisibility() {
         const sections = [
-            { enabled: 'cfgVpnEnabled', opts: 'cfgVpnOptions', interval: 'cfgVpnInterval', dayWrap: 'cfgVpnDayWrap', dayPicker: 'cfgVpnDays' },
-            { enabled: 'cfgGeoEnabled', opts: 'cfgGeoOptions', interval: 'cfgGeoInterval', dayWrap: 'cfgGeoDayWrap', dayPicker: 'cfgGeoDays' },
-            { enabled: 'cfgOvpnSchedEnabled', opts: 'cfgOvpnSchedOptions', interval: 'cfgOvpnInterval', dayWrap: 'cfgOvpnDayWrap', dayPicker: 'cfgOvpnDays' }
+            { enabled: 'cfgVpnEnabled', opts: 'cfgVpnOptions', interval: 'cfgVpnInterval', dayWrap: 'cfgVpnDayWrap', dayPicker: 'cfgVpnDays', domWrap: 'cfgVpnDomWrap' },
+            { enabled: 'cfgGeoEnabled', opts: 'cfgGeoOptions', interval: 'cfgGeoInterval', dayWrap: 'cfgGeoDayWrap', dayPicker: 'cfgGeoDays', domWrap: 'cfgGeoDomWrap' },
+            { enabled: 'cfgOvpnSchedEnabled', opts: 'cfgOvpnSchedOptions', interval: 'cfgOvpnInterval', dayWrap: 'cfgOvpnDayWrap', dayPicker: 'cfgOvpnDays', domWrap: 'cfgOvpnDomWrap' },
+            { enabled: 'cfgSrvEnabled', opts: 'cfgSrvOptions', interval: 'cfgSrvInterval', dayWrap: 'cfgSrvDayWrap', dayPicker: 'cfgSrvDays', domWrap: 'cfgSrvDomWrap' }
         ];
         sections.forEach(s => {
             const on = document.getElementById(s.enabled).checked;
@@ -33,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const intv = document.getElementById(s.interval).value;
             document.getElementById(s.dayWrap).style.display = intv === 'weekly' ? '' : 'none';
             document.getElementById(s.dayPicker).style.display = intv === 'custom' ? '' : 'none';
+            document.getElementById(s.domWrap).style.display = intv === 'monthly' ? '' : 'none';
         });
 
         const ntfyOn = document.getElementById('cfgNtfyEnabled').checked;
@@ -40,9 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Attach listeners
-    ['cfgVpnEnabled', 'cfgGeoEnabled', 'cfgOvpnSchedEnabled', 'cfgNtfyEnabled'].forEach(id =>
+    ['cfgVpnEnabled', 'cfgGeoEnabled', 'cfgOvpnSchedEnabled', 'cfgSrvEnabled', 'cfgNtfyEnabled'].forEach(id =>
         document.getElementById(id).addEventListener('change', updateVisibility));
-    ['cfgVpnInterval', 'cfgGeoInterval', 'cfgOvpnInterval'].forEach(id =>
+    ['cfgVpnInterval', 'cfgGeoInterval', 'cfgOvpnInterval', 'cfgSrvInterval'].forEach(id =>
         document.getElementById(id).addEventListener('change', updateVisibility));
 
     // ========================================
@@ -75,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgVpnEnabled').checked = vpn.enabled || false;
         document.getElementById('cfgVpnInterval').value = vpn.interval || 'daily';
         document.getElementById('cfgVpnDay').value = vpn.day || 'monday';
+        document.getElementById('cfgVpnDom').value = vpn.dom || 1;
         document.getElementById('cfgVpnTime').value = vpn.time || '03:00';
         setDayButtons('cfgVpnDays', vpn.days);
 
@@ -82,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgGeoEnabled').checked = geo.enabled || false;
         document.getElementById('cfgGeoInterval').value = geo.interval || 'weekly';
         document.getElementById('cfgGeoDay').value = geo.day || 'sunday';
+        document.getElementById('cfgGeoDom').value = geo.dom || 1;
         document.getElementById('cfgGeoTime').value = geo.time || '04:00';
         setDayButtons('cfgGeoDays', geo.days);
 
@@ -89,8 +93,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgOvpnSchedEnabled').checked = ovpn.enabled || false;
         document.getElementById('cfgOvpnInterval').value = ovpn.interval || 'weekly';
         document.getElementById('cfgOvpnDay').value = ovpn.day || 'sunday';
+        document.getElementById('cfgOvpnDom').value = ovpn.dom || 1;
         document.getElementById('cfgOvpnTime').value = ovpn.time || '05:00';
         setDayButtons('cfgOvpnDays', ovpn.days);
+
+        const srv = config.schedule?.servers_update || {};
+        document.getElementById('cfgSrvEnabled').checked = srv.enabled || false;
+        document.getElementById('cfgSrvCommand').value = srv.command || '';
+        document.getElementById('cfgSrvInterval').value = srv.interval || 'weekly';
+        document.getElementById('cfgSrvDay').value = srv.day || 'sunday';
+        document.getElementById('cfgSrvDom').value = srv.dom || 1;
+        document.getElementById('cfgSrvTime').value = srv.time || '06:00';
+        setDayButtons('cfgSrvDays', srv.days);
 
         document.getElementById('cfgOvpnUrl').value = config.ovpn?.download_url || '';
 
@@ -103,6 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgEvtGeoError').checked = ntfy.events?.geolite_update_error !== false;
         document.getElementById('cfgEvtOvpnUpdated').checked = ntfy.events?.ovpn_updated || false;
         document.getElementById('cfgEvtOvpnError').checked = ntfy.events?.ovpn_update_error !== false;
+        document.getElementById('cfgEvtSrvUpdated').checked = ntfy.events?.servers_updated || false;
+        document.getElementById('cfgEvtSrvError').checked = ntfy.events?.servers_update_error !== false;
 
         updateVisibility();
     }
@@ -118,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     interval: document.getElementById('cfgVpnInterval').value,
                     day: document.getElementById('cfgVpnDay').value,
                     days: getDayButtons('cfgVpnDays'),
+                    dom: parseInt(document.getElementById('cfgVpnDom').value) || 1,
                     time: document.getElementById('cfgVpnTime').value
                 },
                 geolite_update: {
@@ -125,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     interval: document.getElementById('cfgGeoInterval').value,
                     day: document.getElementById('cfgGeoDay').value,
                     days: getDayButtons('cfgGeoDays'),
+                    dom: parseInt(document.getElementById('cfgGeoDom').value) || 1,
                     time: document.getElementById('cfgGeoTime').value
                 },
                 ovpn_update: {
@@ -132,7 +150,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     interval: document.getElementById('cfgOvpnInterval').value,
                     day: document.getElementById('cfgOvpnDay').value,
                     days: getDayButtons('cfgOvpnDays'),
+                    dom: parseInt(document.getElementById('cfgOvpnDom').value) || 1,
                     time: document.getElementById('cfgOvpnTime').value
+                },
+                servers_update: {
+                    enabled: document.getElementById('cfgSrvEnabled').checked,
+                    command: document.getElementById('cfgSrvCommand').value.trim(),
+                    interval: document.getElementById('cfgSrvInterval').value,
+                    day: document.getElementById('cfgSrvDay').value,
+                    days: getDayButtons('cfgSrvDays'),
+                    dom: parseInt(document.getElementById('cfgSrvDom').value) || 1,
+                    time: document.getElementById('cfgSrvTime').value
                 }
             },
             notifications: {
@@ -145,7 +173,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         geolite_updated: document.getElementById('cfgEvtGeoUpdated').checked,
                         geolite_update_error: document.getElementById('cfgEvtGeoError').checked,
                         ovpn_updated: document.getElementById('cfgEvtOvpnUpdated').checked,
-                        ovpn_update_error: document.getElementById('cfgEvtOvpnError').checked
+                        ovpn_update_error: document.getElementById('cfgEvtOvpnError').checked,
+                        servers_updated: document.getElementById('cfgEvtSrvUpdated').checked,
+                        servers_update_error: document.getElementById('cfgEvtSrvError').checked
                     }
                 }
             },
@@ -181,6 +211,36 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save Configuration';
         }
+    });
+
+    // ========================================
+    // Run Now Buttons
+    // ========================================
+    document.querySelectorAll('.run-now-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const job = btn.dataset.job;
+            btn.disabled = true;
+            const origText = btn.innerHTML;
+            btn.textContent = 'Running...';
+            try {
+                const resp = await fetch('/api/schedule/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job })
+                });
+                const data = await resp.json();
+                if (data.status === 'ok') {
+                    showToast(`${job.replace(/_/g, ' ')} started`);
+                } else {
+                    showToast(data.message || 'Failed', true);
+                }
+            } catch (e) {
+                showToast('Network error', true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origText;
+            }
+        });
     });
 
     // ========================================
