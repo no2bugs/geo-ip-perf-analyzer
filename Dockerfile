@@ -33,7 +33,8 @@ ENV GEOIP_COUNTRY=/data/GeoLite2-Country.mmdb
 # Expose port
 EXPOSE 5000
 
-# Run with Gunicorn (4 workers, bind to all interfaces)
-# Note: We use threads for concurrency within the app, 
-# so gunicorn workers=1 threads=4 is a safe starting point.
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "8", "--timeout", "120", "web.app:app"]
+# Run with Gunicorn
+# 2 workers: one handles web requests, the other can run scans without blocking the UI.
+# Scan state is shared via /tmp file for cross-worker access.
+# threads=4 per worker for concurrent request handling.
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "600", "web.app:app"]

@@ -9,6 +9,7 @@ import subprocess
 import zipfile
 import io
 import copy
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -193,6 +194,47 @@ scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
 stop_event = threading.Event()
 last_error = None
 
+# File-based state sharing for multi-worker gunicorn
+SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
+
+def _flush_scan_state():
+    """Persist current scan state to file for cross-worker access."""
+    state = {
+        "active": scan_active,
+        "progress": dict(scan_progress),
+        "error": last_error,
+        "stop_requested": stop_event.is_set()
+    }
+    try:
+        tmp = SCAN_STATE_FILE + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(state, f)
+        os.replace(tmp, SCAN_STATE_FILE)
+    except Exception:
+        pass
+
+def _read_scan_state():
+    """Read scan state from shared file."""
+    try:
+        with open(SCAN_STATE_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {"active": False, "progress": {"done": 0, "total": 0, "status": "idle", "message": ""}, "error": None, "stop_requested": False}
+
+def _state_flusher():
+    """Background thread that periodically flushes state and checks for stop requests."""
+    while scan_active:
+        _flush_scan_state()
+        # Check if another worker requested stop
+        try:
+            state = _read_scan_state()
+            if state.get("stop_requested") and not stop_event.is_set():
+                stop_event.set()
+        except Exception:
+            pass
+        time.sleep(1)
+    _flush_scan_state()
+
 def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
     global scan_active, scan_progress, last_error, stop_event
     
@@ -200,6 +242,9 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
     scan_active = True
     scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Initializing..."}
     last_error = None
+    
+    flusher = threading.Thread(target=_state_flusher, daemon=True)
+    flusher.start()
     
     try:
         # Check if DBs exist
@@ -243,6 +288,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         send_ntfy('vpn_speedtest_error', 'Scan Failed', str(e), priority='high')
     finally:
         scan_active = False
+        _flush_scan_state()
 
 @app.route('/')
 def index():
@@ -264,7 +310,8 @@ def logs_page():
 def start_scan():
     global scan_active
     
-    if scan_active:
+    state = _read_scan_state()
+    if scan_active or state.get('active'):
         return jsonify({"status": "error", "message": "Scan already in progress"}), 409
         
     data = request.json or {}
@@ -295,11 +342,13 @@ def start_scan():
 
 @app.route('/api/scan/status')
 def get_status():
+    # Read from shared file for cross-worker compatibility
+    state = _read_scan_state()
     return jsonify({
-        "active": scan_active,
-        "progress": scan_progress,
-        "error": last_error,
-        "stopping": stop_event.is_set()
+        "active": state.get("active", scan_active),
+        "progress": state.get("progress", scan_progress),
+        "error": state.get("error", last_error),
+        "stopping": state.get("stop_requested", stop_event.is_set())
     })
 
 @app.route('/api/results')
@@ -318,7 +367,8 @@ def get_results():
 def vpn_speedtest():
     global scan_active
     
-    if scan_active:
+    state = _read_scan_state()
+    if scan_active or state.get('active'):
         return jsonify({"status": "error", "message": "Scan already in progress"}), 409
     
     data = request.json or {}
@@ -335,6 +385,9 @@ def vpn_speedtest():
         scan_active = True
         scan_progress = {"done": 0, "total": len(selected_domains), "status": "running", "message": "Running VPN speedtest..."}
         last_error = None
+        
+        flusher = threading.Thread(target=_state_flusher, daemon=True)
+        flusher.start()
         
         try:
             print(f"DEBUG: Checking for results file: {RESULTS_FILE}", file=sys.stderr, flush=True)
@@ -449,8 +502,8 @@ def vpn_speedtest():
             traceback.print_exc(file=sys.stderr)
         finally:
             scan_active = False
+            _flush_scan_state()
     
-    print(f"DEBUG: Starting thread for {len(selected_domains)} domains", file=sys.stderr, flush=True)
     thread = threading.Thread(target=run_vpn_speedtest_background)
     thread.daemon = True
     thread.start()
@@ -461,10 +514,20 @@ def vpn_speedtest():
 @app.route('/api/scan/stop', methods=['POST'])
 def stop_scan():
     global stop_event, scan_active
-    if not scan_active:
+    state = _read_scan_state()
+    if not scan_active and not state.get('active'):
         return jsonify({"status": "error", "message": "No scan in progress"}), 400
     
     stop_event.set()
+    # Write stop request to file for cross-worker communication
+    state['stop_requested'] = True
+    try:
+        tmp = SCAN_STATE_FILE + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(state, f)
+        os.replace(tmp, SCAN_STATE_FILE)
+    except Exception:
+        pass
     logging.info("Stop signal sent to scanner...")
     return jsonify({"status": "stopping"})
 
@@ -844,7 +907,8 @@ DAY_MAP = {
 
 def scheduled_vpn_speedtest():
     global scan_active, scan_progress, last_error, stop_event
-    if scan_active:
+    state = _read_scan_state()
+    if scan_active or state.get('active'):
         logging.info("Scheduled VPN speedtest skipped: operation already in progress")
         return
     if not os.path.exists(RESULTS_FILE):
@@ -865,6 +929,8 @@ def scheduled_vpn_speedtest():
         scan_active = True
         scan_progress = {"done": 0, "total": len(all_domains), "status": "running", "message": "Running scheduled VPN speedtest..."}
         last_error = None
+        flusher = threading.Thread(target=_state_flusher, daemon=True)
+        flusher.start()
         scanner = Scanner(
             targets_file=SERVERS_FILE,
             city_db=GEOIP_CITY,
@@ -892,6 +958,7 @@ def scheduled_vpn_speedtest():
         send_ntfy('vpn_speedtest_error', 'VPN Speedtest Failed', str(e), priority='high')
     finally:
         scan_active = False
+        _flush_scan_state()
 
 def scheduled_geolite_update():
     try:
