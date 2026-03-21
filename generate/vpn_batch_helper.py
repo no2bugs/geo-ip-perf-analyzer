@@ -11,7 +11,6 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
     
     import sys
     logger = logging.getLogger(__name__)
-    print("DEBUG: _perform_vpn_speedtests_batch started", file=sys.stderr, flush=True)
     
     # Find matching .ovpn files
     ovpn_path = Path(ovpn_dir)
@@ -29,7 +28,6 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         else:
             domain = filename
         ovpn_files[domain] = str(ovpn_file)
-    print(f"DEBUG: Found {len(ovpn_files)} total OVPN files", file=sys.stderr, flush=True)
     
     # Filter endpoints based on selection
     if selected_domains:
@@ -55,19 +53,14 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         return 9999
 
     sorted_endpoints = sorted(matched_endpoints.items(), key=lambda x: get_latency(x[1]))
-    print(f"DEBUG: {len(sorted_endpoints)} matched endpoints after filtering", file=sys.stderr, flush=True)
     
-    print(f"DEBUG: Found {len(sorted_endpoints)} endpoints with VPN configs", file=sys.stderr, flush=True)
     if formatting:
-        print("DEBUG: Disabling formatting for background process", file=sys.stderr, flush=True)
         formatting.enabled = False
     print(f"Performing VPN speedtests on {len(sorted_endpoints)} endpoints...", file=sys.stderr, flush=True)
     logger.info(f"Performing VPN speedtests on {len(sorted_endpoints)} endpoints...")
     
-    print("DEBUG: Initializing vpn_manager and speedtest", file=sys.stderr, flush=True)
     vpn_manager = VPNManager()
     speedtest = SpeedTest()
-    print("DEBUG: Managers initialized", file=sys.stderr, flush=True)
     
     # Process in batches
     total_count = len(sorted_endpoints)
@@ -100,9 +93,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                 ovpn_file = ovpn_files[domain]
                 if vpn_manager.connect(ovpn_file, username, password):
                     # Run speedtest
-                    print(f"DEBUG: VPN connected. Calling speedtest.run_speedtest()", file=sys.stderr, flush=True)
                     result = speedtest.run_speedtest()
-                    print(f"DEBUG: speedtest.run_speedtest() returned {result}", file=sys.stderr, flush=True)
                     if result:
                         if isinstance(endpoints_dict[domain], dict):
                             endpoints_dict[domain]['rx_speed_mbps'] = result['download_mbps']
@@ -112,17 +103,14 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         print(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
                         logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
                     else:
-                        print(f"DEBUG: Speedtest failed for {domain}", file=sys.stderr, flush=True)
                         logger.info(f"✗ {domain}: Speedtest failed (no result)")
                 else:
-                    print(f"DEBUG: VPN connection failed for {domain}", file=sys.stderr, flush=True)
                     logger.info(f"✗ {domain}: VPN connection failed")
                     
                 # Disconnect VPN
                 vpn_manager.disconnect()
                 
             except Exception as e:
-                print(f"DEBUG: Error testing {domain}: {e}", file=sys.stderr, flush=True)
                 vpn_manager.disconnect()
         
         # Ask user if they want to continue (only in interactive mode)

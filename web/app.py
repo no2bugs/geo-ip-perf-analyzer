@@ -428,7 +428,6 @@ def vpn_speedtest():
     # Run VPN speedtest on selected (or all) domains
     def run_vpn_speedtest_background():
         global scan_active, scan_progress, last_error, stop_event, scan_start_time
-        print("DEBUG: Background thread run_vpn_speedtest_background started", file=sys.stderr, flush=True)
         stop_event.clear()
         scan_active = True
         scan_start_time = time.time()
@@ -440,20 +439,16 @@ def vpn_speedtest():
         flusher.start()
         
         try:
-            print(f"DEBUG: Checking for results file: {RESULTS_FILE}", file=sys.stderr, flush=True)
             if not (os.path.exists(RESULTS_FILE)):
                 raise FileNotFoundError(f"Results file not found. Please run a scan first.")
             
             # Load existing results
-            print("DEBUG: Loading results.json", file=sys.stderr, flush=True)
             with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
                 results = json.load(f)
-            print(f"DEBUG: Loaded {len(results)} domains from results.json", file=sys.stderr, flush=True)
             
             # Auto-migrate results to dictionary-of-dictionaries format if needed
             migrated = False
             if isinstance(results, list):
-                print("DEBUG: Migrating list results", file=sys.stderr, flush=True)
                 logging.info("Migrating results.json from list to dictionary-of-dictionaries format")
                 new_results = {}
                 for entry in results:
@@ -466,7 +461,6 @@ def vpn_speedtest():
                 # Check for dictionary-of-lists format (legacy compatible)
                 for domain, data in results.items():
                     if isinstance(data, list):
-                        print("DEBUG: Migrating dict-of-list results", file=sys.stderr, flush=True)
                         logging.info("Migrating results.json from dictionary-of-lists to dictionary-of-dictionaries format")
                         new_results = {}
                         for d, entry in results.items():
@@ -487,7 +481,6 @@ def vpn_speedtest():
                         break
             
             if migrated:
-                print("DEBUG: Saving migrated results", file=sys.stderr, flush=True)
                 # Save migrated version immediately
                 with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
                     json.dump(results, f, indent=2)
@@ -501,17 +494,14 @@ def vpn_speedtest():
             # Verify selected domains exist in results
             missing_domains = [d for d in domains_to_test if d not in results]
             if missing_domains:
-                print(f"DEBUG: Missing domains: {missing_domains}", file=sys.stderr, flush=True)
                 logging.warning(f"Selected domains not found in results: {missing_domains}")
             
             # Filter to only domains that exist
             valid_domains = [d for d in domains_to_test if d in results]
-            print(f"DEBUG: Valid domains for speedtest: {valid_domains}", file=sys.stderr, flush=True)
             
             scan_progress['total'] = len(valid_domains)
             scan_logger.info(f'VPN speedtest started: {len(valid_domains)} domains')
             
-            print("DEBUG: Initializing Scanner", file=sys.stderr, flush=True)
             scanner = Scanner(
                 targets_file=SERVERS_FILE,
                 city_db=GEOIP_CITY,
@@ -519,12 +509,10 @@ def vpn_speedtest():
                 results_json=RESULTS_FILE,
                 excl_countries_fle='exclude_countries.list'
             )
-            print("DEBUG: Scanner initialized", file=sys.stderr, flush=True)
             
             vpn_start_time = time.time()
             # Perform speedtests only on selected domains
             if valid_domains:
-                print("DEBUG: Calling scanner._perform_vpn_speedtests", file=sys.stderr, flush=True)
                 scanner._perform_vpn_speedtests(
                     results,
                     VPN_OVPN_DIR,
@@ -536,15 +524,12 @@ def vpn_speedtest():
                     selected_domains=valid_domains,
                     stop_event=stop_event
                 )
-                print("DEBUG: scanner._perform_vpn_speedtests finished", file=sys.stderr, flush=True)
             else:
                 raise ValueError("None of the selected domains were found in the scan results")
             
             # Save updated results
-            print("DEBUG: Saving final results", file=sys.stderr, flush=True)
             with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(results, f, indent=2)
-            print("DEBUG: Final results saved", file=sys.stderr, flush=True)
             
             if stop_event.is_set():
                 scan_progress['status'] = 'completed'
@@ -559,7 +544,6 @@ def vpn_speedtest():
             scan_progress['status'] = 'error'
             scan_progress['message'] = str(e)
             logging.error(f"VPN speedtest failed: {e}")
-            print(f"DEBUG: VPN speedtest failed with exception: {e}", file=sys.stderr, flush=True)
             import traceback
             traceback.print_exc(file=sys.stderr)
         finally:
@@ -569,7 +553,6 @@ def vpn_speedtest():
     thread = threading.Thread(target=run_vpn_speedtest_background)
     thread.daemon = True
     thread.start()
-    print("DEBUG: Thread started, returning started response", file=sys.stderr, flush=True)
     
     return jsonify({"status": "started"})
 

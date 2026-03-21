@@ -1,6 +1,5 @@
 """VPN connection manager using OpenVPN."""
 
-import sys
 import os
 import re
 import subprocess
@@ -38,7 +37,6 @@ class VPNManager:
         Returns:
             True if connection successful, False otherwise
         """
-        print(f"DEBUG: VPNManager.connect started for {ovpn_file}", file=sys.stderr, flush=True)
         if self.connected:
             logger.warning("VPN already connected, disconnecting first")
             self.disconnect()
@@ -65,7 +63,6 @@ class VPNManager:
                 "--writepid", "/tmp/openvpn.pid"
             ]
             
-            print(f"DEBUG: Starting OpenVPN with Popen: {' '.join(cmd)}", file=sys.stderr, flush=True)
             # Use subprocess.Popen - capture output for diagnostics
             self.process = subprocess.Popen(
                 cmd,
@@ -75,7 +72,6 @@ class VPNManager:
             )
             
             # Wait for connection to establish
-            print(f"DEBUG: Waiting up to {timeout}s for tun0 interface", file=sys.stderr, flush=True)
             for i in range(timeout):
                 if self.process.poll() is not None:
                     err_output = ''
@@ -91,28 +87,19 @@ class VPNManager:
                         except Exception:
                             pass
                     combined = (out_output + '\n' + err_output).strip()
-                    print(f"DEBUG: OpenVPN process exited prematurely with code {self.process.returncode}", file=sys.stderr, flush=True)
-                    if combined:
-                        print(f"DEBUG: OpenVPN output: {combined[:1000]}", file=sys.stderr, flush=True)
                     if 'AUTH_FAILED' in combined:
                         logger.warning(f"VPN auth failed for {os.path.basename(ovpn_file)} — server rejected credentials")
                     elif combined:
                         logger.warning(f"OpenVPN exited with code {self.process.returncode}: {combined[:200]}")
                     return False
-                    return False
                 
                 time.sleep(1)
-                if i % 5 == 0:
-                    print(f"DEBUG: Wait heartbeat {i}/{timeout}...", file=sys.stderr, flush=True)
-                
                 if self._verify_connection():
                     self.connected = True
-                    print("DEBUG: VPN connection detected on tun0!", file=sys.stderr, flush=True)
                     logger.info("VPN connection established on tun0")
                     self._preserve_web_access()
                     return True
                     
-            print("DEBUG: VPN connection timed out waiting for tun0", file=sys.stderr, flush=True)
             self.disconnect()
             return False
             
@@ -129,7 +116,6 @@ class VPNManager:
                 
     def disconnect(self) -> None:
         """Disconnect from VPN."""
-        print("DEBUG: Disconnecting VPN...", file=sys.stderr, flush=True)
         self._restore_routing()
         try:
             if self.process:
@@ -142,9 +128,7 @@ class VPNManager:
             subprocess.run(["killall", "openvpn"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             time.sleep(1)
             self.connected = False
-            print("DEBUG: VPN disconnected", file=sys.stderr, flush=True)
         except Exception as e:
-            print(f"DEBUG: Error during disconnect: {e}", file=sys.stderr, flush=True)
             # Last resort
             subprocess.run(["killall", "-9", "openvpn"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.connected = False
@@ -171,8 +155,6 @@ class VPNManager:
             if match:
                 self._eth0_ip = match.group(1)
 
-            print(f"DEBUG: Saved route: gw={self._original_gw} dev={self._original_dev} ip={self._eth0_ip}",
-                  file=sys.stderr, flush=True)
         except Exception as e:
             logger.warning(f"Failed to save original route: {e}")
 
@@ -194,8 +176,6 @@ class VPNManager:
                  "table", ROUTING_TABLE_ID, "priority", ROUTING_RULE_PRIORITY],
                 capture_output=True
             )
-            print(f"DEBUG: Policy route added: from {self._eth0_ip} -> table {ROUTING_TABLE_ID} via {self._original_gw}",
-                  file=sys.stderr, flush=True)
         except Exception as e:
             logger.warning(f"Failed to add policy route: {e}")
 
@@ -210,7 +190,6 @@ class VPNManager:
                 ["ip", "route", "flush", "table", ROUTING_TABLE_ID],
                 capture_output=True
             )
-            print("DEBUG: Policy route removed", file=sys.stderr, flush=True)
         except Exception as e:
             logger.warning(f"Failed to remove policy route: {e}")
 
