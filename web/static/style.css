@@ -769,6 +769,13 @@ tr:hover td {
     margin-bottom: 1.25rem;
     position: relative;
     overflow: visible;
+    z-index: 1;
+}
+
+.config-card:has(.country-dropdown[style*="flex"]),
+.config-card:has(.country-dropdown[style*="block"]),
+.config-card.dropdown-open {
+    z-index: 100;
 }
 
 .card-header {

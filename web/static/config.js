@@ -414,6 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     vpnCountryBtn.addEventListener('click', () => {
         const visible = vpnCountryDropdown.style.display !== 'none';
         vpnCountryDropdown.style.display = visible ? 'none' : 'flex';
+        vpnCountryBtn.closest('.config-card').classList.toggle('dropdown-open', !visible);
         if (!visible) vpnCountrySearch.focus();
     });
 
@@ -429,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         if (!document.getElementById('cfgVpnCountryPicker').contains(e.target)) {
             vpnCountryDropdown.style.display = 'none';
+            vpnCountryBtn.closest('.config-card').classList.remove('dropdown-open');
         }
     });
 
