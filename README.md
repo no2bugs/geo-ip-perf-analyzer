@@ -1,112 +1,117 @@
-**_Tool for mass latency performance testing and reporting of Domains/IPs based on their location_**
+# GeoIP Performance Analyzer
+
+**Find the fastest servers from your location — measure latency and throughput across thousands of endpoints and see the results on an interactive map.**
+
+Network performance depends entirely on *where you are*. A server that's fast for someone in Frankfurt may be slow from Vienna. GeoIP Performance Analyzer solves this by running latency and speed tests from your deployment location against a list of domains/IPs, geolocating every result, and presenting it all in a modern web dashboard with an interactive heatmap.
+
+Use it to find the best VPN server, the closest CDN edge, or simply understand your network topology.
 
 ![Web UI](assets/web-ui.png)
 
-#### Features
+---
 
-- **New Web UI**: Modern dashboard to trigger scans and view results with live progress.
-- **Config & Automation**: Dedicated `/config` page with schedules (daily/weekly/monthly/custom), OVPN settings, and ntfy push notifications.
-- **Help & Logs Pages**: `/help` page with usage guide and API docs. `/logs` page with General/Error/Scan log viewer.
-- **REST API**: Endpoints for scan control, results, config, schedule management, and programmatic upload.
-- **Docker Support**: Easy deployment via `docker-compose`.
-- **VPN Speedtest**: Optionally test download/upload speeds via VPN endpoints.
-- **Smart Sorting**: Default sort by download speed (fallback to latency). Active column highlighted with arrow indicator.
-- **Search**: Filter results by domain, IP address, country, or city.
-- Reads list of domains/IPs, pings them and generates latency report.
-- Records IP location for each target by country and city.
-- Records number of servers in each location.
-- Optionally excludes selected country IPs from the report.
-- Uses local maxmind geolite2 DBs if present.
-- Shows best performing servers and their location.
-- Allows searching results by country and/or city.
+## Highlights
 
+- **Interactive Server Map** — Leaflet-based heatmap with color-coded markers by latency or speed. Fastest server per country pulses. Your measurement origin is displayed so you can see what "relative to" means.
+- **VPN Speedtest** — Measure real download/upload throughput through OpenVPN tunnels. Filter by country. View OVPN configs directly in the browser.
+- **Full Automation** — Schedule scans, GeoLite DB updates, OVPN config downloads, and server list refreshes on daily/weekly/monthly/custom intervals — all from the Config UI.
+- **12 Themes & Custom Wallpapers** — Dark palettes (Dracula, Nord, Carbon, etc.) and 19 background patterns, plus custom wallpaper upload.
+- **Push Notifications** — Get notified via [ntfy](https://ntfy.sh) when scans complete, updates finish, or errors occur.
+- **REST API** — Full programmatic access: trigger scans, fetch results, manage config, upload data.
 
-#### Getting Started (Web UI)
+---
 
-1. Ensure `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` are in the project root.
-2. Create `servers.list` in the project root if it doesn't exist (can be empty).
-3. Run the application:
-   ```bash
-   docker-compose up -d
-   ```
-4. Access the dashboard at `http://localhost:5000`
+## Getting Started
 
-To restart or rebuild after changes:
+### 1. Clone and start
+
 ```bash
-docker-compose up -d --build
+git clone https://github.com/no2bugs/geo-ip-perf-analyzer.git
+cd geo-ip-perf-analyzer
+docker compose up -d
 ```
 
+Open **http://localhost:5000** — the dashboard is ready.
 
-#### Getting Started (Command Line)
+### 2. Download GeoLite2 databases
 
-1. Create "servers.list" file with one domain/IP per line
+The app needs GeoLite2 City and Country databases to resolve IP locations. You don't need to download them manually:
 
-2. To exclude countries from scan, add one country name per line in "exclude_countries.list" file
+- Click **↻ GeoLite2 DBs** in the header bar — it downloads the latest databases automatically.
+- Or schedule automatic updates in **Config → Schedules → GeoLite DB Update** (e.g., weekly).
 
-3. To include only specific countries in the scan, add comma delimited countries to "include_countries.list" file
+### 3. Add servers
 
-4. Ensure `GeoLite2-City.mmdb` and `GeoLite2-Country.mmdb` are present in the project root.
-   Download from:
-   ```
-   https://github.com/P3TERX/GeoLite.mmdb/releases
-   ```
+Click **☰ Servers List** in the header and paste your domains/IPs (one per line), then save.
 
-5. Run script with ```--scan``` to generate new report (results.json)
+To keep the list updated automatically, use **Config → Schedules → Servers List Update** — define a shell command whose output replaces the server list on a schedule (e.g., fetch from an API or scrape a provider page).
 
-6. Run script with ```--help``` for more options
+### 4. Run a scan
 
+Click **Start Scan** on the dashboard. Progress, ETA, and live results appear in real time.
+
+### 5. Optional: VPN Speedtest
+
+To measure download/upload speeds through VPN:
+
+1. Upload your OpenVPN configs via **↻ OVPN Configs** (accepts a `.zip` of `.ovpn` files), or configure an automatic download URL in **Config → Schedules → OVPN Config Update**.
+2. Enter VPN credentials in **Config → Credentials**.
+3. Select servers in the results table and click **Run VPN Speedtest on Selected**.
+
+### 6. Explore the map
+
+Click **🌐 Map** to see all results on an interactive heatmap. Switch between latency, download, and upload metrics. The fastest server in each country pulses. Your vantage point is marked so you can see how distance affects performance.
+
+---
+
+## Configuration
+
+Everything is configurable from the browser at `/config`:
+
+| Tab | What it does |
+|---|---|
+| **Schedules** | Automate scans, GeoLite updates, OVPN downloads, server list refresh |
+| **Notifications** | ntfy push notifications for 8 event types |
+| **Credentials** | VPN username/password (stored in `.env`) |
+| **Themes** | 12 palettes, 19 wallpapers, custom upload |
+| **Map** | Color thresholds, auto-color mode, show-all-servers toggle |
+| **About** | App info and links |
+
+---
+
+## Docker Compose
+
+```yaml
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/data
+    environment:
+      - TZ=Europe/Berlin
+      - VPN_USERNAME=${VPN_USERNAME}
+      - VPN_PASSWORD=${VPN_PASSWORD}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+```
+
+Create a `.env` file for VPN credentials (or set them in Config → Credentials):
+
+```
+VPN_USERNAME=your_vpn_user
+VPN_PASSWORD=your_vpn_pass
+```
+
+Rebuild after updates:
 
 ```bash
-# python3 ip_analyzer.py --help
-
-Usage: ip_analyzer.py [-h] [-s] [-p SCAN_PINGS] [-w WORKERS] [-o TIMEOUT_MS] [-a] [-f SERVERS_FILE] [-r] [-l RESULTS_LIMIT] [-c] [-t SEARCH_COUNTRY] [-i] [-y SEARCH_CITY] [-b SORT_BY] [-n MIN_LATENCY] [-m MAX_LATENCY] [--include-countries]
-                      [--update-geolite-dbs] [--verbose]
-
-Performs latency scan on each domain/ip and shows top performers by location
-
-options:
-  -h, --help            show this help message and exit
-  -s, --scan            Perform full latency scan and generate performance report
-
-  -p SCAN_PINGS, --scan-pings SCAN_PINGS
-                        Number of pings to each IP during scan (increase for better accuracy). Default is 1
-
-  -w WORKERS, --workers WORKERS
-                        Number of concurrent workers for scanning. Default is 10
-
-  -o TIMEOUT_MS, --timeout-ms TIMEOUT_MS
-                        Ping timeout per request in milliseconds. Default is 1000
-
-  -a, --all-a-records   Scan all resolved IPv4 addresses for each domain (A records). Default is False
-
-  -f SERVERS_FILE, --servers-file SERVERS_FILE
-                        Read servers list from file (one domain or ip per line). Default is "servers.list"
-
-  -r, --results         Show top performing endpoints
-
-  -l RESULTS_LIMIT, --results-limit RESULTS_LIMIT
-                        Number of results to show
-
-  -c, --country-stats   Show stats by country
-
-  -t SEARCH_COUNTRY, --search-country SEARCH_COUNTRY
-                        Search results by country name
-
-  -i, --city-stats      Show stats by city
-
-  -y SEARCH_CITY, --search-city SEARCH_CITY
-                        Search results by city name
-
-  -b SORT_BY, --sort-by SORT_BY
-                        Sort --country-stats or --city-stats by field/column number. Default is 6 (DL speed, fallback to LATENCY)
-
-  -n MIN_LATENCY, --min-latency MIN_LATENCY
-                        Filter results by minimum latency (integer/float). Default is 0
-
-  -m MAX_LATENCY, --max-latency MAX_LATENCY
-                        Filter results by maximum latency (integer/float). Default is no limit
-
-  --include-countries   Optionally include only countries listed in include_countries.list (comma delimited). Others will be skipped.
-  --update-geolite-dbs  Show instructions for updating GeoLite DBs and exit.
-  --verbose             Enable verbose logging output.
+docker compose up -d --build
 ```
