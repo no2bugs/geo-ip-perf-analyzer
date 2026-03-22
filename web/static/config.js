@@ -687,6 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfgMapSpeedRed = document.getElementById('cfgMapSpeedRed');
     const cfgMapSpeedYellow = document.getElementById('cfgMapSpeedYellow');
     const cfgMapAutoColor = document.getElementById('cfgMapAutoColor');
+    const cfgMapShowAll = document.getElementById('cfgMapShowAll');
     const mapThresholdLatCard = document.getElementById('mapThresholdLatencyCard');
     const mapThresholdSpeedCard = document.getElementById('mapThresholdSpeedCard');
 
@@ -720,6 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadMapThresholds(thresholds) {
         if (!thresholds) return;
         cfgMapAutoColor.checked = !!thresholds.auto_color;
+        cfgMapShowAll.checked = !!thresholds.show_all_servers;
         toggleThresholdCards();
         if (thresholds.latency) {
             cfgMapLatGreen.value = thresholds.latency.green || 50;
@@ -735,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getMapThresholds() {
         return {
             auto_color: cfgMapAutoColor.checked,
+            show_all_servers: cfgMapShowAll.checked,
             latency: {
                 green: parseInt(cfgMapLatGreen.value) || 50,
                 yellow: parseInt(cfgMapLatYellow.value) || 150

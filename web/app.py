@@ -919,6 +919,7 @@ def get_theme():
         'wallpaper_mode': theme.get('wallpaper_mode', 'tile'),
         'map_thresholds': theme.get('map_thresholds', {
             'auto_color': False,
+            'show_all_servers': False,
             'latency': {'green': 50, 'yellow': 150},
             'speed': {'red': 50, 'yellow': 200}
         })
@@ -947,6 +948,7 @@ def post_theme():
         else:
             theme_data['map_thresholds'] = config.get('theme', {}).get('map_thresholds', {
                 'auto_color': False,
+                'show_all_servers': False,
                 'latency': {'green': 50, 'yellow': 150},
                 'speed': {'red': 50, 'yellow': 200}
             })

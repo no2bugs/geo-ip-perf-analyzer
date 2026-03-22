@@ -19,9 +19,11 @@
     const legendBar = document.getElementById('legendBar');
     const mapStats = document.getElementById('mapStats');
 
+    const showAllCheckbox = document.getElementById('showAllServers');
+
     let serverData = [];
     let markers = [];
-    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color: false };
+    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color: false, show_all_servers: false };
 
     // ---- Percentile helper ----
     function percentile(sortedArr, p) {
@@ -63,12 +65,13 @@
         const isSpeed = metric !== 'latency';
 
         // Filter to servers that have a valid value for the selected metric
-        const filtered = serverData.filter(s => {
+        const showAll = showAllCheckbox && showAllCheckbox.checked;
+        const filtered = showAll ? serverData.filter(s => s.lat != null && s.lon != null) : serverData.filter(s => {
             const v = getValue(s, metric);
             return v != null && v > 0;
         });
 
-        const vals = filtered.map(s => getValue(s, metric)).sort((a, b) => a - b);
+        const vals = filtered.map(s => getValue(s, metric)).filter(v => v != null && v > 0).sort((a, b) => a - b);
 
         // Determine color boundaries
         let bounds;
@@ -99,7 +102,8 @@
 
         filtered.forEach(s => {
             const val = getValue(s, metric);
-            const color = isSpeed ? colorForSpeed(val, bounds) : colorForLatency(val, bounds);
+            const hasVal = val != null && val > 0;
+            const color = hasVal ? (isSpeed ? colorForSpeed(val, bounds) : colorForLatency(val, bounds)) : '#94a3b8';
 
             const marker = L.circleMarker([s.lat, s.lon], {
                 radius: 7,
@@ -125,7 +129,10 @@
             markers.push(marker);
         });
 
-        mapStats.textContent = `${filtered.length} servers with ${isSpeed ? 'speed' : 'latency'} data`;
+        const withData = filtered.filter(s => { const v = getValue(s, metric); return v != null && v > 0; }).length;
+        mapStats.textContent = showAll
+            ? `${filtered.length} servers (${withData} with ${isSpeed ? 'speed' : 'latency'} data)`
+            : `${withData} servers with ${isSpeed ? 'speed' : 'latency'} data`;
     }
 
     // ---- Load data ----
@@ -137,6 +144,7 @@
             const themeData = await themeResp.json();
             if (themeData.map_thresholds) {
                 thresholds = themeData.map_thresholds;
+                if (showAllCheckbox) showAllCheckbox.checked = !!thresholds.show_all_servers;
             }
 
             const resp = await fetch('/api/results/geo');
@@ -159,5 +167,6 @@
     }
 
     metricSelect.addEventListener('change', renderMarkers);
+    if (showAllCheckbox) showAllCheckbox.addEventListener('change', renderMarkers);
     loadData();
 })();

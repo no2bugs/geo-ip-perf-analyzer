@@ -39,6 +39,11 @@ header {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
 }
 
 h1 {
