@@ -902,48 +902,31 @@ def get_results_geo():
 
 
 # ---- Measurement origin (vantage point) ----
-_origin_cache = {'data': None, 'ts': 0}
+_origin_cache = {'auto': None, 'manual': None}
 
-def _auto_detect_origin():
-    """Detect origin via online IP geolocation (ipinfo.io), fall back to local GeoIP DB."""
-    # Primary: ipinfo.io — usually more accurate than local GeoIP DB
+def _detect_origin_from_geoip():
+    """Detect origin using public IP resolved through local GeoIP DB.
+    Called once at service startup so VPN tunnels opened later don't affect it."""
+    if not os.path.exists(GEOIP_CITY):
+        return None
     try:
-        resp = http_requests.get('https://ipinfo.io/json', timeout=5)
-        info = resp.json()
-        loc = info.get('loc', '')
-        if loc and ',' in loc:
-            lat, lon = loc.split(',', 1)
+        ip_resp = http_requests.get('https://api.ipify.org', timeout=10)
+        public_ip = ip_resp.text.strip()
+        reader = geoip2.database.Reader(GEOIP_CITY)
+        try:
+            geo = reader.city(public_ip)
             return {
-                'ip': info.get('ip', ''),
-                'lat': float(lat),
-                'lon': float(lon),
-                'country': info.get('country', 'Unknown'),
-                'city': info.get('city', 'Unknown'),
+                'ip': public_ip,
+                'lat': geo.location.latitude,
+                'lon': geo.location.longitude,
+                'country': geo.country.name or 'Unknown',
+                'city': geo.city.name or 'Unknown',
                 'source': 'auto'
             }
+        finally:
+            reader.close()
     except Exception:
-        pass
-    # Fallback: local GeoIP DB
-    if os.path.exists(GEOIP_CITY):
-        try:
-            ip_resp = http_requests.get('https://api.ipify.org', timeout=5)
-            public_ip = ip_resp.text.strip()
-            reader = geoip2.database.Reader(GEOIP_CITY)
-            try:
-                geo = reader.city(public_ip)
-                return {
-                    'ip': public_ip,
-                    'lat': geo.location.latitude,
-                    'lon': geo.location.longitude,
-                    'country': geo.country.name or 'Unknown',
-                    'city': geo.city.name or 'Unknown',
-                    'source': 'auto'
-                }
-            finally:
-                reader.close()
-        except Exception:
-            pass
-    return None
+        return None
 
 
 def _geocode_address(country, city, zipcode):
@@ -974,34 +957,46 @@ def _geocode_address(country, city, zipcode):
     return None
 
 
+def _init_origin():
+    """Detect auto origin once at startup (before any VPN tunnels are up)."""
+    result = _detect_origin_from_geoip()
+    if result:
+        _origin_cache['auto'] = result
+        logging.info('Vantage point detected at startup: %s, %s (%s)',
+                     result.get('city'), result.get('country'), result.get('ip'))
+    else:
+        logging.warning('Could not auto-detect vantage point at startup (GeoIP DB may be missing)')
+
+
 @app.route('/api/origin')
 def get_origin():
     """Return the measurement origin (vantage point) location."""
-    now = time.time()
-    if _origin_cache['data'] and now - _origin_cache['ts'] < 3600:
-        return jsonify(_origin_cache['data'])
-
-    # Check config for manual override
     config = load_config()
     mt = config.get('theme', {}).get('map_thresholds', {})
     origin_mode = mt.get('origin_mode', 'auto')
 
-    result = None
     if origin_mode == 'manual':
+        # Re-geocode only if address changed (cache the last manual result)
         addr = mt.get('origin_address', {})
+        cached = _origin_cache.get('manual')
+        if cached and cached.get('_addr') == addr:
+            return jsonify(cached)
         result = _geocode_address(
             addr.get('country', ''),
             addr.get('city', ''),
             addr.get('zipcode', '')
         )
-    if not result:
-        result = _auto_detect_origin()
-    if not result:
-        return jsonify({'error': 'Could not determine origin location'}), 500
+        if result:
+            result['_addr'] = addr
+            _origin_cache['manual'] = result
+            resp_data = {k: v for k, v in result.items() if k != '_addr'}
+            return jsonify(resp_data)
 
-    _origin_cache['data'] = result
-    _origin_cache['ts'] = now
-    return jsonify(result)
+    # Auto mode — return the startup-detected origin
+    if _origin_cache['auto']:
+        return jsonify(_origin_cache['auto'])
+
+    return jsonify({'error': 'Could not determine origin location'}), 500
 VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
 VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom'}
 ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}
@@ -1054,9 +1049,8 @@ def post_theme():
             })
         config['theme'] = theme_data
         save_config(config)
-    # Invalidate origin cache so changes to origin settings take effect immediately
-    _origin_cache['data'] = None
-    _origin_cache['ts'] = 0
+    # Invalidate manual origin cache so address changes take effect
+    _origin_cache['manual'] = None
     return jsonify({'status': 'ok'})
 
 
@@ -1655,6 +1649,9 @@ def apply_schedules():
 
 # Clear stale scan state from previous container crash/restart
 _clear_stale_state()
+
+# Detect vantage point once at startup (before VPN tunnels)
+_init_origin()
 
 # Initialize scheduler on startup
 apply_schedules()
