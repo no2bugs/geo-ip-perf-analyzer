@@ -39,8 +39,8 @@ header {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
-    background: var(--panel-bg);
-    backdrop-filter: blur(12px);
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1rem 1.5rem;
@@ -734,6 +734,11 @@ tr:hover td {
     gap: 0.25rem;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 1.5rem;
+    background: rgba(22, 33, 50, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.35rem 0.5rem;
 }
 
 .tab-btn {
@@ -756,6 +761,8 @@ tr:hover td {
 .tab-btn.active {
     color: var(--accent-color);
     border-bottom-color: var(--accent-color);
+    background: rgba(148, 163, 184, 0.08);
+    border-radius: 8px;
 }
 
 .tab-content {

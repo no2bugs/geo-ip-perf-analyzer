@@ -8,8 +8,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            history.replaceState(null, '', '#' + btn.dataset.tab);
         });
     });
+
+    // Restore active tab from URL hash
+    const hash = location.hash.replace('#', '');
+    if (hash) {
+        const target = document.querySelector('.tab-btn[data-tab="' + hash + '"]');
+        if (target) target.click();
+    }
 
     // ========================================
     // Day-picker buttons
@@ -208,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.status === 'ok') {
                 showToast('Configuration saved');
                 statusEl.textContent = 'Saved ' + new Date().toLocaleTimeString();
+                saveTheme();
             } else {
                 showToast('Save failed: ' + data.message, true);
             }
