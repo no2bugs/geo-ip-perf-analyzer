@@ -882,6 +882,10 @@ def post_config():
         lr = existing.get('schedule', {}).get(key, {}).get('last_run')
         if lr:
             data.setdefault('schedule', {}).setdefault(key, {}).setdefault('last_run', lr)
+    # Preserve theme (managed separately via /api/theme)
+    theme = existing.get('theme')
+    if theme:
+        data['theme'] = theme
     save_config(data)
     apply_schedules()
     return jsonify({'status': 'ok'})
