@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const speedTitle = item.speedtest_timestamp ? formatTimestamp(item.speedtest_timestamp) : '';
 
             row.insertAdjacentHTML('beforeend', `
-                <td><strong>${item.domain}</strong></td>
+                <td><strong class="domain-link" data-domain="${item.domain}">${item.domain}</strong></td>
                 <td class="${latencyClass} ts-cell" ${scanTitle ? `title="Scanned: ${scanTitle}"` : ''}>${item.latency.toFixed(2)}</td>
                 <td class="mono">${item.ip}</td>
                 <td>${item.country}</td>
@@ -877,4 +877,45 @@ document.addEventListener('DOMContentLoaded', () => {
             saveServersBtn.textContent = 'Save';
         }
     });
+
+    // ========================================
+    // OVPN Config Viewer (domain click)
+    // ========================================
+    const ovpnModal = document.getElementById('ovpnConfigModal');
+    const ovpnTitle = document.getElementById('ovpnConfigTitle');
+    const ovpnContent = document.getElementById('ovpnConfigContent');
+    const closeOvpnBtn = document.getElementById('closeOvpnModal');
+    const copyOvpnBtn = document.getElementById('copyOvpnBtn');
+
+    if (ovpnModal) {
+        resultsBody.addEventListener('click', async (e) => {
+            const link = e.target.closest('.domain-link');
+            if (!link) return;
+            const domain = link.dataset.domain;
+            ovpnTitle.textContent = domain;
+            ovpnContent.textContent = 'Loading...';
+            ovpnModal.style.display = 'flex';
+            try {
+                const resp = await fetch(`/api/ovpn/config/${encodeURIComponent(domain)}`);
+                const data = await resp.json();
+                if (data.status === 'ok') {
+                    ovpnContent.textContent = data.content;
+                } else {
+                    ovpnContent.textContent = data.message || 'Not found';
+                }
+            } catch (e) {
+                ovpnContent.textContent = 'Failed to load config';
+            }
+        });
+
+        closeOvpnBtn.addEventListener('click', () => { ovpnModal.style.display = 'none'; });
+        ovpnModal.addEventListener('click', (e) => { if (e.target === ovpnModal) ovpnModal.style.display = 'none'; });
+
+        copyOvpnBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(ovpnContent.textContent).then(() => {
+                copyOvpnBtn.textContent = 'Copied!';
+                setTimeout(() => { copyOvpnBtn.textContent = 'Copy'; }, 1500);
+            });
+        });
+    }
 });

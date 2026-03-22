@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Map — GeoIP Performance Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <script src="/static/theme.js"></script>
+    <style>
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 120px);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .metric-select {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            background: var(--panel-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        .map-legend {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-bar {
+            width: 120px;
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(to right, #10b981, #eab308, #ef4444);
+        }
+
+        .map-stats {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        /* Leaflet popup override */
+        .leaflet-popup-content-wrapper {
+            background: rgba(15, 23, 42, 0.95) !important;
+            color: #f8fafc !important;
+            border-radius: 10px !important;
+            border: 1px solid rgba(148, 163, 184, 0.15) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+            backdrop-filter: blur(8px) !important;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(15, 23, 42, 0.95) !important;
+        }
+
+        .leaflet-popup-content {
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.82rem !important;
+            line-height: 1.6 !important;
+            margin: 10px 14px !important;
+        }
+
+        .popup-domain {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--accent-color, #3b82f6);
+            margin-bottom: 4px;
+        }
+
+        .popup-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .popup-label {
+            color: #94a3b8;
+        }
+
+        .popup-val {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Leaflet controls dark theme */
+        .leaflet-control-zoom a {
+            background: rgba(15, 23, 42, 0.9) !important;
+            color: #f8fafc !important;
+            border-color: rgba(148, 163, 184, 0.15) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(30, 41, 59, 0.95) !important;
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(15, 23, 42, 0.7) !important;
+            color: #64748b !important;
+            font-size: 0.65rem !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: #94a3b8 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="header-title-link">
+                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Server Map</h1>
+            </a>
+            <div class="header-actions">
+                <a href="/" class="header-link-btn">&larr; Dashboard</a>
+                <a href="/config" class="header-link-btn" title="Config &amp; Automation">&#9881; Config</a>
+                <a href="/help" class="header-link-btn" title="Help &amp; API Reference">&#9432; Help</a>
+            </div>
+        </header>
+
+        <main>
+            <div class="map-controls">
+                <label style="font-size:0.85rem; color: var(--text-secondary);">Color by:</label>
+                <select id="metricSelect" class="metric-select">
+                    <option value="latency">Latency (ms)</option>
+                    <option value="rx_speed">Download (Mbps)</option>
+                    <option value="tx_speed">Upload (Mbps)</option>
+                </select>
+                <div class="map-legend">
+                    <span id="legendLow">Fast</span>
+                    <div class="legend-bar" id="legendBar"></div>
+                    <span id="legendHigh">Slow</span>
+                </div>
+                <span class="map-stats" id="mapStats"></span>
+            </div>
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="/static/map.js"></script>
+</body>
+
+</html>

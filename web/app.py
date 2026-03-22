@@ -15,6 +15,7 @@ from pathlib import Path
 from flask import Flask, render_template, jsonify, request, send_from_directory
 import requests as http_requests
 import yaml
+import geoip2.database
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -375,6 +376,10 @@ def help_page():
 @app.route('/logs')
 def logs_page():
     return render_template('logs.html')
+
+@app.route('/map')
+def map_page():
+    return render_template('map.html')
 
 @app.route('/api/scan/start', methods=['POST'])
 def start_scan():
@@ -828,6 +833,73 @@ def ovpn_download():
     except Exception as e:
         logging.error(f'OVPN download failed: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# ============================================================
+# OVPN Config Viewer
+# ============================================================
+@app.route('/api/ovpn/config/<domain>')
+def get_ovpn_config(domain):
+    """Return the OVPN config text for a given domain."""
+    # Sanitize: only allow valid domain characters
+    if not all(c.isalnum() or c in '.-' for c in domain):
+        return jsonify({'status': 'error', 'message': 'Invalid domain'}), 400
+    ovpn_path = Path(VPN_OVPN_DIR)
+    # Try common naming patterns
+    for pattern in [f'{domain}.udp.ovpn', f'{domain}.tcp.ovpn', f'{domain}.ovpn']:
+        candidate = ovpn_path / pattern
+        if candidate.exists():
+            return jsonify({'status': 'ok', 'filename': candidate.name,
+                            'content': candidate.read_text(encoding='utf-8', errors='replace')})
+    return jsonify({'status': 'error', 'message': f'No OVPN config found for {domain}'}), 404
+
+
+# ============================================================
+# Geo Results API (for map view)
+# ============================================================
+@app.route('/api/results/geo')
+def get_results_geo():
+    """Return results with lat/lon resolved from GeoIP City database."""
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify([])
+    if not os.path.exists(GEOIP_CITY):
+        return jsonify({'error': 'GeoIP City database not found'}), 500
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        reader = geoip2.database.Reader(GEOIP_CITY)
+        results = []
+        try:
+            for domain, entry in data.items():
+                if not isinstance(entry, dict):
+                    continue
+                ip = entry.get('ip')
+                if not ip:
+                    continue
+                try:
+                    geo = reader.city(ip)
+                    lat = geo.location.latitude
+                    lon = geo.location.longitude
+                except Exception:
+                    continue
+                if lat is None or lon is None:
+                    continue
+                results.append({
+                    'domain': domain,
+                    'ip': ip,
+                    'lat': lat,
+                    'lon': lon,
+                    'country': entry.get('country', 'Unknown'),
+                    'city': entry.get('city', 'Unknown'),
+                    'latency_ms': entry.get('latency_ms'),
+                    'rx_speed_mbps': entry.get('rx_speed_mbps'),
+                    'tx_speed_mbps': entry.get('tx_speed_mbps')
+                })
+        finally:
+            reader.close()
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # ============================================================
 # Theme API (stored in config.yaml under 'theme' key)

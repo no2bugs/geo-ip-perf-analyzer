@@ -1177,6 +1177,42 @@ tr:hover td {
     background-size: auto;
 }
 
+/* Domain link in results table */
+.domain-link {
+    cursor: pointer;
+    color: var(--accent-color);
+    transition: color 0.15s;
+}
+
+.domain-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+/* OVPN config modal */
+.ovpn-config-pre {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    max-height: 55vh;
+    overflow: auto;
+    white-space: pre;
+    margin: 0;
+}
+
+.ovpn-copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.6rem;
+}
+
 /* ========================================
    Multi-command list (Servers List Update)
    ======================================== */
