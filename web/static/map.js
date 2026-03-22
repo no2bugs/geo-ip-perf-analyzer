@@ -99,6 +99,27 @@
             legendBar.style.background = 'linear-gradient(to right, #10b981, #eab308, #ef4444)';
         }
 
+        // Determine best server per country for the current metric
+        const bestByCountry = {};
+        filtered.forEach(s => {
+            const val = getValue(s, metric);
+            if (val == null || val <= 0) return;
+            const c = s.country;
+            if (!bestByCountry[c] || (isSpeed ? val > bestByCountry[c] : val < bestByCountry[c])) {
+                bestByCountry[c] = val;
+            }
+        });
+        const bestSet = new Set();
+        filtered.forEach(s => {
+            const val = getValue(s, metric);
+            if (val != null && val > 0 && val === bestByCountry[s.country] && !bestSet.has(s.country)) {
+                bestSet.add(s.country);
+                s._isBest = true;
+            } else {
+                s._isBest = false;
+            }
+        });
+
         // Build jitter offsets for overlapping coordinates
         const locCounts = {};
         const locIndex = {};
@@ -125,12 +146,18 @@
             }
 
             const marker = L.circleMarker([lat, lon], {
-                radius: 7,
+                radius: s._isBest ? 9 : 7,
                 fillColor: color,
-                color: 'rgba(255,255,255,0.3)',
-                weight: 1,
+                color: s._isBest ? '#ffffff' : 'rgba(255,255,255,0.3)',
+                weight: s._isBest ? 2 : 1,
                 fillOpacity: 0.85
             }).addTo(map);
+
+            // Add pulse animation to best-per-country markers
+            if (s._isBest) {
+                const el = marker.getElement();
+                if (el) el.classList.add('best-marker');
+            }
 
             const latStr = s.latency_ms != null ? s.latency_ms.toFixed(2) + ' ms' : 'N/A';
             const dlStr = s.rx_speed_mbps != null ? s.rx_speed_mbps.toFixed(1) + ' Mbps' : 'N/A';
