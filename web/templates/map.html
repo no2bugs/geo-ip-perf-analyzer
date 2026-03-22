@@ -219,6 +219,25 @@
         }
         .reset-view-btn:hover { background: rgba(30, 41, 59, 0.95); }
 
+        .distance-overlay {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.9);
+            color: #f8fafc;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            white-space: nowrap;
+            backdrop-filter: blur(6px);
+            transition: opacity 0.3s;
+        }
+        .distance-overlay.hidden { opacity: 0; }
+
         /* Fullscreen overrides */
         .map-container:fullscreen,
         .map-container:-webkit-full-screen {
@@ -269,6 +288,7 @@
             </div>
             <div class="map-container" id="mapContainer">
                 <div id="map"></div>
+                <div class="distance-overlay hidden" id="distanceOverlay"></div>
                 <button class="reset-view-btn" id="resetViewBtn" title="Reset view to vantage point">🏠</button>
                 <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen">&#x26F6;</button>
             </div>

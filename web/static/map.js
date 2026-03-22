@@ -26,6 +26,19 @@
     let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color_latency: false, auto_color_speed: false, show_all_servers: false };
 
     let originMarker = null;
+    let originData = null; // {lat, lon, city, country}
+    const distanceOverlay = document.getElementById('distanceOverlay');
+
+    // ---- Haversine distance (km) ----
+    function haversineKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
 
     // ---- Percentile helper ----
     function percentile(sortedArr, p) {
@@ -185,6 +198,8 @@
         mapStats.textContent = showAll
             ? `${filtered.length} servers (${withData} with ${isSpeed ? 'speed' : 'latency'} data)`
             : `${withData} servers with ${isSpeed ? 'speed' : 'latency'} data`;
+
+        updateDistanceOverlay();
     }
 
     // ---- Load data ----
@@ -230,6 +245,7 @@
                         <div class="popup-row"><span class="popup-label">Detection</span> <span class="popup-val">${origin.source === 'manual' ? 'Manual' : 'Auto (IP)'}</span></div>
                         <div style="margin-top:6px;color:#94a3b8;font-size:0.75rem;">All measurements are relative to this location.</div>
                     `);
+                    originData = { lat: origin.lat, lon: origin.lon, city: origin.city, country: origin.country };
                 }
             } catch (e) { /* origin not available */ }
 
@@ -246,6 +262,31 @@
 
     metricSelect.addEventListener('change', renderMarkers);
     if (showAllCheckbox) showAllCheckbox.addEventListener('change', renderMarkers);
+
+    // ---- Distance overlay: show distance to single best visible server ----
+    function updateDistanceOverlay() {
+        if (!originData || !distanceOverlay) { if (distanceOverlay) distanceOverlay.classList.add('hidden'); return; }
+        const mapBounds = map.getBounds();
+        const metric = metricSelect.value;
+        const isSpeed = metric !== 'latency';
+
+        // Find best servers that are visible in the current viewport
+        const visibleBest = serverData.filter(s =>
+            s._isBest && s.lat != null && s.lon != null &&
+            mapBounds.contains([s.lat, s.lon])
+        );
+
+        if (visibleBest.length === 1) {
+            const s = visibleBest[0];
+            const dist = haversineKm(originData.lat, originData.lon, s.lat, s.lon);
+            const distStr = dist < 100 ? dist.toFixed(0) + ' km' : Math.round(dist) + ' km';
+            distanceOverlay.textContent = `📏 ${distStr} (${originData.city} \u2192 ${s.city})`;
+            distanceOverlay.classList.remove('hidden');
+        } else {
+            distanceOverlay.classList.add('hidden');
+        }
+    }
+    map.on('moveend', updateDistanceOverlay);
 
     // Reset view button — fly to vantage point at country zoom
     document.getElementById('resetViewBtn').addEventListener('click', () => {
