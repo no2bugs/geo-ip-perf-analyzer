@@ -901,9 +901,37 @@ def get_results_geo():
         return jsonify({'error': str(e)}), 500
 
 
-# ============================================================
-# Theme API (stored in config.yaml under 'theme' key)
-# ============================================================
+# ---- Measurement origin (vantage point) ----
+_origin_cache = {'data': None, 'ts': 0}
+
+@app.route('/api/origin')
+def get_origin():
+    """Return the measurement origin (vantage point) location."""
+    now = time.time()
+    if _origin_cache['data'] and now - _origin_cache['ts'] < 3600:
+        return jsonify(_origin_cache['data'])
+    if not os.path.exists(GEOIP_CITY):
+        return jsonify({'error': 'GeoIP City database not found'}), 500
+    try:
+        resp = http_requests.get('https://api.ipify.org', timeout=5)
+        public_ip = resp.text.strip()
+        reader = geoip2.database.Reader(GEOIP_CITY)
+        try:
+            geo = reader.city(public_ip)
+            result = {
+                'ip': public_ip,
+                'lat': geo.location.latitude,
+                'lon': geo.location.longitude,
+                'country': geo.country.name or 'Unknown',
+                'city': geo.city.name or 'Unknown'
+            }
+        finally:
+            reader.close()
+        _origin_cache['data'] = result
+        _origin_cache['ts'] = now
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
 VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom'}
 ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}

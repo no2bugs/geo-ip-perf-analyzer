@@ -151,6 +151,25 @@
         }
         .best-tooltip::before { border-top-color: rgba(15, 23, 42, 0.92) !important; }
 
+        /* Origin / vantage point marker */
+        .origin-icon {
+            background: radial-gradient(circle, #3b82f6 40%, rgba(59,130,246,0.15) 100%);
+            border: 2px solid #93c5fd;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 0 12px rgba(59,130,246,0.6);
+            animation: origin-glow 2.5s ease-in-out infinite;
+        }
+        @keyframes origin-glow {
+            0%, 100% { box-shadow: 0 0 12px rgba(59,130,246,0.4); }
+            50% { box-shadow: 0 0 24px rgba(59,130,246,0.8); }
+        }
+
         /* Fullscreen button */
         .fullscreen-btn {
             position: absolute;

@@ -25,6 +25,8 @@
     let markers = [];
     let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color_latency: false, auto_color_speed: false, show_all_servers: false };
 
+    let originMarker = null;
+
     // ---- Percentile helper ----
     function percentile(sortedArr, p) {
         if (!sortedArr.length) return 0;
@@ -204,6 +206,31 @@
                 return;
             }
             renderMarkers();
+
+            // Load and display measurement origin
+            try {
+                const originResp = await fetch('/api/origin');
+                const origin = await originResp.json();
+                if (origin.lat != null && origin.lon != null) {
+                    if (originMarker) map.removeLayer(originMarker);
+                    const icon = L.divIcon({
+                        className: '',
+                        html: '<div class="origin-icon">🏠</div>',
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11]
+                    });
+                    originMarker = L.marker([origin.lat, origin.lon], { icon, zIndexOffset: 1000 }).addTo(map);
+                    originMarker.bindTooltip('Measurement origin (vantage point)', {
+                        permanent: false, direction: 'top', className: 'best-tooltip'
+                    });
+                    originMarker.bindPopup(`
+                        <div class="popup-domain">📡 Vantage Point</div>
+                        <div class="popup-row"><span class="popup-label">IP</span> <span class="popup-val">${origin.ip}</span></div>
+                        <div class="popup-row"><span class="popup-label">Location</span> <span class="popup-val">${origin.city}, ${origin.country}</span></div>
+                        <div style="margin-top:6px;color:#94a3b8;font-size:0.75rem;">All measurements are relative to this location.</div>
+                    `);
+                }
+            } catch (e) { /* origin not available */ }
 
             // Fit bounds to markers with valid geo data
             const geoValid = serverData.filter(s => s.lat != null && s.lon != null);
