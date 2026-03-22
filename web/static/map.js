@@ -215,7 +215,7 @@
                     if (originMarker) map.removeLayer(originMarker);
                     const icon = L.divIcon({
                         className: '',
-                        html: '<div class="origin-icon">🏠</div>',
+                        html: '<div style="position:relative;width:22px;height:22px;"><div class="origin-ring"></div><div class="origin-icon">🏠</div></div>',
                         iconSize: [22, 22],
                         iconAnchor: [11, 11]
                     });
@@ -245,5 +245,13 @@
 
     metricSelect.addEventListener('change', renderMarkers);
     if (showAllCheckbox) showAllCheckbox.addEventListener('change', renderMarkers);
+
+    // Reset view button — fly to vantage point at country zoom
+    document.getElementById('resetViewBtn').addEventListener('click', () => {
+        if (originMarker) {
+            map.flyTo(originMarker.getLatLng(), 6, { duration: 1.2 });
+        }
+    });
+
     loadData();
 })();

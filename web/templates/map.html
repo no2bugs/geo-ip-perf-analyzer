@@ -153,8 +153,8 @@
 
         /* Origin / vantage point marker */
         .origin-icon {
-            background: radial-gradient(circle, #3b82f6 40%, rgba(59,130,246,0.15) 100%);
-            border: 2px solid #93c5fd;
+            background: radial-gradient(circle, #06b6d4 40%, rgba(6,182,212,0.15) 100%);
+            border: 2px solid #67e8f9;
             border-radius: 50%;
             width: 22px;
             height: 22px;
@@ -162,12 +162,20 @@
             align-items: center;
             justify-content: center;
             font-size: 12px;
-            box-shadow: 0 0 12px rgba(59,130,246,0.6);
-            animation: origin-glow 2.5s ease-in-out infinite;
+            box-shadow: 0 0 12px rgba(6,182,212,0.6);
         }
-        @keyframes origin-glow {
-            0%, 100% { box-shadow: 0 0 12px rgba(59,130,246,0.4); }
-            50% { box-shadow: 0 0 24px rgba(59,130,246,0.8); }
+        .origin-ring {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid rgba(6,182,212,0.7);
+            animation: origin-pulse 3s ease-out infinite;
+            pointer-events: none;
+        }
+        @keyframes origin-pulse {
+            0%   { transform: scale(1);   opacity: 0.8; }
+            100% { transform: scale(3.5); opacity: 0; }
         }
 
         /* Fullscreen button */
@@ -190,6 +198,26 @@
             transition: background 0.2s;
         }
         .fullscreen-btn:hover { background: rgba(30, 41, 59, 0.95); }
+
+        .reset-view-btn {
+            position: absolute;
+            top: 10px;
+            right: 50px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.9);
+            color: #f8fafc;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 6px;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .reset-view-btn:hover { background: rgba(30, 41, 59, 0.95); }
 
         /* Fullscreen overrides */
         .map-container:fullscreen,
@@ -241,6 +269,7 @@
             </div>
             <div class="map-container" id="mapContainer">
                 <div id="map"></div>
+                <button class="reset-view-btn" id="resetViewBtn" title="Reset view to vantage point">🏠</button>
                 <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen">&#x26F6;</button>
             </div>
         </main>
