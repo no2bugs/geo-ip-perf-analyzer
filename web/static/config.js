@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pruneNowBtn.addEventListener('click', async () => {
         pruneNowBtn.disabled = true;
         const origText = pruneNowBtn.textContent;
-        pruneNowBtn.textContent = 'Pruning...';
+        pruneNowBtn.textContent = 'Cleaning up...';
         try {
             const resp = await fetch('/api/prune-stale', { method: 'POST' });
             const data = await resp.json();

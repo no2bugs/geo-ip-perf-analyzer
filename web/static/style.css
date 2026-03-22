@@ -1011,21 +1011,21 @@ tr:hover td {
 
 /* Run Now button */
 .run-now-btn {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    padding: 0.25rem 0.6rem;
+    background: #f97316;
+    border: 1px solid #f97316;
+    color: #fff;
+    padding: 0.35rem 0.85rem;
     border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 500;
+    font-size: 0.78rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
 }
 
 .run-now-btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+    background: #ea580c;
+    border-color: #ea580c;
 }
 
 .run-now-btn:disabled {
