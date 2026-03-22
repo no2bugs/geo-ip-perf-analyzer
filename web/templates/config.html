@@ -412,17 +412,6 @@
         <div class="tab-content" id="tab-map">
             <section class="config-card">
                 <div class="card-header">
-                    <h3>Color Mode</h3>
-                    <label class="switch">
-                        <input type="checkbox" id="cfgMapAutoColor">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <p class="card-desc">When enabled, colors are calculated automatically relative to the dataset (percentile-based). When disabled, the static thresholds below are used.</p>
-            </section>
-
-            <section class="config-card">
-                <div class="card-header">
                     <h3>Show All Servers</h3>
                     <label class="switch">
                         <input type="checkbox" id="cfgMapShowAll">
@@ -435,8 +424,12 @@
             <section class="config-card" id="mapThresholdLatencyCard">
                 <div class="card-header">
                     <h3>Map Color Thresholds — Latency</h3>
+                    <label class="switch" title="Auto-color (percentile-based)">
+                        <input type="checkbox" id="cfgMapAutoColorLat">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <p class="card-desc">Set the latency boundaries (ms) for green / yellow / red markers on the map.</p>
+                <p class="card-desc">Set the latency boundaries (ms) for green / yellow / red markers on the map. Toggle to use automatic percentile-based coloring instead.</p>
                 <div class="threshold-row">
                     <div class="field">
                         <label>Green below (ms)</label>
@@ -457,8 +450,12 @@
             <section class="config-card" id="mapThresholdSpeedCard">
                 <div class="card-header">
                     <h3>Map Color Thresholds — Speed</h3>
+                    <label class="switch" title="Auto-color (percentile-based)">
+                        <input type="checkbox" id="cfgMapAutoColorSpeed">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <p class="card-desc">Set the speed boundaries (Mbps) for red / yellow / green markers on the map.</p>
+                <p class="card-desc">Set the speed boundaries (Mbps) for red / yellow / green markers on the map. Toggle to use automatic percentile-based coloring instead.</p>
                 <div class="threshold-row">
                     <div class="field">
                         <label>Red below (Mbps)</label>

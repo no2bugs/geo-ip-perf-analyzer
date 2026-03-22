@@ -695,20 +695,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfgMapLatYellow = document.getElementById('cfgMapLatYellow');
     const cfgMapSpeedRed = document.getElementById('cfgMapSpeedRed');
     const cfgMapSpeedYellow = document.getElementById('cfgMapSpeedYellow');
-    const cfgMapAutoColor = document.getElementById('cfgMapAutoColor');
+    const cfgMapAutoColorLat = document.getElementById('cfgMapAutoColorLat');
+    const cfgMapAutoColorSpeed = document.getElementById('cfgMapAutoColorSpeed');
     const cfgMapShowAll = document.getElementById('cfgMapShowAll');
     const mapThresholdLatCard = document.getElementById('mapThresholdLatencyCard');
     const mapThresholdSpeedCard = document.getElementById('mapThresholdSpeedCard');
 
-    function toggleThresholdCards() {
-        const disabled = cfgMapAutoColor.checked;
-        [mapThresholdLatCard, mapThresholdSpeedCard].forEach(card => {
-            if (card) card.style.opacity = disabled ? '0.4' : '1';
-            if (card) card.style.pointerEvents = disabled ? 'none' : '';
-        });
+    function toggleThresholdInputs() {
+        const latInputs = mapThresholdLatCard ? mapThresholdLatCard.querySelector('.threshold-row') : null;
+        const speedInputs = mapThresholdSpeedCard ? mapThresholdSpeedCard.querySelector('.threshold-row') : null;
+        if (latInputs) { latInputs.style.opacity = cfgMapAutoColorLat.checked ? '0.4' : '1'; latInputs.style.pointerEvents = cfgMapAutoColorLat.checked ? 'none' : ''; }
+        if (speedInputs) { speedInputs.style.opacity = cfgMapAutoColorSpeed.checked ? '0.4' : '1'; speedInputs.style.pointerEvents = cfgMapAutoColorSpeed.checked ? 'none' : ''; }
     }
 
-    cfgMapAutoColor.addEventListener('change', toggleThresholdCards);
+    cfgMapAutoColorLat.addEventListener('change', toggleThresholdInputs);
+    cfgMapAutoColorSpeed.addEventListener('change', toggleThresholdInputs);
 
     function updateThresholdPreviews() {
         const lg = cfgMapLatGreen.value, ly = cfgMapLatYellow.value;
@@ -729,9 +730,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadMapThresholds(thresholds) {
         if (!thresholds) return;
-        cfgMapAutoColor.checked = !!thresholds.auto_color;
+        cfgMapAutoColorLat.checked = !!thresholds.auto_color_latency;
+        cfgMapAutoColorSpeed.checked = !!thresholds.auto_color_speed;
         cfgMapShowAll.checked = !!thresholds.show_all_servers;
-        toggleThresholdCards();
+        toggleThresholdInputs();
         if (thresholds.latency) {
             cfgMapLatGreen.value = thresholds.latency.green || 50;
             cfgMapLatYellow.value = thresholds.latency.yellow || 150;
@@ -745,7 +747,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getMapThresholds() {
         return {
-            auto_color: cfgMapAutoColor.checked,
+            auto_color_latency: cfgMapAutoColorLat.checked,
+            auto_color_speed: cfgMapAutoColorSpeed.checked,
             show_all_servers: cfgMapShowAll.checked,
             latency: {
                 green: parseInt(cfgMapLatGreen.value) || 50,

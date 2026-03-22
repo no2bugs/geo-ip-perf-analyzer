@@ -44,6 +44,8 @@ header {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1rem 1.5rem;
+    position: relative;
+    z-index: 10;
 }
 
 h1 {

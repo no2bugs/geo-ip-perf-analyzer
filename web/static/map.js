@@ -23,7 +23,7 @@
 
     let serverData = [];
     let markers = [];
-    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color: false, show_all_servers: false };
+    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color_latency: false, auto_color_speed: false, show_all_servers: false };
 
     // ---- Percentile helper ----
     function percentile(sortedArr, p) {
@@ -74,13 +74,12 @@
         const vals = filtered.map(s => getValue(s, metric)).filter(v => v != null && v > 0).sort((a, b) => a - b);
 
         // Determine color boundaries
+        const useAuto = isSpeed ? thresholds.auto_color_speed : thresholds.auto_color_latency;
         let bounds;
-        if (thresholds.auto_color && vals.length > 0) {
+        if (useAuto && vals.length > 0) {
             if (isSpeed) {
-                // Speed: low=red, mid=yellow, high=green → 33rd/66th percentile
                 bounds = { red: percentile(vals, 33), yellow: percentile(vals, 66) };
             } else {
-                // Latency: low=green, mid=yellow, high=red → 33rd/66th percentile
                 bounds = { green: percentile(vals, 33), yellow: percentile(vals, 66) };
             }
         } else {
