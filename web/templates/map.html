@@ -130,12 +130,26 @@
 
         /* Pulse animation for best-per-country markers */
         @keyframes marker-pulse {
-            0%, 100% { r: 7; stroke-opacity: 0.3; }
-            50% { r: 11; stroke-opacity: 0.9; }
+            0%, 100% { transform: scale(1); stroke-width: 2; stroke-opacity: 0.4; }
+            50% { transform: scale(2); stroke-width: 3; stroke-opacity: 1; }
         }
         .best-marker {
-            animation: marker-pulse 1.5s ease-in-out infinite;
+            animation: marker-pulse 1.8s ease-in-out infinite;
+            transform-origin: center;
+            transform-box: fill-box;
         }
+
+        .best-tooltip {
+            background: rgba(15, 23, 42, 0.92) !important;
+            color: #f8fafc !important;
+            border: 1px solid rgba(148, 163, 184, 0.2) !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.78rem !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        }
+        .best-tooltip::before { border-top-color: rgba(15, 23, 42, 0.92) !important; }
     </style>
 </head>
 

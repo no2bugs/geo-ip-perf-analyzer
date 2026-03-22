@@ -153,10 +153,14 @@
                 fillOpacity: 0.85
             }).addTo(map);
 
-            // Add pulse animation to best-per-country markers
+            // Add pulse animation and tooltip to best-per-country markers
             if (s._isBest) {
                 const el = marker.getElement();
                 if (el) el.classList.add('best-marker');
+                const bestLabel = isSpeed ? 'Fastest' : 'Lowest latency';
+                marker.bindTooltip(`⭐ ${bestLabel} server in ${s.country}`, {
+                    permanent: false, direction: 'top', className: 'best-tooltip'
+                });
             }
 
             const latStr = s.latency_ms != null ? s.latency_ms.toFixed(2) + ' ms' : 'N/A';
