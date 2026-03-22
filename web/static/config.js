@@ -562,7 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
             preview.className = 'wallpaper-preview';
             if (bgVal !== 'none') {
                 preview.style.backgroundImage = bgVal;
-                preview.style.backgroundSize = key === 'topography' ? '600px 600px' : 'auto';
             }
             tile.appendChild(preview);
             const label = document.createElement('div');
@@ -573,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentTheme.wallpaper = key;
                 saveTheme();
                 renderWallpapers();
+                refreshCustomWallpaperUI();
             });
             wallpaperGrid.appendChild(tile);
         }
@@ -597,7 +597,69 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { /* use defaults */ }
         renderPalettes();
         renderWallpapers();
+        refreshCustomWallpaperUI();
     }
+
+    // ========================================
+    // Custom Wallpaper Upload
+    // ========================================
+    const wallpaperFileInput = document.getElementById('wallpaperFileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const removeWallpaperBtn = document.getElementById('removeWallpaperBtn');
+    const customPreview = document.getElementById('customWallpaperPreview');
+
+    function refreshCustomWallpaperUI() {
+        const isCustom = currentTheme.wallpaper === 'custom';
+        fetch('/api/wallpaper/custom', { method: 'HEAD' }).then(r => {
+            const hasFile = r.ok;
+            removeWallpaperBtn.style.display = hasFile ? '' : 'none';
+            if (hasFile) {
+                customPreview.style.display = 'block';
+                customPreview.style.backgroundImage = 'url(/api/wallpaper/custom?' + Date.now() + ')';
+            } else {
+                customPreview.style.display = 'none';
+            }
+        }).catch(() => {
+            removeWallpaperBtn.style.display = 'none';
+            customPreview.style.display = 'none';
+        });
+    }
+
+    wallpaperFileInput.addEventListener('change', async () => {
+        const file = wallpaperFileInput.files[0];
+        if (!file) return;
+        uploadStatus.textContent = 'Uploading...';
+        const form = new FormData();
+        form.append('file', file);
+        try {
+            const resp = await fetch('/api/wallpaper/upload', { method: 'POST', body: form });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                uploadStatus.textContent = 'Uploaded!';
+                currentTheme.wallpaper = 'custom';
+                engine.applyTheme(currentTheme);
+                localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme));
+                renderWallpapers();
+                refreshCustomWallpaperUI();
+            } else {
+                uploadStatus.textContent = data.message || 'Upload failed';
+            }
+        } catch (e) {
+            uploadStatus.textContent = 'Upload failed';
+        }
+        wallpaperFileInput.value = '';
+        setTimeout(() => { uploadStatus.textContent = ''; }, 3000);
+    });
+
+    removeWallpaperBtn.addEventListener('click', async () => {
+        try {
+            await fetch('/api/wallpaper/custom', { method: 'DELETE' });
+            currentTheme.wallpaper = 'none';
+            saveTheme();
+            renderWallpapers();
+            refreshCustomWallpaperUI();
+        } catch (e) { /* silent */ }
+    });
 
     // Init
     loadConfig();

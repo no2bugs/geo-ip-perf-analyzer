@@ -89,6 +89,12 @@
     }
 
     function applyWallpaper(name) {
+        if (name === 'custom') {
+            document.body.style.backgroundImage = 'url(/api/wallpaper/custom)';
+            document.body.style.backgroundRepeat = 'repeat';
+            document.body.style.backgroundSize = 'auto';
+            return;
+        }
         const bg = WALLPAPERS[name] || WALLPAPERS.none;
         document.body.style.backgroundImage = bg === 'none' ? 'none' : bg;
         document.body.style.backgroundRepeat = 'repeat';

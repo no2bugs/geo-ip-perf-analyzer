@@ -97,6 +97,7 @@ VPN_OVPN_DIR = os.environ.get('VPN_OVPN_DIR', 'ovpn')
 VPN_USERNAME = os.environ.get('VPN_USERNAME', '')
 VPN_PASSWORD = os.environ.get('VPN_PASSWORD', '')
 CONFIG_FILE = os.environ.get('CONFIG_FILE', 'config.yaml')
+WALLPAPER_DIR = os.environ.get('WALLPAPER_DIR', '/data/wallpapers')
 
 DEFAULT_CONFIG = {
     'schedule': {
@@ -832,7 +833,9 @@ def ovpn_download():
 # Theme API (stored in config.yaml under 'theme' key)
 # ============================================================
 VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
-VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles'}
+VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom'}
+ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}
+MAX_WALLPAPER_SIZE = 5 * 1024 * 1024  # 5 MB
 
 @app.route('/api/theme')
 def get_theme():
@@ -857,6 +860,74 @@ def post_theme():
         config['theme'] = {'palette': palette, 'wallpaper': wallpaper}
         save_config(config)
     return jsonify({'status': 'ok'})
+
+
+@app.route('/api/wallpaper/upload', methods=['POST'])
+def upload_wallpaper():
+    """Upload a custom wallpaper image (png/jpg/webp/svg, max 5 MB)."""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+    uploaded = request.files['file']
+    if not uploaded.filename:
+        return jsonify({'status': 'error', 'message': 'Empty filename'}), 400
+    ext = os.path.splitext(uploaded.filename)[1].lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        allowed = ', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))
+        return jsonify({'status': 'error', 'message': f'Allowed types: {allowed}'}), 400
+    data = uploaded.read()
+    if len(data) > MAX_WALLPAPER_SIZE:
+        return jsonify({'status': 'error', 'message': 'File exceeds 5 MB limit'}), 400
+    wp_dir = Path(WALLPAPER_DIR)
+    wp_dir.mkdir(parents=True, exist_ok=True)
+    # Remove any previous custom wallpaper
+    for old in wp_dir.iterdir():
+        if old.stem == 'custom':
+            old.unlink()
+    target = wp_dir / f'custom{ext}'
+    target.write_bytes(data)
+    # Auto-set theme wallpaper to custom
+    with _config_lock:
+        config = load_config()
+        theme = config.get('theme', {})
+        theme['wallpaper'] = 'custom'
+        config['theme'] = theme
+        save_config(config)
+    logging.info(f'Custom wallpaper uploaded: {uploaded.filename} ({len(data)} bytes)')
+    return jsonify({'status': 'ok', 'url': '/api/wallpaper/custom'})
+
+
+@app.route('/api/wallpaper/custom')
+def serve_custom_wallpaper():
+    """Serve the uploaded custom wallpaper image."""
+    wp_dir = Path(WALLPAPER_DIR)
+    for ext in ALLOWED_IMAGE_EXTENSIONS:
+        candidate = wp_dir / f'custom{ext}'
+        if candidate.exists():
+            mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                    'webp': 'image/webp', 'svg': 'image/svg+xml'}
+            return send_from_directory(str(wp_dir), candidate.name,
+                                      mimetype=mime.get(ext.lstrip('.'), 'application/octet-stream'))
+    return jsonify({'status': 'error', 'message': 'No custom wallpaper found'}), 404
+
+
+@app.route('/api/wallpaper/custom', methods=['DELETE'])
+def delete_custom_wallpaper():
+    """Delete the custom wallpaper and reset to 'none'."""
+    wp_dir = Path(WALLPAPER_DIR)
+    deleted = False
+    for ext in ALLOWED_IMAGE_EXTENSIONS:
+        candidate = wp_dir / f'custom{ext}'
+        if candidate.exists():
+            candidate.unlink()
+            deleted = True
+    with _config_lock:
+        config = load_config()
+        theme = config.get('theme', {})
+        if theme.get('wallpaper') == 'custom':
+            theme['wallpaper'] = 'none'
+            config['theme'] = theme
+            save_config(config)
+    return jsonify({'status': 'ok', 'deleted': deleted})
 
 # ============================================================
 # Config API

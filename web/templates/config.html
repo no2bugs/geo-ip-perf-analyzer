@@ -383,6 +383,22 @@
                 <p class="card-desc">Add a subtle repeating pattern to the page background.</p>
                 <div class="wallpaper-grid" id="wallpaperGrid"></div>
             </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Custom Wallpaper</h3>
+                </div>
+                <p class="card-desc">Upload your own image (PNG, JPG, WebP, SVG — max 5 MB). It will tile as the background.</p>
+                <div class="custom-wallpaper-row">
+                    <label class="upload-btn" id="uploadWallpaperBtn">
+                        <input type="file" id="wallpaperFileInput" accept=".png,.jpg,.jpeg,.webp,.svg" hidden>
+                        Upload Image
+                    </label>
+                    <button class="secondary-btn" id="removeWallpaperBtn" style="display:none">Remove</button>
+                    <span class="upload-status" id="uploadStatus"></span>
+                </div>
+                <div class="custom-wallpaper-preview" id="customWallpaperPreview" style="display:none"></div>
+            </section>
         </div>
 
         <div class="config-footer">
