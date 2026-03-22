@@ -831,8 +831,8 @@ def ovpn_download():
 # ============================================================
 # Theme API (stored in config.yaml under 'theme' key)
 # ============================================================
-VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'monochrome'}
-VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit', 'topography', 'diamonds', 'crosses', 'waves', 'constellation', 'triangles'}
+VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
+VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles'}
 
 @app.route('/api/theme')
 def get_theme():
