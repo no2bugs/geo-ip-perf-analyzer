@@ -19,6 +19,20 @@ Use it to find the best VPN server, the closest CDN edge, or simply understand y
 - **Push Notifications** — Get notified via [ntfy](https://ntfy.sh) when scans complete, updates finish, or errors occur.
 - **REST API** — Full programmatic access: trigger scans, fetch results, manage config, upload data.
 
+### Server Map
+
+*Latency heatmap — best server per country pulses, vantage point marked:*
+
+![Map – latency by country](assets/map-country.png)
+
+*Download speed — zoomed into Zurich with "Show all servers" enabled:*
+
+![Map – download speed](assets/map.png)
+
+### Config & Automation
+
+![Config UI](assets/config.png)
+
 ---
 
 ## Getting Started
