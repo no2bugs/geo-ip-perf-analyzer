@@ -904,34 +904,104 @@ def get_results_geo():
 # ---- Measurement origin (vantage point) ----
 _origin_cache = {'data': None, 'ts': 0}
 
+def _auto_detect_origin():
+    """Detect origin via online IP geolocation (ipinfo.io), fall back to local GeoIP DB."""
+    # Primary: ipinfo.io — usually more accurate than local GeoIP DB
+    try:
+        resp = http_requests.get('https://ipinfo.io/json', timeout=5)
+        info = resp.json()
+        loc = info.get('loc', '')
+        if loc and ',' in loc:
+            lat, lon = loc.split(',', 1)
+            return {
+                'ip': info.get('ip', ''),
+                'lat': float(lat),
+                'lon': float(lon),
+                'country': info.get('country', 'Unknown'),
+                'city': info.get('city', 'Unknown'),
+                'source': 'auto'
+            }
+    except Exception:
+        pass
+    # Fallback: local GeoIP DB
+    if os.path.exists(GEOIP_CITY):
+        try:
+            ip_resp = http_requests.get('https://api.ipify.org', timeout=5)
+            public_ip = ip_resp.text.strip()
+            reader = geoip2.database.Reader(GEOIP_CITY)
+            try:
+                geo = reader.city(public_ip)
+                return {
+                    'ip': public_ip,
+                    'lat': geo.location.latitude,
+                    'lon': geo.location.longitude,
+                    'country': geo.country.name or 'Unknown',
+                    'city': geo.city.name or 'Unknown',
+                    'source': 'auto'
+                }
+            finally:
+                reader.close()
+        except Exception:
+            pass
+    return None
+
+
+def _geocode_address(country, city, zipcode):
+    """Geocode a manual address via Nominatim (OpenStreetMap)."""
+    parts = [p for p in [zipcode, city, country] if p]
+    if not parts:
+        return None
+    query = ', '.join(parts)
+    try:
+        resp = http_requests.get(
+            'https://nominatim.openstreetmap.org/search',
+            params={'q': query, 'format': 'json', 'limit': 1},
+            headers={'User-Agent': 'GeoIP-Performance-Analyzer/1.0'},
+            timeout=10
+        )
+        results = resp.json()
+        if results:
+            return {
+                'ip': '',
+                'lat': float(results[0]['lat']),
+                'lon': float(results[0]['lon']),
+                'country': country or 'Unknown',
+                'city': city or 'Unknown',
+                'source': 'manual'
+            }
+    except Exception:
+        pass
+    return None
+
+
 @app.route('/api/origin')
 def get_origin():
     """Return the measurement origin (vantage point) location."""
     now = time.time()
     if _origin_cache['data'] and now - _origin_cache['ts'] < 3600:
         return jsonify(_origin_cache['data'])
-    if not os.path.exists(GEOIP_CITY):
-        return jsonify({'error': 'GeoIP City database not found'}), 500
-    try:
-        resp = http_requests.get('https://api.ipify.org', timeout=5)
-        public_ip = resp.text.strip()
-        reader = geoip2.database.Reader(GEOIP_CITY)
-        try:
-            geo = reader.city(public_ip)
-            result = {
-                'ip': public_ip,
-                'lat': geo.location.latitude,
-                'lon': geo.location.longitude,
-                'country': geo.country.name or 'Unknown',
-                'city': geo.city.name or 'Unknown'
-            }
-        finally:
-            reader.close()
-        _origin_cache['data'] = result
-        _origin_cache['ts'] = now
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
+    # Check config for manual override
+    config = load_config()
+    mt = config.get('theme', {}).get('map_thresholds', {})
+    origin_mode = mt.get('origin_mode', 'auto')
+
+    result = None
+    if origin_mode == 'manual':
+        addr = mt.get('origin_address', {})
+        result = _geocode_address(
+            addr.get('country', ''),
+            addr.get('city', ''),
+            addr.get('zipcode', '')
+        )
+    if not result:
+        result = _auto_detect_origin()
+    if not result:
+        return jsonify({'error': 'Could not determine origin location'}), 500
+
+    _origin_cache['data'] = result
+    _origin_cache['ts'] = now
+    return jsonify(result)
 VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
 VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom'}
 ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}
@@ -984,6 +1054,9 @@ def post_theme():
             })
         config['theme'] = theme_data
         save_config(config)
+    # Invalidate origin cache so changes to origin settings take effect immediately
+    _origin_cache['data'] = None
+    _origin_cache['ts'] = 0
     return jsonify({'status': 'ok'})
 
 

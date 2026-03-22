@@ -225,8 +225,9 @@
                     });
                     originMarker.bindPopup(`
                         <div class="popup-domain">📡 Vantage Point</div>
-                        <div class="popup-row"><span class="popup-label">IP</span> <span class="popup-val">${origin.ip}</span></div>
+                        <div class="popup-row"><span class="popup-label">IP</span> <span class="popup-val">${origin.ip || '—'}</span></div>
                         <div class="popup-row"><span class="popup-label">Location</span> <span class="popup-val">${origin.city}, ${origin.country}</span></div>
+                        <div class="popup-row"><span class="popup-label">Detection</span> <span class="popup-val">${origin.source === 'manual' ? 'Manual' : 'Auto (IP)'}</span></div>
                         <div style="margin-top:6px;color:#94a3b8;font-size:0.75rem;">All measurements are relative to this location.</div>
                     `);
                 }

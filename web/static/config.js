@@ -701,6 +701,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapThresholdLatCard = document.getElementById('mapThresholdLatencyCard');
     const mapThresholdSpeedCard = document.getElementById('mapThresholdSpeedCard');
 
+    // Origin / vantage point controls
+    const cfgOriginAuto = document.getElementById('cfgOriginAuto');
+    const cfgOriginCountry = document.getElementById('cfgOriginCountry');
+    const cfgOriginCity = document.getElementById('cfgOriginCity');
+    const cfgOriginZipcode = document.getElementById('cfgOriginZipcode');
+    const originAddressRow = document.getElementById('originAddressRow');
+
+    function toggleOriginFields() {
+        const isAuto = cfgOriginAuto.checked;
+        originAddressRow.style.opacity = isAuto ? '0.4' : '1';
+        originAddressRow.style.pointerEvents = isAuto ? 'none' : '';
+    }
+    cfgOriginAuto.addEventListener('change', toggleOriginFields);
+
     function toggleThresholdInputs() {
         const latInputs = mapThresholdLatCard ? mapThresholdLatCard.querySelector('.threshold-row') : null;
         const speedInputs = mapThresholdSpeedCard ? mapThresholdSpeedCard.querySelector('.threshold-row') : null;
@@ -733,6 +747,13 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgMapAutoColorLat.checked = !!thresholds.auto_color_latency;
         cfgMapAutoColorSpeed.checked = !!thresholds.auto_color_speed;
         cfgMapShowAll.checked = !!thresholds.show_all_servers;
+        // Origin settings
+        cfgOriginAuto.checked = (thresholds.origin_mode || 'auto') === 'auto';
+        const addr = thresholds.origin_address || {};
+        cfgOriginCountry.value = addr.country || '';
+        cfgOriginCity.value = addr.city || '';
+        cfgOriginZipcode.value = addr.zipcode || '';
+        toggleOriginFields();
         toggleThresholdInputs();
         if (thresholds.latency) {
             cfgMapLatGreen.value = thresholds.latency.green || 50;
@@ -750,6 +771,12 @@ document.addEventListener('DOMContentLoaded', () => {
             auto_color_latency: cfgMapAutoColorLat.checked,
             auto_color_speed: cfgMapAutoColorSpeed.checked,
             show_all_servers: cfgMapShowAll.checked,
+            origin_mode: cfgOriginAuto.checked ? 'auto' : 'manual',
+            origin_address: {
+                country: cfgOriginCountry.value.trim(),
+                city: cfgOriginCity.value.trim(),
+                zipcode: cfgOriginZipcode.value.trim()
+            },
             latency: {
                 green: parseInt(cfgMapLatGreen.value) || 50,
                 yellow: parseInt(cfgMapLatYellow.value) || 150

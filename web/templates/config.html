@@ -412,6 +412,31 @@
         <div class="tab-content" id="tab-map">
             <section class="config-card">
                 <div class="card-header">
+                    <h3>Vantage Point (Home Base)</h3>
+                    <label class="switch" title="Auto-detect from public IP">
+                        <input type="checkbox" id="cfgOriginAuto" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-desc">Your measurement origin shown on the map. Toggle <strong>on</strong> for automatic detection via public IP, or <strong>off</strong> to set a manual address.</p>
+                <div class="threshold-row" id="originAddressRow">
+                    <div class="field">
+                        <label>Country</label>
+                        <input type="text" id="cfgOriginCountry" placeholder="e.g. Netherlands">
+                    </div>
+                    <div class="field">
+                        <label>City</label>
+                        <input type="text" id="cfgOriginCity" placeholder="e.g. Amsterdam">
+                    </div>
+                    <div class="field">
+                        <label>Zip Code</label>
+                        <input type="text" id="cfgOriginZipcode" placeholder="e.g. 1012">
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
                     <h3>Show All Servers</h3>
                     <label class="switch">
                         <input type="checkbox" id="cfgMapShowAll">
