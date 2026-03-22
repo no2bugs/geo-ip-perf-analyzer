@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const engine = window.__THEME_ENGINE || {};
     const paletteGrid = document.getElementById('paletteGrid');
     const wallpaperGrid = document.getElementById('wallpaperGrid');
-    let currentTheme = { palette: 'default', wallpaper: 'none' };
+    let currentTheme = { palette: 'default', wallpaper: 'none', wallpaper_mode: 'tile' };
 
     function renderPalettes() {
         paletteGrid.innerHTML = '';
@@ -585,7 +585,12 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetch('/api/theme', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(currentTheme)
+                body: JSON.stringify({
+                    palette: currentTheme.palette,
+                    wallpaper: currentTheme.wallpaper,
+                    wallpaper_mode: currentTheme.wallpaper_mode || 'tile',
+                    map_thresholds: getMapThresholds()
+                })
             });
         } catch (e) { /* silent */ }
     }
@@ -593,7 +598,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadTheme() {
         try {
             const resp = await fetch('/api/theme');
-            currentTheme = await resp.json();
+            const data = await resp.json();
+            currentTheme = data;
+            loadMapThresholds(data.map_thresholds);
         } catch (e) { /* use defaults */ }
         renderPalettes();
         renderWallpapers();
@@ -607,23 +614,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadStatus = document.getElementById('uploadStatus');
     const removeWallpaperBtn = document.getElementById('removeWallpaperBtn');
     const customPreview = document.getElementById('customWallpaperPreview');
+    const wallpaperModeSelect = document.getElementById('wallpaperModeSelect');
 
     function refreshCustomWallpaperUI() {
-        const isCustom = currentTheme.wallpaper === 'custom';
         fetch('/api/wallpaper/custom', { method: 'HEAD' }).then(r => {
             const hasFile = r.ok;
             removeWallpaperBtn.style.display = hasFile ? '' : 'none';
+            wallpaperModeSelect.style.display = hasFile ? '' : 'none';
             if (hasFile) {
                 customPreview.style.display = 'block';
                 customPreview.style.backgroundImage = 'url(/api/wallpaper/custom?' + Date.now() + ')';
+                wallpaperModeSelect.value = currentTheme.wallpaper_mode || 'tile';
             } else {
                 customPreview.style.display = 'none';
             }
         }).catch(() => {
             removeWallpaperBtn.style.display = 'none';
+            wallpaperModeSelect.style.display = 'none';
             customPreview.style.display = 'none';
         });
     }
+
+    wallpaperModeSelect.addEventListener('change', () => {
+        currentTheme.wallpaper_mode = wallpaperModeSelect.value;
+        if (currentTheme.wallpaper === 'custom') {
+            engine.applyTheme(currentTheme);
+        }
+        saveTheme();
+    });
 
     wallpaperFileInput.addEventListener('change', async () => {
         const file = wallpaperFileInput.files[0];
@@ -660,6 +678,57 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshCustomWallpaperUI();
         } catch (e) { /* silent */ }
     });
+
+    // ========================================
+    // Map Thresholds
+    // ========================================
+    const cfgMapLatGreen = document.getElementById('cfgMapLatGreen');
+    const cfgMapLatYellow = document.getElementById('cfgMapLatYellow');
+    const cfgMapSpeedRed = document.getElementById('cfgMapSpeedRed');
+    const cfgMapSpeedYellow = document.getElementById('cfgMapSpeedYellow');
+
+    function updateThresholdPreviews() {
+        const lg = cfgMapLatGreen.value, ly = cfgMapLatYellow.value;
+        const sr = cfgMapSpeedRed.value, sy = cfgMapSpeedYellow.value;
+        document.getElementById('tpLatGreen').textContent = lg;
+        document.getElementById('tpLatGreen2').textContent = lg;
+        document.getElementById('tpLatYellow').textContent = ly;
+        document.getElementById('tpLatYellow2').textContent = ly;
+        document.getElementById('tpSpeedRed').textContent = sr;
+        document.getElementById('tpSpeedRed2').textContent = sr;
+        document.getElementById('tpSpeedYellow').textContent = sy;
+        document.getElementById('tpSpeedYellow2').textContent = sy;
+    }
+
+    [cfgMapLatGreen, cfgMapLatYellow, cfgMapSpeedRed, cfgMapSpeedYellow].forEach(el => {
+        el.addEventListener('input', updateThresholdPreviews);
+    });
+
+    function loadMapThresholds(thresholds) {
+        if (!thresholds) return;
+        if (thresholds.latency) {
+            cfgMapLatGreen.value = thresholds.latency.green || 50;
+            cfgMapLatYellow.value = thresholds.latency.yellow || 150;
+        }
+        if (thresholds.speed) {
+            cfgMapSpeedRed.value = thresholds.speed.red || 50;
+            cfgMapSpeedYellow.value = thresholds.speed.yellow || 200;
+        }
+        updateThresholdPreviews();
+    }
+
+    function getMapThresholds() {
+        return {
+            latency: {
+                green: parseInt(cfgMapLatGreen.value) || 50,
+                yellow: parseInt(cfgMapLatYellow.value) || 150
+            },
+            speed: {
+                red: parseInt(cfgMapSpeedRed.value) || 50,
+                yellow: parseInt(cfgMapSpeedYellow.value) || 200
+            }
+        };
+    }
 
     // Init
     loadConfig();

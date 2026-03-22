@@ -23,6 +23,8 @@
             <button class="tab-btn" data-tab="notifications">Notifications</button>
             <button class="tab-btn" data-tab="credentials">Credentials</button>
             <button class="tab-btn" data-tab="themes">Themes</button>
+            <button class="tab-btn" data-tab="map">Map</button>
+            <button class="tab-btn" data-tab="about">About</button>
         </nav>
 
         <!-- ==================== SCHEDULES TAB ==================== -->
@@ -388,16 +390,92 @@
                 <div class="card-header">
                     <h3>Custom Wallpaper</h3>
                 </div>
-                <p class="card-desc">Upload your own image (PNG, JPG, WebP, SVG — max 5 MB). It will tile as the background.</p>
+                <p class="card-desc">Upload your own image (PNG, JPG, WebP, SVG — max 5 MB). It will be used as the background.</p>
                 <div class="custom-wallpaper-row">
                     <label class="upload-btn" id="uploadWallpaperBtn">
                         <input type="file" id="wallpaperFileInput" accept=".png,.jpg,.jpeg,.webp,.svg" hidden>
                         Upload Image
                     </label>
+                    <select id="wallpaperModeSelect" class="metric-select" style="font-size:0.8rem;">
+                        <option value="tile">Tile (repeat)</option>
+                        <option value="cover">Cover (fill screen)</option>
+                        <option value="contain">Contain (fit)</option>
+                    </select>
                     <button class="secondary-btn" id="removeWallpaperBtn" style="display:none">Remove</button>
                     <span class="upload-status" id="uploadStatus"></span>
                 </div>
                 <div class="custom-wallpaper-preview" id="customWallpaperPreview" style="display:none"></div>
+            </section>
+        </div>
+
+        <!-- ==================== MAP TAB ==================== -->
+        <div class="tab-content" id="tab-map">
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Map Color Thresholds — Latency</h3>
+                </div>
+                <p class="card-desc">Set the latency boundaries (ms) for green / yellow / red markers on the map.</p>
+                <div class="threshold-row">
+                    <div class="field">
+                        <label>Green below (ms)</label>
+                        <input type="number" id="cfgMapLatGreen" min="1" max="5000" value="50">
+                    </div>
+                    <div class="field">
+                        <label>Yellow below (ms)</label>
+                        <input type="number" id="cfgMapLatYellow" min="1" max="5000" value="150">
+                    </div>
+                    <div class="threshold-preview">
+                        <span class="tp-dot" style="background:#10b981"></span> &lt; <span id="tpLatGreen">50</span> ms
+                        <span class="tp-dot" style="background:#eab308"></span> <span id="tpLatGreen2">50</span>–<span id="tpLatYellow">150</span> ms
+                        <span class="tp-dot" style="background:#ef4444"></span> &gt; <span id="tpLatYellow2">150</span> ms
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Map Color Thresholds — Speed</h3>
+                </div>
+                <p class="card-desc">Set the speed boundaries (Mbps) for red / yellow / green markers on the map.</p>
+                <div class="threshold-row">
+                    <div class="field">
+                        <label>Red below (Mbps)</label>
+                        <input type="number" id="cfgMapSpeedRed" min="1" max="10000" value="50">
+                    </div>
+                    <div class="field">
+                        <label>Yellow below (Mbps)</label>
+                        <input type="number" id="cfgMapSpeedYellow" min="1" max="10000" value="200">
+                    </div>
+                    <div class="threshold-preview">
+                        <span class="tp-dot" style="background:#ef4444"></span> &lt; <span id="tpSpeedRed">50</span> Mbps
+                        <span class="tp-dot" style="background:#eab308"></span> <span id="tpSpeedRed2">50</span>–<span id="tpSpeedYellow">200</span> Mbps
+                        <span class="tp-dot" style="background:#10b981"></span> &gt; <span id="tpSpeedYellow2">200</span> Mbps
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== ABOUT TAB ==================== -->
+        <div class="tab-content" id="tab-about">
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>GeoIP Performance Analyzer</h3>
+                </div>
+                <p style="color:var(--text-secondary); line-height:1.8; margin-bottom:1rem;">
+                    A self-hosted network performance analysis tool that scans VPN server endpoints,
+                    measures latency and throughput via OpenVPN speedtests, resolves geographic locations
+                    using MaxMind GeoLite2 databases, and visualises everything on an interactive map.
+                </p>
+                <p style="color:var(--text-secondary); line-height:1.8; margin-bottom:1rem;">
+                    Built for homelabbers who want full visibility into their VPN fleet performance
+                    across countries — with automated scheduling, ntfy push notifications, and a
+                    dark-themed dashboard.
+                </p>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;">
+                    <a href="https://github.com/no2bugs/geo-ip-perf-analyzer/tree/master" target="_blank" rel="noopener"
+                       style="color:var(--accent-color); font-weight:600;">&#128279; GitHub Repository</a>
+                    <a href="/help" style="color:var(--accent-color); font-weight:600;">&#9432; Help &amp; API Reference</a>
+                </div>
             </section>
         </div>
 

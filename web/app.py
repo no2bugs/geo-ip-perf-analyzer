@@ -915,21 +915,40 @@ def get_theme():
     theme = config.get('theme', {})
     return jsonify({
         'palette': theme.get('palette', 'default'),
-        'wallpaper': theme.get('wallpaper', 'none')
+        'wallpaper': theme.get('wallpaper', 'none'),
+        'wallpaper_mode': theme.get('wallpaper_mode', 'tile'),
+        'map_thresholds': theme.get('map_thresholds', {
+            'latency': {'green': 50, 'yellow': 150},
+            'speed': {'red': 50, 'yellow': 200}
+        })
     })
+
+VALID_WALLPAPER_MODES = {'tile', 'cover', 'contain'}
 
 @app.route('/api/theme', methods=['POST'])
 def post_theme():
     data = request.json or {}
     palette = data.get('palette', 'default')
     wallpaper = data.get('wallpaper', 'none')
+    wallpaper_mode = data.get('wallpaper_mode', 'tile')
+    map_thresholds = data.get('map_thresholds')
     if palette not in VALID_PALETTES:
         palette = 'default'
     if wallpaper not in VALID_WALLPAPERS:
         wallpaper = 'none'
+    if wallpaper_mode not in VALID_WALLPAPER_MODES:
+        wallpaper_mode = 'tile'
     with _config_lock:
         config = load_config()
-        config['theme'] = {'palette': palette, 'wallpaper': wallpaper}
+        theme_data = {'palette': palette, 'wallpaper': wallpaper, 'wallpaper_mode': wallpaper_mode}
+        if isinstance(map_thresholds, dict):
+            theme_data['map_thresholds'] = map_thresholds
+        else:
+            theme_data['map_thresholds'] = config.get('theme', {}).get('map_thresholds', {
+                'latency': {'green': 50, 'yellow': 150},
+                'speed': {'red': 50, 'yellow': 200}
+            })
+        config['theme'] = theme_data
         save_config(config)
     return jsonify({'status': 'ok'})
 

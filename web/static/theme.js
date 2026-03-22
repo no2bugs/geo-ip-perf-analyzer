@@ -88,22 +88,36 @@
         }
     }
 
-    function applyWallpaper(name) {
+    function applyWallpaper(name, mode) {
         if (name === 'custom') {
             document.body.style.backgroundImage = 'url(/api/wallpaper/custom)';
-            document.body.style.backgroundRepeat = 'repeat';
-            document.body.style.backgroundSize = 'auto';
+            document.body.style.backgroundAttachment = 'fixed';
+            if (mode === 'cover') {
+                document.body.style.backgroundRepeat = 'no-repeat';
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+            } else if (mode === 'contain') {
+                document.body.style.backgroundRepeat = 'no-repeat';
+                document.body.style.backgroundSize = 'contain';
+                document.body.style.backgroundPosition = 'center';
+            } else {
+                document.body.style.backgroundRepeat = 'repeat';
+                document.body.style.backgroundSize = 'auto';
+                document.body.style.backgroundPosition = '';
+            }
             return;
         }
         const bg = WALLPAPERS[name] || WALLPAPERS.none;
         document.body.style.backgroundImage = bg === 'none' ? 'none' : bg;
         document.body.style.backgroundRepeat = 'repeat';
         document.body.style.backgroundSize = LARGE_WALLPAPERS.has(name) ? '300px 300px' : 'auto';
+        document.body.style.backgroundAttachment = '';
+        document.body.style.backgroundPosition = '';
     }
 
     function applyTheme(theme) {
         applyPalette(theme.palette || 'default');
-        applyWallpaper(theme.wallpaper || 'none');
+        applyWallpaper(theme.wallpaper || 'none', theme.wallpaper_mode || 'tile');
     }
 
     // Try to apply cached theme instantly (avoid flash)

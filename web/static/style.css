@@ -1190,6 +1190,12 @@ tr:hover td {
 }
 
 /* OVPN config modal */
+.ovpn-modal {
+    max-width: 850px;
+    resize: both;
+    overflow: auto;
+}
+
 .ovpn-config-pre {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-color);
@@ -1208,9 +1214,35 @@ tr:hover td {
 .ovpn-copy-btn {
     position: absolute;
     top: 0.5rem;
-    right: 0.5rem;
+    left: 0.5rem;
     font-size: 0.72rem;
     padding: 0.25rem 0.6rem;
+    z-index: 1;
+}
+
+/* Map config thresholds */
+.threshold-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.threshold-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-family: 'Courier New', monospace;
+}
+
+.tp-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
 }
 
 /* ========================================

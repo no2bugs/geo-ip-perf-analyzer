@@ -14,11 +14,12 @@
 <body>
     <div class="container">
         <header>
-            <a href="https://github.com/no2bugs/geo-ip-perf-analyzer/tree/master" target="_blank" rel="noopener" class="header-title-link">
+            <a href="/map" class="header-title-link">
                 <h1><img src="/static/favicon.svg" alt="" class="header-logo">GeoIP Performance Analyzer</h1>
             </a>
             <div class="header-actions">
                 <div class="header-btn-group">
+                    <a href="/map" class="secondary-btn header-action-btn" title="Server Map">&#127760; Map</a>
                     <button id="editServersBtn" class="secondary-btn header-action-btn" title="Edit servers list">
                         &#9776; Servers List
                     </button>
@@ -37,7 +38,6 @@
                     </div>
                 </div>
                 <a href="/config" class="header-link-btn" title="Config &amp; Automation">&#9881; Config</a>
-                <a href="/map" class="header-link-btn" title="Server Map">&#127760; Map</a>
                 <a href="/help" class="header-link-btn" title="Help &amp; API Reference">&#9432; Help</a>
                 <div class="status-indicator" id="globalStatus">
                     <span class="dot"></span> <span id="statusText">Ready</span>
@@ -169,14 +169,14 @@
 
     <!-- OVPN Config Modal -->
     <div id="ovpnConfigModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content glass-panel" style="max-width:700px;">
+        <div class="modal-content glass-panel ovpn-modal">
             <div class="modal-header">
                 <h2 id="ovpnConfigTitle">OVPN Config</h2>
                 <button id="closeOvpnModal" class="secondary-btn btn-sm">&times;</button>
             </div>
             <div id="ovpnConfigBody" style="position:relative;">
-                <pre id="ovpnConfigContent" class="ovpn-config-pre"></pre>
                 <button id="copyOvpnBtn" class="secondary-btn btn-sm ovpn-copy-btn" title="Copy to clipboard">Copy</button>
+                <pre id="ovpnConfigContent" class="ovpn-config-pre"></pre>
             </div>
         </div>
     </div>

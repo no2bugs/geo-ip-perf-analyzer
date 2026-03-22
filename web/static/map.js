@@ -21,29 +21,23 @@
 
     let serverData = [];
     let markers = [];
+    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 } };
 
-    // ---- Color helpers ----
-    function lerp(a, b, t) { return a + (b - a) * t; }
+    // ---- Color helpers (threshold-based) ----
+    function colorForLatency(val) {
+        if (val == null) return '#94a3b8';
+        const g = thresholds.latency.green, y = thresholds.latency.yellow;
+        if (val < g) return '#10b981';
+        if (val < y) return '#eab308';
+        return '#ef4444';
+    }
 
-    function colorForValue(val, min, max, invert) {
-        if (val == null || max === min) return '#94a3b8';
-        let t = (val - min) / (max - min);
-        t = Math.max(0, Math.min(1, t));
-        if (invert) t = 1 - t;
-        // green (0) → yellow (0.5) → red (1)
-        let r, g, b;
-        if (t < 0.5) {
-            const s = t * 2;
-            r = lerp(16, 234, s);
-            g = lerp(185, 179, s);
-            b = lerp(129, 8, s);
-        } else {
-            const s = (t - 0.5) * 2;
-            r = lerp(234, 239, s);
-            g = lerp(179, 68, s);
-            b = lerp(8, 68, s);
-        }
-        return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+    function colorForSpeed(val) {
+        if (val == null) return '#94a3b8';
+        const r = thresholds.speed.red, y = thresholds.speed.yellow;
+        if (val < r) return '#ef4444';
+        if (val < y) return '#eab308';
+        return '#10b981';
     }
 
     function getValue(item, metric) {
@@ -61,33 +55,27 @@
         const metric = metricSelect.value;
         const isSpeed = metric !== 'latency';
 
-        // Collect valid values for range
         const vals = serverData.map(s => getValue(s, metric)).filter(v => v != null && v > 0);
-        if (vals.length === 0) {
-            mapStats.textContent = 'No data for selected metric';
-            return;
-        }
-        const min = Math.min(...vals);
-        const max = Math.max(...vals);
 
         // Update legend
         if (isSpeed) {
-            legendLow.textContent = 'Slow';
-            legendHigh.textContent = 'Fast';
+            const r = thresholds.speed.red, y = thresholds.speed.yellow;
+            legendLow.textContent = '<' + r;
+            legendHigh.textContent = '>' + y;
             legendBar.style.background = 'linear-gradient(to right, #ef4444, #eab308, #10b981)';
         } else {
-            legendLow.textContent = 'Fast';
-            legendHigh.textContent = 'Slow';
+            const g = thresholds.latency.green, y = thresholds.latency.yellow;
+            legendLow.textContent = '<' + g;
+            legendHigh.textContent = '>' + y;
             legendBar.style.background = 'linear-gradient(to right, #10b981, #eab308, #ef4444)';
         }
 
         serverData.forEach(s => {
             const val = getValue(s, metric);
-            const color = colorForValue(val, min, max, isSpeed);
-            const radius = 7;
+            const color = isSpeed ? colorForSpeed(val) : colorForLatency(val);
 
             const marker = L.circleMarker([s.lat, s.lon], {
-                radius: radius,
+                radius: 7,
                 fillColor: color,
                 color: 'rgba(255,255,255,0.3)',
                 weight: 1,
@@ -117,6 +105,13 @@
     async function loadData() {
         mapStats.textContent = 'Loading...';
         try {
+            // Load thresholds from theme API
+            const themeResp = await fetch('/api/theme');
+            const themeData = await themeResp.json();
+            if (themeData.map_thresholds) {
+                thresholds = themeData.map_thresholds;
+            }
+
             const resp = await fetch('/api/results/geo');
             serverData = await resp.json();
             if (!Array.isArray(serverData)) {
