@@ -8,6 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/theme.js"></script>
 </head>
 
 <body>
@@ -21,6 +22,7 @@
             <button class="tab-btn active" data-tab="schedules">Schedules</button>
             <button class="tab-btn" data-tab="notifications">Notifications</button>
             <button class="tab-btn" data-tab="credentials">Credentials</button>
+            <button class="tab-btn" data-tab="themes">Themes</button>
         </nav>
 
         <!-- ==================== SCHEDULES TAB ==================== -->
@@ -361,6 +363,25 @@
                     <button type="button" id="saveCredsBtn" class="primary-btn">Save Credentials</button>
                     <span class="config-status" id="credsStatus"></span>
                 </div>
+            </section>
+        </div>
+
+        <!-- ==================== THEMES TAB ==================== -->
+        <div class="tab-content" id="tab-themes">
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Color Palette</h3>
+                </div>
+                <p class="card-desc">Choose a color scheme. Changes apply instantly on all pages.</p>
+                <div class="palette-grid" id="paletteGrid"></div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Background Wallpaper</h3>
+                </div>
+                <p class="card-desc">Add a subtle repeating pattern to the page background.</p>
+                <div class="wallpaper-grid" id="wallpaperGrid"></div>
             </section>
         </div>
 

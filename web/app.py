@@ -829,6 +829,36 @@ def ovpn_download():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # ============================================================
+# Theme API (stored in config.yaml under 'theme' key)
+# ============================================================
+VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'monochrome'}
+VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit', 'topography', 'diamonds', 'crosses', 'waves', 'constellation', 'triangles'}
+
+@app.route('/api/theme')
+def get_theme():
+    config = load_config()
+    theme = config.get('theme', {})
+    return jsonify({
+        'palette': theme.get('palette', 'default'),
+        'wallpaper': theme.get('wallpaper', 'none')
+    })
+
+@app.route('/api/theme', methods=['POST'])
+def post_theme():
+    data = request.json or {}
+    palette = data.get('palette', 'default')
+    wallpaper = data.get('wallpaper', 'none')
+    if palette not in VALID_PALETTES:
+        palette = 'default'
+    if wallpaper not in VALID_WALLPAPERS:
+        wallpaper = 'none'
+    with _config_lock:
+        config = load_config()
+        config['theme'] = {'palette': palette, 'wallpaper': wallpaper}
+        save_config(config)
+    return jsonify({'status': 'ok'})
+
+# ============================================================
 # Config API
 # ============================================================
 @app.route('/api/config')

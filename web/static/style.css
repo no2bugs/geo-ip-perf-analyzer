@@ -1054,6 +1054,91 @@ tr:hover td {
 }
 
 /* ========================================
+   Theme Picker
+   ======================================== */
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.75rem;
+}
+
+.palette-swatch {
+    position: relative;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.6rem;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    text-align: center;
+}
+
+.palette-swatch:hover {
+    transform: scale(1.04);
+}
+
+.palette-swatch.active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.palette-colors {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    margin-bottom: 0.4rem;
+}
+
+.palette-colors span {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.palette-name {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.wallpaper-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.75rem;
+}
+
+.wallpaper-tile {
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    overflow: hidden;
+    text-align: center;
+}
+
+.wallpaper-tile:hover {
+    transform: scale(1.04);
+}
+
+.wallpaper-tile.active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.wallpaper-preview {
+    height: 70px;
+    background-color: #0f172a;
+    background-repeat: repeat;
+}
+
+.wallpaper-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 0.35rem 0;
+}
+
+/* ========================================
    Multi-command list (Servers List Update)
    ======================================== */
 .commands-list {

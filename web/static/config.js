@@ -519,7 +519,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ========================================
+    // Theme Picker
+    // ========================================
+    const engine = window.__THEME_ENGINE || {};
+    const paletteGrid = document.getElementById('paletteGrid');
+    const wallpaperGrid = document.getElementById('wallpaperGrid');
+    let currentTheme = { palette: 'default', wallpaper: 'none' };
+
+    function renderPalettes() {
+        paletteGrid.innerHTML = '';
+        for (const [key, vars] of Object.entries(engine.PALETTES || {})) {
+            const swatch = document.createElement('div');
+            swatch.className = 'palette-swatch' + (currentTheme.palette === key ? ' active' : '');
+            const colors = document.createElement('div');
+            colors.className = 'palette-colors';
+            [vars['--bg-color'], vars['--accent-color'], vars['--success-color'], vars['--text-primary']].forEach(c => {
+                const dot = document.createElement('span');
+                dot.style.background = c;
+                colors.appendChild(dot);
+            });
+            swatch.appendChild(colors);
+            const label = document.createElement('div');
+            label.className = 'palette-name';
+            label.textContent = (engine.PALETTE_LABELS || {})[key] || key;
+            swatch.appendChild(label);
+            swatch.addEventListener('click', () => {
+                currentTheme.palette = key;
+                saveTheme();
+                renderPalettes();
+            });
+            paletteGrid.appendChild(swatch);
+        }
+    }
+
+    function renderWallpapers() {
+        wallpaperGrid.innerHTML = '';
+        for (const [key, bgVal] of Object.entries(engine.WALLPAPERS || {})) {
+            const tile = document.createElement('div');
+            tile.className = 'wallpaper-tile' + (currentTheme.wallpaper === key ? ' active' : '');
+            const preview = document.createElement('div');
+            preview.className = 'wallpaper-preview';
+            if (bgVal !== 'none') {
+                preview.style.backgroundImage = bgVal;
+                preview.style.backgroundSize = key === 'topography' ? '600px 600px' : 'auto';
+            }
+            tile.appendChild(preview);
+            const label = document.createElement('div');
+            label.className = 'wallpaper-label';
+            label.textContent = (engine.WALLPAPER_LABELS || {})[key] || key;
+            tile.appendChild(label);
+            tile.addEventListener('click', () => {
+                currentTheme.wallpaper = key;
+                saveTheme();
+                renderWallpapers();
+            });
+            wallpaperGrid.appendChild(tile);
+        }
+    }
+
+    async function saveTheme() {
+        engine.applyTheme(currentTheme);
+        localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme));
+        try {
+            await fetch('/api/theme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentTheme)
+            });
+        } catch (e) { /* silent */ }
+    }
+
+    async function loadTheme() {
+        try {
+            const resp = await fetch('/api/theme');
+            currentTheme = await resp.json();
+        } catch (e) { /* use defaults */ }
+        renderPalettes();
+        renderWallpapers();
+    }
+
     // Init
     loadConfig();
     loadCredentials();
+    loadTheme();
 });
