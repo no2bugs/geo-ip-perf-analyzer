@@ -289,11 +289,28 @@
 
         if (visibleBest.length === 1) {
             showDistanceTo(visibleBest[0]);
-        } else if (lastDistanceTarget && lastDistanceTarget.lat != null) {
-            // Keep showing last target even when zoomed past it
-            showDistanceTo(lastDistanceTarget);
+        } else if (visibleBest.length === 0) {
+            // No best marker visible — find dominant country in viewport and show its best
+            const visible = serverData.filter(s => s.lat != null && s.lon != null && mapBounds.contains([s.lat, s.lon]));
+            if (visible.length > 0) {
+                const countryCounts = {};
+                visible.forEach(s => { countryCounts[s.country] = (countryCounts[s.country] || 0) + 1; });
+                const topCountry = Object.keys(countryCounts).sort((a, b) => countryCounts[b] - countryCounts[a])[0];
+                const bestForCountry = serverData.find(s => s._isBest && s.country === topCountry);
+                if (bestForCountry) {
+                    showDistanceTo(bestForCountry);
+                } else if (lastDistanceTarget) {
+                    showDistanceTo(lastDistanceTarget);
+                }
+            } else if (lastDistanceTarget) {
+                showDistanceTo(lastDistanceTarget);
+            } else {
+                distanceOverlay.classList.add('hidden');
+            }
         } else {
+            // Multiple best servers visible — hide
             distanceOverlay.classList.add('hidden');
+            lastDistanceTarget = null;
         }
     }
     map.on('moveend', updateDistanceOverlay);
