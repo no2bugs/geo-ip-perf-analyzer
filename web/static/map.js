@@ -21,22 +21,29 @@
 
     let serverData = [];
     let markers = [];
-    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 } };
+    let thresholds = { latency: { green: 50, yellow: 150 }, speed: { red: 50, yellow: 200 }, auto_color: false };
+
+    // ---- Percentile helper ----
+    function percentile(sortedArr, p) {
+        if (!sortedArr.length) return 0;
+        const idx = (p / 100) * (sortedArr.length - 1);
+        const lo = Math.floor(idx), hi = Math.ceil(idx);
+        if (lo === hi) return sortedArr[lo];
+        return sortedArr[lo] + (sortedArr[hi] - sortedArr[lo]) * (idx - lo);
+    }
 
     // ---- Color helpers (threshold-based) ----
-    function colorForLatency(val) {
+    function colorForLatency(val, bounds) {
         if (val == null) return '#94a3b8';
-        const g = thresholds.latency.green, y = thresholds.latency.yellow;
-        if (val < g) return '#10b981';
-        if (val < y) return '#eab308';
+        if (val < bounds.green) return '#10b981';
+        if (val < bounds.yellow) return '#eab308';
         return '#ef4444';
     }
 
-    function colorForSpeed(val) {
+    function colorForSpeed(val, bounds) {
         if (val == null) return '#94a3b8';
-        const r = thresholds.speed.red, y = thresholds.speed.yellow;
-        if (val < r) return '#ef4444';
-        if (val < y) return '#eab308';
+        if (val < bounds.red) return '#ef4444';
+        if (val < bounds.yellow) return '#eab308';
         return '#10b981';
     }
 
@@ -55,24 +62,44 @@
         const metric = metricSelect.value;
         const isSpeed = metric !== 'latency';
 
-        const vals = serverData.map(s => getValue(s, metric)).filter(v => v != null && v > 0);
+        // Filter to servers that have a valid value for the selected metric
+        const filtered = serverData.filter(s => {
+            const v = getValue(s, metric);
+            return v != null && v > 0;
+        });
+
+        const vals = filtered.map(s => getValue(s, metric)).sort((a, b) => a - b);
+
+        // Determine color boundaries
+        let bounds;
+        if (thresholds.auto_color && vals.length > 0) {
+            if (isSpeed) {
+                // Speed: low=red, mid=yellow, high=green → 33rd/66th percentile
+                bounds = { red: percentile(vals, 33), yellow: percentile(vals, 66) };
+            } else {
+                // Latency: low=green, mid=yellow, high=red → 33rd/66th percentile
+                bounds = { green: percentile(vals, 33), yellow: percentile(vals, 66) };
+            }
+        } else {
+            bounds = isSpeed ? thresholds.speed : thresholds.latency;
+        }
 
         // Update legend
         if (isSpeed) {
-            const r = thresholds.speed.red, y = thresholds.speed.yellow;
+            const r = Math.round(bounds.red), y = Math.round(bounds.yellow);
             legendLow.textContent = '<' + r;
             legendHigh.textContent = '>' + y;
             legendBar.style.background = 'linear-gradient(to right, #ef4444, #eab308, #10b981)';
         } else {
-            const g = thresholds.latency.green, y = thresholds.latency.yellow;
+            const g = Math.round(bounds.green), y = Math.round(bounds.yellow);
             legendLow.textContent = '<' + g;
             legendHigh.textContent = '>' + y;
             legendBar.style.background = 'linear-gradient(to right, #10b981, #eab308, #ef4444)';
         }
 
-        serverData.forEach(s => {
+        filtered.forEach(s => {
             const val = getValue(s, metric);
-            const color = isSpeed ? colorForSpeed(val) : colorForLatency(val);
+            const color = isSpeed ? colorForSpeed(val, bounds) : colorForLatency(val, bounds);
 
             const marker = L.circleMarker([s.lat, s.lon], {
                 radius: 7,
@@ -98,7 +125,7 @@
             markers.push(marker);
         });
 
-        mapStats.textContent = `${serverData.length} servers • ${vals.length} with ${isSpeed ? 'speed' : 'latency'} data`;
+        mapStats.textContent = `${filtered.length} servers with ${isSpeed ? 'speed' : 'latency'} data`;
     }
 
     // ---- Load data ----
@@ -120,9 +147,10 @@
             }
             renderMarkers();
 
-            // Fit bounds to markers
-            if (serverData.length > 0) {
-                const bounds = L.latLngBounds(serverData.map(s => [s.lat, s.lon]));
+            // Fit bounds to markers with valid geo data
+            const geoValid = serverData.filter(s => s.lat != null && s.lon != null);
+            if (geoValid.length > 0) {
+                const bounds = L.latLngBounds(geoValid.map(s => [s.lat, s.lon]));
                 map.fitBounds(bounds, { padding: [30, 30], maxZoom: 6 });
             }
         } catch (e) {

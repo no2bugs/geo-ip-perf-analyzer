@@ -472,6 +472,7 @@ tr:hover td {
 .header-action-btn {
     font-size: 0.8rem;
     white-space: nowrap;
+    text-decoration: none;
 }
 
 /* OVPN tooltip */
@@ -1214,7 +1215,7 @@ tr:hover td {
 .ovpn-copy-btn {
     position: absolute;
     top: 0.5rem;
-    left: 0.5rem;
+    right: 0.5rem;
     font-size: 0.72rem;
     padding: 0.25rem 0.6rem;
     z-index: 1;

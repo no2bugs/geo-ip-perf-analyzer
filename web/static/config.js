@@ -686,6 +686,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfgMapLatYellow = document.getElementById('cfgMapLatYellow');
     const cfgMapSpeedRed = document.getElementById('cfgMapSpeedRed');
     const cfgMapSpeedYellow = document.getElementById('cfgMapSpeedYellow');
+    const cfgMapAutoColor = document.getElementById('cfgMapAutoColor');
+    const mapThresholdLatCard = document.getElementById('mapThresholdLatencyCard');
+    const mapThresholdSpeedCard = document.getElementById('mapThresholdSpeedCard');
+
+    function toggleThresholdCards() {
+        const disabled = cfgMapAutoColor.checked;
+        [mapThresholdLatCard, mapThresholdSpeedCard].forEach(card => {
+            if (card) card.style.opacity = disabled ? '0.4' : '1';
+            if (card) card.style.pointerEvents = disabled ? 'none' : '';
+        });
+    }
+
+    cfgMapAutoColor.addEventListener('change', toggleThresholdCards);
 
     function updateThresholdPreviews() {
         const lg = cfgMapLatGreen.value, ly = cfgMapLatYellow.value;
@@ -706,6 +719,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadMapThresholds(thresholds) {
         if (!thresholds) return;
+        cfgMapAutoColor.checked = !!thresholds.auto_color;
+        toggleThresholdCards();
         if (thresholds.latency) {
             cfgMapLatGreen.value = thresholds.latency.green || 50;
             cfgMapLatYellow.value = thresholds.latency.yellow || 150;
@@ -719,6 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getMapThresholds() {
         return {
+            auto_color: cfgMapAutoColor.checked,
             latency: {
                 green: parseInt(cfgMapLatGreen.value) || 50,
                 yellow: parseInt(cfgMapLatYellow.value) || 150

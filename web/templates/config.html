@@ -412,6 +412,17 @@
         <div class="tab-content" id="tab-map">
             <section class="config-card">
                 <div class="card-header">
+                    <h3>Color Mode</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="cfgMapAutoColor">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-desc">When enabled, colors are calculated automatically relative to the dataset (percentile-based). When disabled, the static thresholds below are used.</p>
+            </section>
+
+            <section class="config-card" id="mapThresholdLatencyCard">
+                <div class="card-header">
                     <h3>Map Color Thresholds — Latency</h3>
                 </div>
                 <p class="card-desc">Set the latency boundaries (ms) for green / yellow / red markers on the map.</p>
@@ -432,7 +443,7 @@
                 </div>
             </section>
 
-            <section class="config-card">
+            <section class="config-card" id="mapThresholdSpeedCard">
                 <div class="card-header">
                     <h3>Map Color Thresholds — Speed</h3>
                 </div>
