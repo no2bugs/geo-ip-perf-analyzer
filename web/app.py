@@ -133,7 +133,8 @@ DEFAULT_CONFIG = {
             'days': [],
             'dom': 1,
             'time': '06:00',
-            'commands': []
+            'commands': [],
+            'prune_stale': False
         }
     },
     'notifications': {
@@ -942,12 +943,61 @@ def run_schedule_now():
     return jsonify({'status': 'ok', 'message': f'{job_name} started'})
 
 # ============================================================
+# Prune stale results (servers no longer in servers.list)
+# ============================================================
+def _prune_stale_results():
+    """Remove results entries whose domain is not in servers.list.
+    Returns (pruned_count, remaining_count) or raises on safety check failure."""
+    if not os.path.exists(SERVERS_FILE):
+        raise RuntimeError("servers.list not found")
+    with open(SERVERS_FILE, 'r', encoding='utf-8') as f:
+        current_servers = {line.strip() for line in f if line.strip()}
+    if not current_servers:
+        raise RuntimeError("servers.list is empty — refusing to prune (would delete all data)")
+    if not os.path.exists(RESULTS_FILE):
+        return 0, 0
+    with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    if not isinstance(results, dict):
+        return 0, 0
+    stale_keys = [d for d in results if d not in current_servers]
+    if not stale_keys:
+        return 0, len(results)
+    for key in stale_keys:
+        del results[key]
+    with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(results, f, indent=2)
+    logging.info(f"Pruned {len(stale_keys)} stale servers from results ({len(results)} remaining)")
+    return len(stale_keys), len(results)
+
+@app.route('/api/prune-stale', methods=['POST'])
+def prune_stale():
+    try:
+        pruned, remaining = _prune_stale_results()
+        if pruned == 0:
+            return jsonify({'status': 'ok', 'message': 'No stale servers found'})
+        return jsonify({'status': 'ok', 'message': f'Removed {pruned} stale servers ({remaining} remaining)'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+
+# ============================================================
 # Top Results API (for programmatic access)
 # ============================================================
+def _parse_countries(args):
+    """Parse country filter from query args. Supports comma-separated and repeated params."""
+    raw = args.getlist('country')
+    countries = set()
+    for val in raw:
+        for part in val.split(','):
+            part = part.strip()
+            if part:
+                countries.add(part.lower())
+    return countries
+
 @app.route('/api/v1/top/latency')
 def top_latency():
     n = request.args.get('n', 5, type=int)
-    country = request.args.get('country', '', type=str).strip()
+    countries = _parse_countries(request.args)
     if not os.path.exists(RESULTS_FILE):
         return jsonify([])
     with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -955,7 +1005,7 @@ def top_latency():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict):
-            if country and entry.get('country', '').lower() != country.lower():
+            if countries and entry.get('country', '').lower() not in countries:
                 continue
             items.append({
                 'domain': domain,
@@ -972,7 +1022,7 @@ def top_latency():
 @app.route('/api/v1/top/download')
 def top_download():
     n = request.args.get('n', 5, type=int)
-    country = request.args.get('country', '', type=str).strip()
+    countries = _parse_countries(request.args)
     if not os.path.exists(RESULTS_FILE):
         return jsonify([])
     with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -980,7 +1030,7 @@ def top_download():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict) and entry.get('rx_speed_mbps') is not None:
-            if country and entry.get('country', '').lower() != country.lower():
+            if countries and entry.get('country', '').lower() not in countries:
                 continue
             items.append({
                 'domain': domain,
@@ -997,7 +1047,7 @@ def top_download():
 @app.route('/api/v1/top/upload')
 def top_upload():
     n = request.args.get('n', 5, type=int)
-    country = request.args.get('country', '', type=str).strip()
+    countries = _parse_countries(request.args)
     if not os.path.exists(RESULTS_FILE):
         return jsonify([])
     with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -1005,7 +1055,7 @@ def top_upload():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict) and entry.get('tx_speed_mbps') is not None:
-            if country and entry.get('country', '').lower() != country.lower():
+            if countries and entry.get('country', '').lower() not in countries:
                 continue
             items.append({
                 'domain': domain,
@@ -1239,6 +1289,14 @@ def scheduled_servers_update():
     try:
         count = _run_servers_update_commands(commands)
         send_ntfy('servers_updated', 'Servers List Updated', f'{count} servers loaded')
+        # Prune stale results if enabled
+        if config.get('schedule', {}).get('servers_update', {}).get('prune_stale'):
+            try:
+                pruned, remaining = _prune_stale_results()
+                if pruned:
+                    logging.info(f"Auto-pruned {pruned} stale servers from results ({remaining} remaining)")
+            except Exception as pe:
+                logging.error(f"Auto-prune failed: {pe}")
     except Exception as e:
         logging.error(f'Scheduled servers update failed: {e}')
         send_ntfy('servers_update_error', 'Servers List Update Failed', str(e), priority='high')

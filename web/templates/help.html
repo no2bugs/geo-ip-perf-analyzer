@@ -108,8 +108,9 @@
                     <div class="api-endpoint">
                         <code class="api-method get">GET</code>
                         <code class="api-path">/api/v1/top/latency?n=5</code>
-                        <p>Top <em>N</em> servers by lowest latency. Optional <code>country</code> parameter filters by country name (case-insensitive).</p>
-                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/latency?n=3&amp;country=Switzerland"</pre>
+                        <p>Top <em>N</em> servers by lowest latency. Optional <code>country</code> parameter filters by country name (case-insensitive). Supports multiple countries via comma-separated values or repeated params.</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/latency?n=3&amp;country=Switzerland"
+curl "http://HOST:5000/api/v1/top/latency?n=3&amp;country=Switzerland,Germany,Austria"</pre>
                         <pre class="api-response">[
   {"domain":"ch358.nordvpn.com","latency_ms":14.62,"ip":"217.138.203.219",
    "country":"Switzerland","city":"Zurich","rx_speed_mbps":251.56,"tx_speed_mbps":59.48},
@@ -120,15 +121,17 @@
                     <div class="api-endpoint">
                         <code class="api-method get">GET</code>
                         <code class="api-path">/api/v1/top/download?n=5</code>
-                        <p>Top <em>N</em> servers by highest download speed (Mbps). Optional <code>country</code> parameter filters by country name (case-insensitive).</p>
-                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/download?n=3&amp;country=Switzerland"</pre>
+                        <p>Top <em>N</em> servers by highest download speed (Mbps). Optional <code>country</code> parameter filters by country name (case-insensitive). Supports multiple countries via comma-separated values or repeated params.</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/download?n=3&amp;country=Switzerland"
+curl "http://HOST:5000/api/v1/top/download?n=3&amp;country=Switzerland,Germany"</pre>
                     </div>
 
                     <div class="api-endpoint">
                         <code class="api-method get">GET</code>
                         <code class="api-path">/api/v1/top/upload?n=5</code>
-                        <p>Top <em>N</em> servers by highest upload speed (Mbps). Optional <code>country</code> parameter filters by country name (case-insensitive).</p>
-                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/upload?n=3&amp;country=Switzerland"</pre>
+                        <p>Top <em>N</em> servers by highest upload speed (Mbps). Optional <code>country</code> parameter filters by country name (case-insensitive). Supports multiple countries via comma-separated values or repeated params.</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/v1/top/upload?n=3&amp;country=Switzerland"
+curl "http://HOST:5000/api/v1/top/upload?n=3&amp;country=Switzerland,Germany"</pre>
                     </div>
 
                     <div class="api-endpoint">

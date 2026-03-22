@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgSrvDom').value = srv.dom || 1;
         document.getElementById('cfgSrvTime').value = srv.time || '06:00';
         setDayButtons('cfgSrvDays', srv.days);
+        document.getElementById('cfgSrvPruneStale').checked = srv.prune_stale || false;
         document.getElementById('cfgSrvLastRun').textContent = srv.last_run ? `Last run: ${srv.last_run}` : '';
 
         const ntfy = config.notifications?.ntfy || {};
@@ -167,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     day: document.getElementById('cfgSrvDay').value,
                     days: getDayButtons('cfgSrvDays'),
                     dom: parseInt(document.getElementById('cfgSrvDom').value) || 1,
-                    time: document.getElementById('cfgSrvTime').value
+                    time: document.getElementById('cfgSrvTime').value,
+                    prune_stale: document.getElementById('cfgSrvPruneStale').checked
                 }
             },
             notifications: {
@@ -245,6 +247,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.innerHTML = origText;
             }
         });
+    });
+
+    // ========================================
+    // Prune Stale Servers
+    // ========================================
+    const pruneNowBtn = document.getElementById('pruneNowBtn');
+    pruneNowBtn.addEventListener('click', async () => {
+        pruneNowBtn.disabled = true;
+        const origText = pruneNowBtn.textContent;
+        pruneNowBtn.textContent = 'Pruning...';
+        try {
+            const resp = await fetch('/api/prune-stale', { method: 'POST' });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                showToast(data.message);
+            } else {
+                showToast(data.message || 'Prune failed', true);
+            }
+        } catch (e) {
+            showToast('Network error', true);
+        } finally {
+            pruneNowBtn.disabled = false;
+            pruneNowBtn.textContent = origText;
+        }
     });
 
     // ========================================
