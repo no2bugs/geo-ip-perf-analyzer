@@ -27,6 +27,7 @@
 
     let originMarker = null;
     let originData = null; // {lat, lon, city, country}
+    let lastDistanceTarget = null; // latched server for distance overlay
     const distanceOverlay = document.getElementById('distanceOverlay');
 
     // ---- Haversine distance (km) ----
@@ -191,6 +192,9 @@
                 <div class="popup-row"><span class="popup-label">Upload</span> <span class="popup-val">${ulStr}</span></div>
             `);
 
+            // Click to show distance from origin
+            marker.on('click', () => { showDistanceTo(s); });
+
             markers.push(marker);
         });
 
@@ -263,25 +267,31 @@
     metricSelect.addEventListener('change', renderMarkers);
     if (showAllCheckbox) showAllCheckbox.addEventListener('change', renderMarkers);
 
-    // ---- Distance overlay: show distance to single best visible server ----
+    // ---- Distance overlay ----
+    function showDistanceTo(s) {
+        if (!originData || !distanceOverlay || !s || s.lat == null) return;
+        lastDistanceTarget = s;
+        const dist = haversineKm(originData.lat, originData.lon, s.lat, s.lon);
+        const distStr = dist < 100 ? dist.toFixed(0) + ' km' : Math.round(dist) + ' km';
+        distanceOverlay.textContent = `📏 ${distStr} (${originData.city} \u2192 ${s.city})`;
+        distanceOverlay.classList.remove('hidden');
+    }
+
     function updateDistanceOverlay() {
         if (!originData || !distanceOverlay) { if (distanceOverlay) distanceOverlay.classList.add('hidden'); return; }
         const mapBounds = map.getBounds();
-        const metric = metricSelect.value;
-        const isSpeed = metric !== 'latency';
 
-        // Find best servers that are visible in the current viewport
+        // Find best servers visible in viewport
         const visibleBest = serverData.filter(s =>
             s._isBest && s.lat != null && s.lon != null &&
             mapBounds.contains([s.lat, s.lon])
         );
 
         if (visibleBest.length === 1) {
-            const s = visibleBest[0];
-            const dist = haversineKm(originData.lat, originData.lon, s.lat, s.lon);
-            const distStr = dist < 100 ? dist.toFixed(0) + ' km' : Math.round(dist) + ' km';
-            distanceOverlay.textContent = `📏 ${distStr} (${originData.city} \u2192 ${s.city})`;
-            distanceOverlay.classList.remove('hidden');
+            showDistanceTo(visibleBest[0]);
+        } else if (lastDistanceTarget && lastDistanceTarget.lat != null) {
+            // Keep showing last target even when zoomed past it
+            showDistanceTo(lastDistanceTarget);
         } else {
             distanceOverlay.classList.add('hidden');
         }
@@ -291,7 +301,8 @@
     // Reset view button — fly to vantage point at country zoom
     document.getElementById('resetViewBtn').addEventListener('click', () => {
         if (originMarker) {
-            map.flyTo(originMarker.getLatLng(), 6, { duration: 1.2 });
+            lastDistanceTarget = null;
+            map.flyTo(originMarker.getLatLng(), 8, { duration: 1.2 });
         }
     });
 
