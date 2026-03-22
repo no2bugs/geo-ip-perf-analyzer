@@ -99,12 +99,32 @@
             legendBar.style.background = 'linear-gradient(to right, #10b981, #eab308, #ef4444)';
         }
 
+        // Build jitter offsets for overlapping coordinates
+        const locCounts = {};
+        const locIndex = {};
+        filtered.forEach(s => {
+            const key = s.lat.toFixed(4) + ',' + s.lon.toFixed(4);
+            locCounts[key] = (locCounts[key] || 0) + 1;
+            locIndex[key] = 0;
+        });
+
         filtered.forEach(s => {
             const val = getValue(s, metric);
             const hasVal = val != null && val > 0;
             const color = hasVal ? (isSpeed ? colorForSpeed(val, bounds) : colorForLatency(val, bounds)) : '#94a3b8';
 
-            const marker = L.circleMarker([s.lat, s.lon], {
+            // Spiral jitter for co-located markers
+            const key = s.lat.toFixed(4) + ',' + s.lon.toFixed(4);
+            let lat = s.lat, lon = s.lon;
+            if (locCounts[key] > 1) {
+                const i = locIndex[key]++;
+                const angle = i * 2.4; // golden angle in radians
+                const r = 0.012 * Math.sqrt(i + 1); // grow outward
+                lat += r * Math.cos(angle);
+                lon += r * Math.sin(angle);
+            }
+
+            const marker = L.circleMarker([lat, lon], {
                 radius: 7,
                 fillColor: color,
                 color: 'rgba(255,255,255,0.3)',
