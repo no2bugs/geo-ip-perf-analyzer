@@ -509,7 +509,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const resp = await fetch('/api/credentials');
             const data = await resp.json();
-            document.getElementById('cfgVpnUsername').value = data.vpn_username || '';
+            document.getElementById('cfgVpnUsername').value = '';
+            document.getElementById('cfgVpnUsername').placeholder = data.vpn_username_masked || 'VPN service username';
             // Don't populate password — show placeholder if one is set
             pwdInput.value = '';
             pwdInput.placeholder = data.vpn_password_set ? '••••••••  (unchanged)' : 'VPN service password';
@@ -640,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveTheme() {
         engine.applyTheme(currentTheme);
-        localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme));
+        try { localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme)); } catch (e) { /* quota */ }
         try {
             await fetch('/api/theme', {
                 method: 'POST',
@@ -718,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 uploadStatus.textContent = 'Uploaded!';
                 currentTheme.wallpaper = 'custom';
                 engine.applyTheme(currentTheme);
-                localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme));
+                try { localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme)); } catch (e) { /* quota */ }
                 renderWallpapers();
                 refreshCustomWallpaperUI();
             } else {
@@ -779,7 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 videoUploadStatus.textContent = 'Uploaded!';
                 currentTheme.wallpaper = 'video_custom';
                 engine.applyTheme(currentTheme);
-                localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme));
+                try { localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme)); } catch (e) { /* quota */ }
                 renderWallpapers();
                 renderVideoWallpapers();
                 refreshVideoWallpaperUI();

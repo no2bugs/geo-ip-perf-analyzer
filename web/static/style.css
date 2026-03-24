@@ -25,6 +25,7 @@ body {
     background-image:
         radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
         radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+    background-attachment: fixed;
 }
 
 .container {
@@ -1825,5 +1826,17 @@ tr:hover td {
     color: var(--text-secondary);
     opacity: 0.5;
     font-style: italic;
+}
+
+/* ── Respect user's motion preferences ── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    .controls-section.scanning {
+        animation: none;
+    }
 }
 }

@@ -25,6 +25,12 @@ class SpeedTest:
         try:
             logger.info("Running speedtest via speedtest-cli...")
             
+            # Verify speedtest-cli is available
+            import shutil
+            if not shutil.which('speedtest-cli'):
+                logger.error("speedtest-cli not found in PATH. Install with: pip install speedtest-cli")
+                return None
+            
             # Run speedtest-cli with JSON output
             # Use smaller timeout for the command call to ensure we don't hang forever
             result = subprocess.run(

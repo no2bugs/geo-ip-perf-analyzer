@@ -54,7 +54,7 @@
                 <div id="cfgVpnOptions" class="card-options">
                     <div class="interval-row">
                         <div class="field">
-                            <label>Interval</label>
+                            <label for="cfgVpnInterval">Interval</label>
                             <select id="cfgVpnInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
@@ -63,7 +63,7 @@
                             </select>
                         </div>
                         <div class="field" id="cfgVpnDayWrap">
-                            <label>Day</label>
+                            <label for="cfgVpnDay">Day</label>
                             <select id="cfgVpnDay">
                                 <option value="monday">Monday</option>
                                 <option value="tuesday">Tuesday</option>
@@ -75,11 +75,11 @@
                             </select>
                         </div>
                         <div class="field" id="cfgVpnDomWrap">
-                            <label>Day of Month</label>
+                            <label for="cfgVpnDom">Day of Month</label>
                             <input type="number" id="cfgVpnDom" min="1" max="28" value="1">
                         </div>
                         <div class="field">
-                            <label>Time</label>
+                            <label for="cfgVpnTime">Time</label>
                             <input type="time" id="cfgVpnTime" value="03:00">
                         </div>
                         <div class="field">
@@ -127,7 +127,7 @@
                 <div id="cfgGeoOptions" class="card-options">
                     <div class="interval-row">
                         <div class="field">
-                            <label>Interval</label>
+                            <label for="cfgGeoInterval">Interval</label>
                             <select id="cfgGeoInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly" selected>Weekly</option>
@@ -136,7 +136,7 @@
                             </select>
                         </div>
                         <div class="field" id="cfgGeoDayWrap">
-                            <label>Day</label>
+                            <label for="cfgGeoDay">Day</label>
                             <select id="cfgGeoDay">
                                 <option value="monday">Monday</option>
                                 <option value="tuesday">Tuesday</option>
@@ -148,11 +148,11 @@
                             </select>
                         </div>
                         <div class="field" id="cfgGeoDomWrap">
-                            <label>Day of Month</label>
+                            <label for="cfgGeoDom">Day of Month</label>
                             <input type="number" id="cfgGeoDom" min="1" max="28" value="1">
                         </div>
                         <div class="field">
-                            <label>Time</label>
+                            <label for="cfgGeoTime">Time</label>
                             <input type="time" id="cfgGeoTime" value="04:00">
                         </div>
                     </div>
@@ -186,13 +186,13 @@
                 <p class="card-last-run" id="cfgOvpnLastRun"></p>
                 <div id="cfgOvpnSchedOptions" class="card-options">
                     <div class="field field-full" style="margin-bottom: 0.75rem;">
-                        <label>Download URL</label>
+                        <label for="cfgOvpnUrl">Download URL</label>
                         <input type="text" id="cfgOvpnUrl" placeholder="https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip">
                         <span class="field-hint">Required when this schedule is enabled</span>
                     </div>
                     <div class="interval-row">
                         <div class="field">
-                            <label>Interval</label>
+                            <label for="cfgOvpnInterval">Interval</label>
                             <select id="cfgOvpnInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly" selected>Weekly</option>
@@ -201,7 +201,7 @@
                             </select>
                         </div>
                         <div class="field" id="cfgOvpnDayWrap">
-                            <label>Day</label>
+                            <label for="cfgOvpnDay">Day</label>
                             <select id="cfgOvpnDay">
                                 <option value="monday">Monday</option>
                                 <option value="tuesday">Tuesday</option>
@@ -213,11 +213,11 @@
                             </select>
                         </div>
                         <div class="field" id="cfgOvpnDomWrap">
-                            <label>Day of Month</label>
+                            <label for="cfgOvpnDom">Day of Month</label>
                             <input type="number" id="cfgOvpnDom" min="1" max="28" value="1">
                         </div>
                         <div class="field">
-                            <label>Time</label>
+                            <label for="cfgOvpnTime">Time</label>
                             <input type="time" id="cfgOvpnTime" value="05:00">
                         </div>
                     </div>
@@ -254,7 +254,7 @@
                     <button type="button" class="secondary-btn btn-sm" id="addSrvCommandBtn" style="margin-bottom: 0.75rem;">+ Add Step</button>
                     <div class="interval-row">
                         <div class="field">
-                            <label>Interval</label>
+                            <label for="cfgSrvInterval">Interval</label>
                             <select id="cfgSrvInterval">
                                 <option value="daily">Daily</option>
                                 <option value="weekly" selected>Weekly</option>
@@ -263,7 +263,7 @@
                             </select>
                         </div>
                         <div class="field" id="cfgSrvDayWrap">
-                            <label>Day</label>
+                            <label for="cfgSrvDay">Day</label>
                             <select id="cfgSrvDay">
                                 <option value="monday">Monday</option>
                                 <option value="tuesday">Tuesday</option>
@@ -275,11 +275,11 @@
                             </select>
                         </div>
                         <div class="field" id="cfgSrvDomWrap">
-                            <label>Day of Month</label>
+                            <label for="cfgSrvDom">Day of Month</label>
                             <input type="number" id="cfgSrvDom" min="1" max="28" value="1">
                         </div>
                         <div class="field">
-                            <label>Time</label>
+                            <label for="cfgSrvTime">Time</label>
                             <input type="time" id="cfgSrvTime" value="06:00">
                         </div>
                         <div class="field field-prune">
@@ -322,7 +322,7 @@
                 <p class="card-desc">Send push notifications via <a href="https://ntfy.sh" target="_blank" rel="noopener" style="color:var(--accent-color)">ntfy</a>.</p>
                 <div id="cfgNtfyOptions" class="card-options">
                     <div class="field field-full">
-                        <label>ntfy URL (including topic)</label>
+                        <label for="cfgNtfyUrl">ntfy URL (including topic)</label>
                         <input type="text" id="cfgNtfyUrl" placeholder="https://ntfy.sh/my-geo-ip-topic">
                     </div>
 
@@ -359,11 +359,11 @@
                 </div>
                 <p class="card-desc">Username and password for OpenVPN authentication. Stored in <code>.env</code> file on the host (not tracked in code).</p>
                 <div class="field field-full" style="margin-bottom: 0.75rem;">
-                    <label>VPN Username</label>
+                    <label for="cfgVpnUsername">VPN Username</label>
                     <input type="text" id="cfgVpnUsername" placeholder="VPN service username" autocomplete="off">
                 </div>
                 <div class="field field-full" style="margin-bottom: 0.75rem;">
-                    <label>VPN Password</label>
+                    <label for="cfgVpnPassword">VPN Password</label>
                     <div style="display:flex; gap:0.5rem; align-items:center;">
                         <input type="password" id="cfgVpnPassword" placeholder="VPN service password" autocomplete="new-password" style="flex:1;">
                         <button type="button" class="secondary-btn btn-sm" id="togglePwdBtn" title="Show/hide password">&#128065;</button>
@@ -453,15 +453,15 @@
                 <p class="card-desc">Your measurement origin shown on the map. Toggle <strong>on</strong> for automatic detection via public IP, or <strong>off</strong> to set a manual address.</p>
                 <div class="threshold-row" id="originAddressRow">
                     <div class="field">
-                        <label>Country</label>
+                        <label for="cfgOriginCountry">Country</label>
                         <input type="text" id="cfgOriginCountry" placeholder="e.g. Netherlands">
                     </div>
                     <div class="field">
-                        <label>City</label>
+                        <label for="cfgOriginCity">City</label>
                         <input type="text" id="cfgOriginCity" placeholder="e.g. Amsterdam">
                     </div>
                     <div class="field">
-                        <label>Zip Code</label>
+                        <label for="cfgOriginZipcode">Zip Code</label>
                         <input type="text" id="cfgOriginZipcode" placeholder="e.g. 1012">
                     </div>
                 </div>
@@ -489,11 +489,11 @@
                 <p class="card-desc">Set the latency boundaries (ms) for green / yellow / red markers on the map. <strong>On</strong> = automatic percentile-based coloring. <strong>Off</strong> = use manual thresholds below.</p>
                 <div class="threshold-row">
                     <div class="field">
-                        <label>Green below (ms)</label>
+                        <label for="cfgMapLatGreen">Green below (ms)</label>
                         <input type="number" id="cfgMapLatGreen" min="1" max="5000" value="50">
                     </div>
                     <div class="field">
-                        <label>Yellow below (ms)</label>
+                        <label for="cfgMapLatYellow">Yellow below (ms)</label>
                         <input type="number" id="cfgMapLatYellow" min="1" max="5000" value="150">
                     </div>
                     <div class="threshold-preview">
@@ -515,11 +515,11 @@
                 <p class="card-desc">Set the speed boundaries (Mbps) for red / yellow / green markers on the map. <strong>On</strong> = automatic percentile-based coloring. <strong>Off</strong> = use manual thresholds below.</p>
                 <div class="threshold-row">
                     <div class="field">
-                        <label>Red below (Mbps)</label>
+                        <label for="cfgMapSpeedRed">Red below (Mbps)</label>
                         <input type="number" id="cfgMapSpeedRed" min="1" max="10000" value="50">
                     </div>
                     <div class="field">
-                        <label>Yellow below (Mbps)</label>
+                        <label for="cfgMapSpeedYellow">Yellow below (Mbps)</label>
                         <input type="number" id="cfgMapSpeedYellow" min="1" max="10000" value="200">
                     </div>
                     <div class="threshold-preview">

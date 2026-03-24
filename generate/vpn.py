@@ -44,7 +44,8 @@ class VPNManager:
         if not os.path.exists(ovpn_file):
             logger.error(f"OpenVPN config file not found: {ovpn_file}")
             return False
-            
+        
+        auth_file = None
         try:
             # Create unique auth file
             import tempfile
@@ -64,12 +65,13 @@ class VPNManager:
             ]
             
             # Use subprocess.Popen - capture output for diagnostics
-            self.process = subprocess.Popen(
-                cmd,
+            popen_kwargs = dict(
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                preexec_fn=os.setsid # Create process group for easy cleanup
             )
+            if hasattr(os, 'setsid'):
+                popen_kwargs['preexec_fn'] = os.setsid  # Unix only — create process group
+            self.process = subprocess.Popen(cmd, **popen_kwargs)
             
             # Wait for connection to establish
             for i in range(timeout):
@@ -111,7 +113,7 @@ class VPNManager:
             return False
         finally:
             # Clean up auth file
-            if os.path.exists(auth_file):
+            if auth_file and os.path.exists(auth_file):
                 os.remove(auth_file)
                 
     def disconnect(self) -> None:
@@ -119,8 +121,14 @@ class VPNManager:
         self._restore_routing()
         try:
             if self.process:
-                # Kill the process group
-                os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+                # Kill the process group (Unix) or just the process (Windows)
+                if hasattr(os, 'killpg'):
+                    try:
+                        os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+                    except (ProcessLookupError, OSError):
+                        self.process.terminate()
+                else:
+                    self.process.terminate()
                 self.process.wait(timeout=5)
                 self.process = None
             

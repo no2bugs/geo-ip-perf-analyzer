@@ -37,8 +37,10 @@ class Scanner:
     @staticmethod
     def write_json_file(json_file: str, data: Dict[str, List]) -> None:
         print("Creating json file:", json_file)
-        with Path(json_file).open('w', encoding='utf-8') as outfile:
+        tmp = json_file + '.tmp'
+        with Path(tmp).open('w', encoding='utf-8') as outfile:
             dump(data, outfile, indent=2)
+        os.replace(tmp, json_file)
         print("DONE")
 
     def get_servers_list(self) -> Optional[List[str]]:
@@ -49,6 +51,9 @@ class Scanner:
         with Path(self.targets_file).open('r', encoding='utf-8') as f:
             lines = f.readlines()
             servers = [line.strip().rstrip('\n') for line in lines if len(line) > 1]
+
+        # Deduplicate while preserving order
+        servers = list(dict.fromkeys(servers))
 
         if len(servers) < 1:
             self.formatting.output('bold', 'red')
@@ -107,6 +112,25 @@ class Scanner:
 
         city_reader = geoip2.database.Reader(self.city_db)
         country_reader = geoip2.database.Reader(self.country_db)
+        try:
+            return self._scan_inner(
+                domains, excl_countries, include_countries, endpoints_list, endpoints_dict,
+                existing_results, city_reader, country_reader, pings_num, timeout_ms,
+                workers, all_a_records, progress_container, vpn_speedtest, vpn_ovpn_dir,
+                vpn_username, vpn_password, vpn_batch_size, vpn_batch_interactive,
+                vpn_selected_domains, stop_event
+            )
+        finally:
+            city_reader.close()
+            country_reader.close()
+
+    def _scan_inner(self, domains, excl_countries, include_countries, endpoints_list, endpoints_dict,
+                    existing_results, city_reader, country_reader, pings_num, timeout_ms,
+                    workers, all_a_records, progress_container, vpn_speedtest, vpn_ovpn_dir,
+                    vpn_username, vpn_password, vpn_batch_size, vpn_batch_interactive,
+                    vpn_selected_domains, stop_event):
+        skipped_total = 0
+        errors_total = 0
         lock = threading.Lock()
 
         if self.exclude_countries():

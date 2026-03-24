@@ -146,7 +146,7 @@
     // Fetch live theme from server and apply
     fetch('/api/theme').then(r => r.json()).then(theme => {
         applyTheme(theme);
-        localStorage.setItem('geo_ip_theme', JSON.stringify(theme));
+        try { localStorage.setItem('geo_ip_theme', JSON.stringify(theme)); } catch (e) { /* quota exceeded */ }
     }).catch(() => {});
 
     // Expose for config.js

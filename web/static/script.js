@@ -109,7 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
     startBtn.addEventListener('click', startScan);
     stopBtn.addEventListener('click', stopScan);
 
-    searchInput.addEventListener('input', filterResults);
+    // Debounce search input
+    let searchTimeout = null;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterResults, 200);
+    });
 
     // VPN Speedtest controls
     const selectAllBtn = document.getElementById('selectAllBtn');
@@ -429,15 +434,45 @@ document.addEventListener('DOMContentLoaded', () => {
             const scanTitle = item.scan_timestamp ? formatTimestamp(item.scan_timestamp) : '';
             const speedTitle = item.speedtest_timestamp ? formatTimestamp(item.speedtest_timestamp) : '';
 
-            row.insertAdjacentHTML('beforeend', `
-                <td><strong class="domain-link" data-domain="${item.domain}">${item.domain}</strong></td>
-                <td class="${latencyClass} ts-cell" ${scanTitle ? `title="Scanned: ${scanTitle}"` : ''}>${item.latency.toFixed(2)}</td>
-                <td class="mono">${item.ip}</td>
-                <td>${item.country}</td>
-                <td>${item.city}</td>
-                <td class="ts-cell" ${speedTitle ? `title="Tested: ${speedTitle}"` : ''}>${dlSpeed}</td>
-                <td class="ts-cell" ${speedTitle ? `title="Tested: ${speedTitle}"` : ''}>${ulSpeed}</td>
-            `);
+            // Build cells safely using textContent to prevent XSS
+            const domainTd = document.createElement('td');
+            const domainStrong = document.createElement('strong');
+            domainStrong.className = 'domain-link';
+            domainStrong.dataset.domain = item.domain;
+            domainStrong.textContent = item.domain;
+            domainTd.appendChild(domainStrong);
+            row.appendChild(domainTd);
+
+            const latencyTd = document.createElement('td');
+            latencyTd.className = latencyClass + ' ts-cell';
+            if (scanTitle) latencyTd.title = 'Scanned: ' + scanTitle;
+            latencyTd.textContent = item.latency.toFixed(2);
+            row.appendChild(latencyTd);
+
+            const ipTd = document.createElement('td');
+            ipTd.className = 'mono';
+            ipTd.textContent = item.ip;
+            row.appendChild(ipTd);
+
+            const countryTd = document.createElement('td');
+            countryTd.textContent = item.country;
+            row.appendChild(countryTd);
+
+            const cityTd = document.createElement('td');
+            cityTd.textContent = item.city;
+            row.appendChild(cityTd);
+
+            const dlTd = document.createElement('td');
+            dlTd.className = 'ts-cell';
+            if (speedTitle) dlTd.title = 'Tested: ' + speedTitle;
+            dlTd.textContent = dlSpeed;
+            row.appendChild(dlTd);
+
+            const ulTd = document.createElement('td');
+            ulTd.className = 'ts-cell';
+            if (speedTitle) ulTd.title = 'Tested: ' + speedTitle;
+            ulTd.textContent = ulSpeed;
+            row.appendChild(ulTd);
             resultsBody.appendChild(row);
         });
 
@@ -735,8 +770,27 @@ document.addEventListener('DOMContentLoaded', () => {
         return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
-    // Start log polling immediately
-    setInterval(fetchLogs, 2000);
+    // Start log polling immediately with AbortController
+    let logAbortController = null;
+    async function fetchLogsWithAbort() {
+        if (logAbortController) logAbortController.abort();
+        logAbortController = new AbortController();
+        try {
+            const response = await fetch('/api/logs', { signal: logAbortController.signal });
+            const logs = await response.json();
+            renderLogs(logs);
+        } catch (e) {
+            if (e.name !== 'AbortError') console.error("Failed to fetch logs", e);
+        }
+    }
+    const logPollInterval = setInterval(fetchLogsWithAbort, 2000);
+
+    // Cleanup intervals on page unload
+    window.addEventListener('beforeunload', () => {
+        if (pollInterval) clearInterval(pollInterval);
+        clearInterval(logPollInterval);
+        if (logAbortController) logAbortController.abort();
+    });
 
     // ========================================
     // OVPN Configs Upload

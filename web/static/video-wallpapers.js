@@ -30,9 +30,13 @@
         activeCanvas.width = window.innerWidth;
         activeCanvas.height = window.innerHeight;
     }
+    let _resizeTimer;
     window.addEventListener('resize', () => {
-        resize();
-        if (activeRenderer) activeRenderer.init(activeCanvas, activeCanvas.getContext('2d'));
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(() => {
+            resize();
+            if (activeRenderer) activeRenderer.init(activeCanvas, activeCanvas.getContext('2d'));
+        }, 150);
     });
 
     /* ══════════════════════════════════════
@@ -271,7 +275,7 @@
         v.playsInline = true;
         v.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none;opacity:0;transition:opacity 0.8s;';
         document.body.prepend(v);
-        v.play().catch(() => {});
+        v.play().catch(err => { console.warn('Video wallpaper autoplay blocked:', err.message); });
         requestAnimationFrame(() => { v.style.opacity = '1'; });
         customVideo = v;
     }

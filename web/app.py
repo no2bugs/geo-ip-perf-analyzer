@@ -32,7 +32,6 @@ class LogBufferHandler(logging.Handler):
     def __init__(self, capacity=100):
         super().__init__()
         self.capacity = capacity
-        self.capacity = capacity
         self.buffer = []
         self.lock = threading.RLock()
 
@@ -175,8 +174,10 @@ def load_config():
     return copy.deepcopy(DEFAULT_CONFIG)
 
 def save_config(config):
-    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+    tmp = CONFIG_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+    os.replace(tmp, CONFIG_FILE)
 
 def _format_duration(seconds):
     """Format seconds into human-readable duration like '1 hour and 27 minutes'."""
@@ -225,6 +226,7 @@ def send_ntfy(event, title, message, priority='default'):
 
 # Global state
 scan_lock = threading.Lock()
+_scan_state_lock = threading.Lock()
 scan_active = False
 scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
 stop_event = threading.Event()
@@ -286,10 +288,11 @@ def _is_scan_active():
 def _clear_stale_state():
     """Reset scan state file after detecting a stale lock from a crashed process."""
     global scan_active, scan_progress, last_error, scan_start_time
-    scan_active = False
-    scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
-    last_error = None
-    scan_start_time = None
+    with _scan_state_lock:
+        scan_active = False
+        scan_progress = {"done": 0, "total": 0, "status": "idle", "message": ""}
+        last_error = None
+        scan_start_time = None
     _flush_scan_state()
 
 def _state_flusher():
@@ -581,19 +584,19 @@ def start_scan():
     if not os.path.exists(SERVERS_FILE):
         return jsonify({
             "status": "error", 
-            "message": f"Servers list file missing at: {SERVERS_FILE}. Please create a file named 'servers.list' in the project root directory on your HOST machine."
+            "message": "Servers list file is missing. Please create 'servers.list' in the project root directory on your HOST machine."
         }), 400
         
     if os.path.getsize(SERVERS_FILE) == 0:
         return jsonify({
             "status": "error", 
-            "message": f"Servers list file is empty: {SERVERS_FILE}. Please add domains to 'servers.list' in your project root on the HOST machine (one domain per line)."
+            "message": "Servers list file is empty. Please add domains to 'servers.list' on your HOST machine (one domain per line)."
         }), 400
 
-    pings = int(data.get('pings', 1))
-    timeout = int(data.get('timeout', 1000))
-    workers = int(data.get('workers', 10))
-    vpn_speedtest = data.get('vpn_speedtest', False)
+    pings = max(1, min(20, int(data.get('pings', 1))))
+    timeout = max(100, min(30000, int(data.get('timeout', 1000))))
+    workers = max(1, min(100, int(data.get('workers', 10))))
+    vpn_speedtest = bool(data.get('vpn_speedtest', False))
     
     thread = threading.Thread(target=run_scan_in_background, args=(pings, timeout, workers, vpn_speedtest))
     thread.daemon = True
@@ -714,9 +717,11 @@ def vpn_speedtest():
                         break
             
             if migrated:
-                # Save migrated version immediately
-                with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+                # Save migrated version immediately (atomic)
+                _tmp = RESULTS_FILE + '.tmp'
+                with open(_tmp, 'w', encoding='utf-8') as f:
                     json.dump(results, f, indent=2)
+                os.replace(_tmp, RESULTS_FILE)
             
             if not isinstance(results, dict):
                 raise ValueError("Results file is in an invalid format and could not be migrated.")
@@ -981,8 +986,10 @@ def save_servers():
     # Normalize: strip each line, remove blanks, deduplicate while preserving order
     lines = [line.strip() for line in content.splitlines()]
     lines = list(dict.fromkeys(line for line in lines if line))
-    with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
+    tmp = SERVERS_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + ('\n' if lines else ''))
+    os.replace(tmp, SERVERS_FILE)
     logging.info(f'servers.list updated: {len(lines)} entries')
     return jsonify({'status': 'ok', 'count': len(lines)})
 
@@ -1429,16 +1436,17 @@ def post_config():
     # Strip legacy ovpn top-level key
     data.pop('ovpn', None)
     # Preserve last_run timestamps from existing config
-    existing = load_config()
-    for key in ['vpn_speedtest', 'geolite_update', 'ovpn_update', 'servers_update']:
-        lr = existing.get('schedule', {}).get(key, {}).get('last_run')
-        if lr:
-            data.setdefault('schedule', {}).setdefault(key, {}).setdefault('last_run', lr)
-    # Preserve theme (managed separately via /api/theme)
-    theme = existing.get('theme')
-    if theme:
-        data['theme'] = theme
-    save_config(data)
+    with _config_lock:
+        existing = load_config()
+        for key in ['vpn_speedtest', 'geolite_update', 'ovpn_update', 'servers_update']:
+            lr = existing.get('schedule', {}).get(key, {}).get('last_run')
+            if lr:
+                data.setdefault('schedule', {}).setdefault(key, {}).setdefault('last_run', lr)
+        # Preserve theme (managed separately via /api/theme)
+        theme = existing.get('theme')
+        if theme:
+            data['theme'] = theme
+        save_config(data)
     apply_schedules()
     return jsonify({'status': 'ok'})
 
@@ -1460,10 +1468,12 @@ def _read_env_file():
     return env
 
 def _write_env_file(env):
-    """Write key=value pairs to .env file, preserving unknown keys."""
-    with open(ENV_FILE, 'w', encoding='utf-8') as f:
+    """Write key=value pairs to .env file atomically, preserving unknown keys."""
+    tmp = ENV_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         for key, val in env.items():
             f.write(f"{key}={val}\n")
+    os.replace(tmp, ENV_FILE)
 
 @app.route('/api/credentials')
 def get_credentials():
@@ -1471,7 +1481,6 @@ def get_credentials():
     username = env.get('VPN_USERNAME', '')
     password = env.get('VPN_PASSWORD', '')
     return jsonify({
-        'vpn_username': username,
         'vpn_password_set': bool(password),
         'vpn_username_masked': (username[:3] + '***') if len(username) > 3 else ('***' if username else '')
     })
@@ -1599,7 +1608,7 @@ def get_statistics():
         del s['failed_domains']
 
     # Top N recommended: best download speed per country
-    top_n = request.args.get('top', 5, type=int)
+    top_n = max(1, min(100, request.args.get('top', 5, type=int)))
     best_per_country = []
     for domain, entry in data.items():
         if not isinstance(entry, dict):
@@ -1636,7 +1645,7 @@ def get_top_servers():
             data = json.load(f)
     except Exception:
         return jsonify([])
-    n = request.args.get('n', 5, type=int)
+    n = max(1, min(100, request.args.get('n', 5, type=int)))
     best_map = {}
     for domain, entry in data.items():
         if not isinstance(entry, dict):
@@ -1715,8 +1724,10 @@ def _prune_stale_results():
         return 0, len(results)
     for key in stale_keys:
         del results[key]
-    with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+    tmp = RESULTS_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=2)
+    os.replace(tmp, RESULTS_FILE)
     logging.info(f"Pruned {len(stale_keys)} stale servers from results ({len(results)} remaining)")
     return len(stale_keys), len(results)
 
@@ -1943,8 +1954,10 @@ def scheduled_vpn_speedtest():
             scan_progress, batch_size=999, interactive=False,
             selected_domains=all_domains, stop_event=stop_event
         ) or {}
-        with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+        _tmp = RESULTS_FILE + '.tmp'
+        with open(_tmp, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)
+        os.replace(_tmp, RESULTS_FILE)
         duration = _format_duration(time.time() - vpn_start_time)
         report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
         if stop_event.is_set():
@@ -2008,10 +2021,18 @@ def _get_servers_commands(config):
 
 def _run_servers_update_commands(commands):
     """Run multiple shell commands and merge their output into servers.list."""
+    import shlex
+    BLOCKED_PATTERNS = ['rm ', 'rm\t', 'mkfs', 'dd ', ':(){', 'fork', '> /dev/', 'shutdown', 'reboot',
+                        'passwd', 'chmod 777', 'curl|', 'wget|', '| bash', '| sh']
     all_hosts = []
     for entry in commands:
         cmd = entry['command']
         label = entry.get('label', '') or 'unnamed'
+        # Safety: reject obviously dangerous commands
+        cmd_lower = cmd.lower().strip()
+        for pattern in BLOCKED_PATTERNS:
+            if pattern in cmd_lower:
+                raise RuntimeError(f"Command '{label}' contains blocked pattern '{pattern}'")
         logging.info(f"Running servers update command: {label}")
         result = subprocess.run(
             ['bash', '-c', cmd], capture_output=True, text=True, timeout=120
@@ -2025,8 +2046,10 @@ def _run_servers_update_commands(commands):
     all_hosts = list(dict.fromkeys(all_hosts))
     if not all_hosts:
         raise RuntimeError("All commands produced no output")
-    with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
+    tmp = SERVERS_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         f.write('\n'.join(all_hosts) + '\n')
+    os.replace(tmp, SERVERS_FILE)
     logging.info(f"servers.list updated: {len(all_hosts)} unique entries")
     return len(all_hosts)
 

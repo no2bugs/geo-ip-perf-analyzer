@@ -78,9 +78,9 @@ class Analyze:
             if latency < min_latency_limit or latency > max_latency_limit:
                 continue
                 
-            if country and not re.search(str(country), norm_data['country'], re.IGNORECASE):
+            if country and not re.search(re.escape(str(country)), norm_data['country'], re.IGNORECASE):
                 continue
-            if city and not re.search(str(city), norm_data['city'], re.IGNORECASE):
+            if city and not re.search(re.escape(str(city)), norm_data['city'], re.IGNORECASE):
                 continue
                 
             top_servers.append((
@@ -114,7 +114,7 @@ class Analyze:
                     parts = str(value[2]).split('.')
                     if len(parts) != 4 or not all(p.isdigit() for p in parts):
                         return (999, 999, 999, 999)
-                    return tuple(int(p) for p in parts)
+                    return tuple(min(int(p), 255) for p in parts)
                 top_servers.sort(key=_ipv4_key)
             elif sort_by in (5, 6):  # Speed (descending, None treated as 0)
                 top_servers.sort(key=lambda x: x[sort_by] or 0, reverse=True)

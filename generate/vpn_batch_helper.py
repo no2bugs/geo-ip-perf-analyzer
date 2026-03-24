@@ -4,6 +4,8 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
     import os
     import json
+    
+    batch_size = max(1, min(9999, int(batch_size)))
     import logging
     from datetime import datetime, timezone
     from pathlib import Path
@@ -43,7 +45,6 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
         logger.info("No VPN config files found for any scanned endpoints")
         return
     
-    # Sort by latency (best performers first)
     # Sort by latency (best performers first)
     # Handle both old list format [latency, ip, country, city] and new dict format
     def get_latency(entry):
