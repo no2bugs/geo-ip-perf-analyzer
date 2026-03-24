@@ -41,3 +41,29 @@ The script automatically creates a virtualenv and installs dependencies on first
 - **External calls mocked** — GeoIP reader, HTTP requests, and background threads are patched
 - **No credentials needed** — all test data uses `example.com` domains and RFC 5737 IPs
 - **Fast** — full suite runs in ~3 seconds
+
+---
+
+## Smoke Test (Live Deployment)
+
+The E2E suite tests the **code**. The smoke test validates a **running deployment** — container up, ports open, DB files mounted, APIs responding.
+
+```bash
+# Against local Docker
+./smoke_test.sh http://localhost:5000
+
+# Against production
+./smoke_test.sh http://192.168.1.12:5000
+```
+
+It performs **read-only** GET requests against 25+ endpoints, checking HTTP status codes and response shapes. Nothing is modified — safe to run against production.
+
+| What it checks | Details |
+|----------------|---------|
+| All 6 HTML pages | Return 200 with `<html` |
+| Core APIs | `/api/scan/status`, `/api/results`, `/api/countries`, `/api/servers` |
+| Statistics | `/api/statistics`, `/api/top-servers`, `/api/v1/top/*` |
+| Config (read-only) | `/api/config`, `/api/credentials`, `/api/theme` |
+| Infrastructure | `/api/ovpn/status`, `/api/geolite/status`, `/api/origin` |
+| Logs | `/api/logs`, `/api/logs/files` |
+| Security | Rejects invalid domain, 404 on unknown route |
