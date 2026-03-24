@@ -196,8 +196,12 @@
                 const d = await r.json();
                 if (d.active || d.pending > 0) {
                     const parts = [];
-                    if (d.active) parts.push('Running: ' + (d.active.label || (d.active.domains_count || d.active.domains) + ' servers'));
-                    if (d.pending > 0) parts.push(d.pending + ' queued');
+                    if (d.active) {
+                        let runText = d.active.label || 'speedtest';
+                        if (d.progress_total > 0) runText += ' ' + d.progress_done + '/' + d.progress_total;
+                        parts.push('Running: ' + runText);
+                    }
+                    if (d.pending > 0) parts.push(d.pending + ' queued (' + d.total_domains + ' servers)');
                     badge.textContent = parts.join(' · ');
                     badge.style.display = '';
                 } else {

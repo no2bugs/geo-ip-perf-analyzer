@@ -805,7 +805,16 @@ def queue_status():
     active = qs.get("active")
     total_domains = sum(len(j.get("domains", [])) for j in pending_jobs)
     jobs = [{"domains": len(j.get("domains", [])), "type": j.get("type", ""), "label": j.get("label", "")} for j in pending_jobs]
-    return jsonify({"pending": len(jobs), "total_domains": total_domains, "jobs": jobs, "active": active, "scan_active": _is_scan_active()})
+    # Include scan progress so frontends can show accurate done/total
+    scan_state = _read_scan_state()
+    progress = scan_state.get("progress", {})
+    scan_running = _is_scan_active()
+    return jsonify({
+        "pending": len(jobs), "total_domains": total_domains, "jobs": jobs,
+        "active": active, "scan_active": scan_running,
+        "progress_done": progress.get("done", 0) if scan_running else 0,
+        "progress_total": progress.get("total", 0) if scan_running else 0
+    })
 
 @app.route('/api/queue/clear', methods=['POST'])
 def queue_clear():

@@ -166,7 +166,11 @@
             const clearBtn = document.getElementById('queueClearBtn');
             if (data && (data.pending > 0 || data.active)) {
                 const parts = [];
-                if (data.active) parts.push(`Running: ${data.active.label || (data.active.domains_count || data.active.domains) + ' servers'}`);
+                if (data.active) {
+                    let runText = data.active.label || 'speedtest';
+                    if (data.progress_total > 0) runText += ` ${data.progress_done}/${data.progress_total}`;
+                    parts.push(`Running: ${runText}`);
+                }
                 if (data.pending > 0) parts.push(`${data.pending} queued (${data.total_domains} servers)`);
                 badge.textContent = parts.join(' · ');
                 badge.style.display = '';
