@@ -331,6 +331,43 @@ tr:hover td {
     z-index: 1;
 }
 
+/* ── Statistics button glow ── */
+@keyframes statsShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+@keyframes statsPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(59,130,246,0.3), 0 0 20px rgba(59,130,246,0.1); }
+    50%      { box-shadow: 0 0 10px rgba(59,130,246,0.5), 0 0 30px rgba(59,130,246,0.2); }
+}
+.stats-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #fff;
+    background: linear-gradient(
+        90deg,
+        var(--accent-color) 0%,
+        rgba(99,102,241,0.9) 25%,
+        rgba(16,185,129,0.85) 50%,
+        rgba(99,102,241,0.9) 75%,
+        var(--accent-color) 100%
+    );
+    background-size: 200% 100%;
+    animation: statsShimmer 3s linear infinite, statsPulse 2.5s ease-in-out infinite;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+}
+.stats-btn:hover {
+    transform: scale(1.06);
+    filter: brightness(1.15);
+}
+
 /* Status Indicator */
 .status-indicator {
     display: flex;
