@@ -6,3 +6,6 @@ servers.list*
 __pycache__
 ovpn/*
 .env
+venv/
+logs/
+.pytest_cache/
