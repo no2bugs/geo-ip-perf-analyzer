@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => { try {
+document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // Tabs
     // ========================================
@@ -766,12 +766,9 @@ document.addEventListener('DOMContentLoaded', () => { try {
         });
     }
 
-    console.log('VIDEO UPLOAD: listener registered, videoFileInput=', videoFileInput);
     videoFileInput.addEventListener('change', async () => {
-        console.log('VIDEO UPLOAD: change event fired');
         const file = videoFileInput.files[0];
-        if (!file) { console.log('VIDEO UPLOAD: no file selected'); return; }
-        console.log('VIDEO UPLOAD: file=', file.name, file.size);
+        if (!file) return;
         videoUploadStatus.textContent = 'Uploading...';
         const form = new FormData();
         form.append('file', file);
@@ -911,4 +908,4 @@ document.addEventListener('DOMContentLoaded', () => { try {
     loadConfig();
     loadCredentials();
     loadTheme();
-} catch(e) { console.error('CONFIG.JS INIT ERROR:', e); document.title = 'JS ERROR: ' + e.message; } });
+});
