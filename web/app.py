@@ -408,10 +408,12 @@ def _queue_processor_loop():
 
         _queue_active_job = job
         logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))
+        scan_logger.info('Queue dispatching %d domains (%s)', len(job['domains']), job.get('label', ''))
         try:
             _run_vpn_speedtest_sync(job['domains'])
         except Exception as e:
             logging.error("Queue job failed: %s", e)
+            scan_logger.error('Queue job failed: %s', e)
         finally:
             _queue_active_job = None
             _queue_set_active(None)
@@ -429,6 +431,8 @@ def _run_vpn_speedtest_sync(domains):
 
     flusher = threading.Thread(target=_state_flusher, daemon=True)
     flusher.start()
+
+    scan_logger.info('VPN speedtest (queued) started: %d domains', len(domains))
 
     try:
         if not os.path.exists(RESULTS_FILE):
@@ -473,9 +477,11 @@ def _run_vpn_speedtest_sync(domains):
         if stop_event.is_set():
             scan_progress['status'] = 'completed'
             scan_progress['message'] = f'VPN speedtest interrupted — {report_msg}'
+            scan_logger.info('VPN speedtest (queued) interrupted: %d/%d domains (%s) — %s', scan_progress['done'], len(valid_domains), duration, report_msg)
         else:
             scan_progress['status'] = 'completed'
             scan_progress['message'] = f'VPN speedtest completed — {report_msg}'
+            scan_logger.info('VPN speedtest (queued) completed: %d domains (%s) — %s', len(valid_domains), duration, report_msg)
             send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete (Queue)',
                       f'{len(valid_domains)} servers tested ({duration})\n{report_msg}')
 
@@ -484,6 +490,7 @@ def _run_vpn_speedtest_sync(domains):
         scan_progress['message'] = str(e)
         last_error = str(e)
         logging.error("Queue VPN speedtest error: %s", e)
+        scan_logger.error('VPN speedtest (queued) error: %s', e)
     finally:
         scan_active = False
         _flush_scan_state()

@@ -350,6 +350,30 @@
                 tbody.appendChild(tr);
             });
 
+            // Totals row
+            const totals = countries.reduce((acc, c) => {
+                acc.servers += c.servers;
+                acc.succeeded += c.succeeded;
+                acc.failed += c.failed;
+                acc.untested += c.untested;
+                return acc;
+            }, { servers: 0, succeeded: 0, failed: 0, untested: 0 });
+
+            const tfoot = document.createElement('tr');
+            tfoot.style.cssText = 'background:rgba(15,23,42,0.9);font-weight:700;border-top:2px solid var(--border-color);';
+            tfoot.innerHTML = `
+                <td>Total (${countries.length} countries)</td>
+                <td class="num">${totals.servers}</td>
+                <td class="num muted">—</td>
+                <td class="num muted">—</td>
+                <td class="num muted">—</td>
+                <td class="num green">${totals.succeeded}</td>
+                <td class="num ${totals.failed > 0 ? 'red' : 'muted'}">${totals.failed}</td>
+                <td class="num ${totals.untested > 0 ? 'yellow' : 'muted'}">${totals.untested}</td>
+                <td></td>
+            `;
+            tbody.appendChild(tfoot);
+
             // Attach action button handlers
             tbody.querySelectorAll('.stats-btn[data-country]').forEach(btn => {
                 btn.addEventListener('click', () => {
