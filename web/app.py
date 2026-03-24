@@ -230,11 +230,10 @@ stop_event = threading.Event()
 last_error = None
 scan_start_time = None
 
-# Server-side speedtest queue (in-memory for the processor thread)
-_speedtest_queue = []
-_speedtest_queue_lock = threading.Lock()
+# Server-side speedtest queue — file is single source of truth across workers
 _queue_processor_started = False
 _queue_active_job = None
+_queue_file_lock = threading.Lock()  # Thread-level lock for file operations
 
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
@@ -307,16 +306,19 @@ def _state_flusher():
     _flush_scan_state()
 
 
-# ---- File-based queue state (shared across gunicorn workers) ----
+# ---- File-based queue (single source of truth across gunicorn workers) ----
 
-def _flush_queue_state():
-    """Persist queue state to file for cross-worker access."""
-    with _speedtest_queue_lock:
-        pending = [{"domains": j["domains"], "type": j["type"], "label": j["label"]} for j in _speedtest_queue]
-    active = None
-    if _queue_active_job:
-        active = {"domains_count": len(_queue_active_job["domains"]), "type": _queue_active_job.get("type", ""), "label": _queue_active_job.get("label", "")}
-    state = {"pending": pending, "active": active, "timestamp": time.time()}
+def _read_queue_file():
+    """Read queue from shared file. Returns {"pending": [...], "active": ...}."""
+    try:
+        with open(QUEUE_STATE_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {"pending": [], "active": None}
+
+
+def _write_queue_file(state):
+    """Atomically write queue state to shared file."""
     try:
         tmp = QUEUE_STATE_FILE + '.tmp'
         with open(tmp, 'w') as f:
@@ -326,13 +328,45 @@ def _flush_queue_state():
         pass
 
 
-def _read_queue_state():
-    """Read queue state from shared file."""
-    try:
-        with open(QUEUE_STATE_FILE, 'r') as f:
-            return json.load(f)
-    except Exception:
-        return {"pending": [], "active": None}
+def _queue_add_job(domains, job_type, label):
+    """Append a job to the file-based queue (safe across workers)."""
+    with _queue_file_lock:
+        state = _read_queue_file()
+        state.setdefault("pending", []).append({"domains": domains, "type": job_type, "label": label})
+        _write_queue_file(state)
+        return len(state["pending"])
+
+
+def _queue_pop_job():
+    """Pop the first pending job from the file-based queue. Returns job or None."""
+    with _queue_file_lock:
+        state = _read_queue_file()
+        pending = state.get("pending", [])
+        if not pending:
+            return None
+        job = pending.pop(0)
+        state["pending"] = pending
+        state["active"] = {"domains_count": len(job["domains"]), "type": job.get("type", ""), "label": job.get("label", "")}
+        _write_queue_file(state)
+        return job
+
+
+def _queue_set_active(active_info):
+    """Update the active job in the queue file."""
+    with _queue_file_lock:
+        state = _read_queue_file()
+        state["active"] = active_info
+        _write_queue_file(state)
+
+
+def _queue_clear_all():
+    """Clear all pending items from file-based queue. Returns count removed."""
+    with _queue_file_lock:
+        state = _read_queue_file()
+        count = len(state.get("pending", []))
+        state["pending"] = []
+        _write_queue_file(state)
+        return count
 
 
 def _ensure_queue_processor():
@@ -349,37 +383,34 @@ def _queue_processor_loop():
     """Background loop: wait for scan idle, then dispatch next queued job."""
     global _queue_processor_started, _queue_active_job
     while True:
-        with _speedtest_queue_lock:
-            if not _speedtest_queue:
-                _queue_processor_started = False
-                _queue_active_job = None
-                _flush_queue_state()
-                return
-            job = _speedtest_queue[0]
+        # Check if there are pending jobs in the file
+        state = _read_queue_file()
+        if not state.get("pending"):
+            _queue_processor_started = False
+            _queue_active_job = None
+            _queue_set_active(None)
+            return
 
         # Wait until no scan is active
         while _is_scan_active():
             time.sleep(5)
 
-        # Pop the job (re-check under lock — might have been cleared)
-        with _speedtest_queue_lock:
-            if not _speedtest_queue:
-                _queue_processor_started = False
-                _queue_active_job = None
-                _flush_queue_state()
-                return
-            job = _speedtest_queue.pop(0)
-            _queue_active_job = job
-        _flush_queue_state()
+        # Pop the next job from the file
+        job = _queue_pop_job()
+        if not job:
+            _queue_processor_started = False
+            _queue_active_job = None
+            return
 
-        logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))  
+        _queue_active_job = job
+        logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))
         try:
             _run_vpn_speedtest_sync(job['domains'])
         except Exception as e:
             logging.error("Queue job failed: %s", e)
         finally:
             _queue_active_job = None
-            _flush_queue_state()
+            _queue_set_active(None)
 
 
 def _run_vpn_speedtest_sync(domains):
@@ -790,22 +821,18 @@ def queue_add():
     label = data.get('label', '')
     if not domains:
         return jsonify({"status": "error", "message": "No domains provided"}), 400
-    with _speedtest_queue_lock:
-        _speedtest_queue.append({"domains": domains, "type": job_type, "label": label})
-        pending = len(_speedtest_queue)
-    _flush_queue_state()
+    pending = _queue_add_job(domains, job_type, label)
     _ensure_queue_processor()
     return jsonify({"status": "queued", "pending": pending})
 
 @app.route('/api/queue/status')
 def queue_status():
     """Return current queue info from shared file (works across gunicorn workers)."""
-    qs = _read_queue_state()
+    qs = _read_queue_file()
     pending_jobs = qs.get("pending", [])
     active = qs.get("active")
     total_domains = sum(len(j.get("domains", [])) for j in pending_jobs)
     jobs = [{"domains": len(j.get("domains", [])), "type": j.get("type", ""), "label": j.get("label", "")} for j in pending_jobs]
-    # Include scan progress so frontends can show accurate done/total
     scan_state = _read_scan_state()
     progress = scan_state.get("progress", {})
     scan_running = _is_scan_active()
@@ -819,10 +846,7 @@ def queue_status():
 @app.route('/api/queue/clear', methods=['POST'])
 def queue_clear():
     """Clear all pending queue items (does not stop a running scan)."""
-    with _speedtest_queue_lock:
-        count = len(_speedtest_queue)
-        _speedtest_queue.clear()
-    _flush_queue_state()
+    count = _queue_clear_all()
     return jsonify({"status": "cleared", "removed": count})
 
 GEOLITE_RELEASE_URL = 'https://api.github.com/repos/P3TERX/GeoLite.mmdb/releases/latest'
