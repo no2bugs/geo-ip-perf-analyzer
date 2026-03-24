@@ -415,6 +415,22 @@
                 </div>
                 <div class="custom-wallpaper-preview" id="customWallpaperPreview" style="display:none"></div>
             </section>
+
+            <section class="config-card">
+                <div class="card-header">
+                    <h3>Custom Video Wallpaper</h3>
+                </div>
+                <p class="card-desc">Upload an MP4 or WebM video (max 50 MB) to use as a live animated background.</p>
+                <div class="custom-wallpaper-row">
+                    <label class="upload-btn" id="uploadVideoBtn">
+                        <input type="file" id="videoFileInput" accept=".mp4,.webm" hidden>
+                        Upload Video
+                    </label>
+                    <button class="secondary-btn" id="removeVideoBtn" style="display:none">Remove</button>
+                    <span class="upload-status" id="videoUploadStatus"></span>
+                </div>
+                <video id="videoWallpaperPreview" class="video-wallpaper-preview-large" style="display:none" autoplay loop muted playsinline></video>
+            </section>
         </div>
 
         <!-- ==================== MAP TAB ==================== -->

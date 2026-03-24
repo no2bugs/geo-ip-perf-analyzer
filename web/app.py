@@ -1220,9 +1220,11 @@ def get_origin():
 
     return jsonify({'error': 'Could not determine origin location'}), 500
 VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
-VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom', 'video_matrix', 'video_starfield', 'video_particles', 'video_aurora', 'video_fireflies', 'video_cyber_grid'}
+VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom', 'video_matrix', 'video_starfield', 'video_particles', 'video_aurora', 'video_fireflies', 'video_cyber_grid', 'video_plexus_vortex', 'video_data_stream', 'video_plexus_web', 'video_custom'}
 ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}
+ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.webm'}
 MAX_WALLPAPER_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_VIDEO_WALLPAPER_SIZE = 50 * 1024 * 1024  # 50 MB
 
 @app.route('/api/theme')
 def get_theme():
@@ -1338,6 +1340,70 @@ def delete_custom_wallpaper():
         config = load_config()
         theme = config.get('theme', {})
         if theme.get('wallpaper') == 'custom':
+            theme['wallpaper'] = 'none'
+            config['theme'] = theme
+            save_config(config)
+    return jsonify({'status': 'ok', 'deleted': deleted})
+
+
+@app.route('/api/wallpaper/video/upload', methods=['POST'])
+def upload_video_wallpaper():
+    """Upload a custom video wallpaper (mp4/webm, max 50 MB)."""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+    uploaded = request.files['file']
+    if not uploaded.filename:
+        return jsonify({'status': 'error', 'message': 'Empty filename'}), 400
+    ext = os.path.splitext(uploaded.filename)[1].lower()
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        return jsonify({'status': 'error', 'message': 'Allowed types: .mp4, .webm'}), 400
+    data = uploaded.read()
+    if len(data) > MAX_VIDEO_WALLPAPER_SIZE:
+        return jsonify({'status': 'error', 'message': 'File exceeds 50 MB limit'}), 400
+    wp_dir = Path(WALLPAPER_DIR)
+    wp_dir.mkdir(parents=True, exist_ok=True)
+    for old in wp_dir.iterdir():
+        if old.stem == 'video_custom':
+            old.unlink()
+    target = wp_dir / f'video_custom{ext}'
+    target.write_bytes(data)
+    with _config_lock:
+        config = load_config()
+        theme = config.get('theme', {})
+        theme['wallpaper'] = 'video_custom'
+        config['theme'] = theme
+        save_config(config)
+    logging.info(f'Custom video wallpaper uploaded: {uploaded.filename} ({len(data)} bytes)')
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/wallpaper/video')
+def serve_video_wallpaper():
+    """Serve the uploaded custom video wallpaper."""
+    wp_dir = Path(WALLPAPER_DIR)
+    for ext in ALLOWED_VIDEO_EXTENSIONS:
+        candidate = wp_dir / f'video_custom{ext}'
+        if candidate.exists():
+            mime = {'.mp4': 'video/mp4', '.webm': 'video/webm'}
+            return send_from_directory(str(wp_dir), candidate.name,
+                                      mimetype=mime.get(ext, 'video/mp4'))
+    return jsonify({'status': 'error', 'message': 'No custom video found'}), 404
+
+
+@app.route('/api/wallpaper/video', methods=['DELETE'])
+def delete_video_wallpaper():
+    """Delete the custom video wallpaper."""
+    wp_dir = Path(WALLPAPER_DIR)
+    deleted = False
+    for ext in ALLOWED_VIDEO_EXTENSIONS:
+        candidate = wp_dir / f'video_custom{ext}'
+        if candidate.exists():
+            candidate.unlink()
+            deleted = True
+    with _config_lock:
+        config = load_config()
+        theme = config.get('theme', {})
+        if theme.get('wallpaper') == 'video_custom':
             theme['wallpaper'] = 'none'
             config['theme'] = theme
             save_config(config)

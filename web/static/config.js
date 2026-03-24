@@ -666,6 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderWallpapers();
         renderVideoWallpapers();
         refreshCustomWallpaperUI();
+        refreshVideoWallpaperUI();
     }
 
     // ========================================
@@ -737,6 +738,69 @@ document.addEventListener('DOMContentLoaded', () => {
             saveTheme();
             renderWallpapers();
             refreshCustomWallpaperUI();
+        } catch (e) { /* silent */ }
+    });
+
+    // ========================================
+    // Custom Video Wallpaper Upload
+    // ========================================
+    const videoFileInput = document.getElementById('videoFileInput');
+    const videoUploadStatus = document.getElementById('videoUploadStatus');
+    const removeVideoBtn = document.getElementById('removeVideoBtn');
+    const videoPreview = document.getElementById('videoWallpaperPreview');
+
+    function refreshVideoWallpaperUI() {
+        fetch('/api/wallpaper/video', { method: 'HEAD' }).then(r => {
+            const hasFile = r.ok;
+            removeVideoBtn.style.display = hasFile ? '' : 'none';
+            if (hasFile) {
+                videoPreview.style.display = 'block';
+                videoPreview.src = '/api/wallpaper/video?' + Date.now();
+            } else {
+                videoPreview.style.display = 'none';
+                videoPreview.removeAttribute('src');
+            }
+        }).catch(() => {
+            removeVideoBtn.style.display = 'none';
+            videoPreview.style.display = 'none';
+        });
+    }
+
+    videoFileInput.addEventListener('change', async () => {
+        const file = videoFileInput.files[0];
+        if (!file) return;
+        videoUploadStatus.textContent = 'Uploading...';
+        const form = new FormData();
+        form.append('file', file);
+        try {
+            const resp = await fetch('/api/wallpaper/video/upload', { method: 'POST', body: form });
+            const data = await resp.json();
+            if (data.status === 'ok') {
+                videoUploadStatus.textContent = 'Uploaded!';
+                currentTheme.wallpaper = 'video_custom';
+                engine.applyTheme(currentTheme);
+                localStorage.setItem('geo_ip_theme', JSON.stringify(currentTheme));
+                renderWallpapers();
+                renderVideoWallpapers();
+                refreshVideoWallpaperUI();
+            } else {
+                videoUploadStatus.textContent = data.message || 'Upload failed';
+            }
+        } catch (e) {
+            videoUploadStatus.textContent = 'Upload failed';
+        }
+        videoFileInput.value = '';
+        setTimeout(() => { videoUploadStatus.textContent = ''; }, 3000);
+    });
+
+    removeVideoBtn.addEventListener('click', async () => {
+        try {
+            await fetch('/api/wallpaper/video', { method: 'DELETE' });
+            currentTheme.wallpaper = 'none';
+            saveTheme();
+            renderWallpapers();
+            renderVideoWallpapers();
+            refreshVideoWallpaperUI();
         } catch (e) { /* silent */ }
     });
 
