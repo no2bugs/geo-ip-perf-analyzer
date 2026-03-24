@@ -10,166 +10,51 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/theme.js"></script>
     <style>
-        .stats-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
+        .top-section { margin-bottom: 1.5rem; }
+        .top-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .top-header h3 { margin: 0; }
+        .top-select { padding: 0.3rem 0.5rem; border-radius: 6px; background: var(--panel-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 0.8rem; font-family: inherit; }
+        .top-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+        .top-card { background: rgba(15,23,42,0.85); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem; }
+        .top-rank { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .top-domain { font-weight: 600; color: var(--accent-color, #3b82f6); font-size: 0.85rem; word-break: break-all; }
+        .top-meta { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+        .top-speed { font-weight: 700; color: #10b981; font-size: 0.95rem; }
 
-        .top5-section {
-            margin-bottom: 1.5rem;
-        }
-
-        .top5-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 0.75rem;
-            margin-top: 0.75rem;
-        }
-
-        .top5-card {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 0.75rem 1rem;
-        }
-
-        .top5-rank {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .top5-domain {
-            font-weight: 600;
-            color: var(--accent-color, #3b82f6);
-            font-size: 0.85rem;
-            word-break: break-all;
-        }
-
-        .top5-meta {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .top5-speed {
-            font-weight: 700;
-            color: #10b981;
-            font-size: 0.95rem;
-        }
-
-        .stats-table-wrapper {
-            overflow-x: auto;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-        }
-
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.82rem;
-        }
-
-        .stats-table th {
-            background: rgba(15, 23, 42, 0.9);
-            color: var(--text-secondary);
-            font-weight: 600;
-            padding: 0.6rem 0.75rem;
-            text-align: left;
-            white-space: nowrap;
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-        }
-
-        .stats-table td {
-            padding: 0.5rem 0.75rem;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
-            color: var(--text-primary);
-        }
-
-        .stats-table tbody tr:hover {
-            background: rgba(148, 163, 184, 0.05);
-        }
-
-        .stats-table .num {
-            text-align: right;
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-        }
-
+        .stats-table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border-color); }
+        .stats-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .stats-table th { background: rgba(15,23,42,0.9); color: var(--text-secondary); font-weight: 600; padding: 0.6rem 0.75rem; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; cursor: pointer; user-select: none; }
+        .stats-table th:last-child { cursor: default; }
+        .stats-table th .sort-arrow { font-size: 0.65rem; margin-left: 4px; opacity: 0.3; }
+        .stats-table th.sort-active .sort-arrow { opacity: 1; }
+        .stats-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(148,163,184,0.06); color: var(--text-primary); }
+        .stats-table tbody tr:hover { background: rgba(148,163,184,0.05); }
+        .stats-table .num { text-align: right; font-family: 'Courier New', monospace; font-weight: 600; }
         .stats-table .num.green { color: #10b981; }
         .stats-table .num.yellow { color: #eab308; }
         .stats-table .num.red { color: #ef4444; }
         .stats-table .num.muted { color: var(--text-secondary); }
+        .val-hover { cursor: help; border-bottom: 1px dotted var(--text-secondary); }
+        .stats-table .actions-cell { white-space: nowrap; }
 
-        .val-hover {
-            cursor: help;
-            border-bottom: 1px dotted var(--text-secondary);
-        }
-
-        .stats-table .actions-cell {
-            white-space: nowrap;
-        }
-
-        .stats-btn {
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: rgba(15, 23, 42, 0.8);
-            color: var(--text-primary);
-            font-size: 0.72rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .stats-btn:hover { background: rgba(30, 41, 59, 0.9); }
+        .stats-btn { padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(15,23,42,0.8); color: var(--text-primary); font-size: 0.72rem; cursor: pointer; transition: background 0.2s; }
+        .stats-btn:hover { background: rgba(30,41,59,0.9); }
         .stats-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .stats-btn.accent { background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.3); }
-        .stats-btn.accent:hover { background: rgba(59, 130, 246, 0.35); }
+        .stats-btn.accent { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.3); }
+        .stats-btn.accent:hover { background: rgba(59,130,246,0.35); }
 
-        .bulk-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-top: 1rem;
-            padding: 0.75rem 1rem;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-        }
-
-        .bulk-btn {
-            padding: 0.4rem 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--panel-bg);
-            color: var(--text-primary);
-            font-size: 0.82rem;
-            font-family: inherit;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .bulk-btn:hover { background: rgba(30, 41, 59, 0.9); }
+        .bulk-actions { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(15,23,42,0.85); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 10px; flex-wrap: wrap; }
+        .bulk-btn { padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-primary); font-size: 0.82rem; font-family: inherit; cursor: pointer; transition: background 0.2s; }
+        .bulk-btn:hover { background: rgba(30,41,59,0.9); }
         .bulk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .bulk-count { font-size: 0.82rem; color: var(--text-secondary); }
 
-        .bulk-count {
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-        }
+        .loading-msg { text-align: center; color: var(--text-secondary); padding: 3rem 0; font-size: 0.9rem; }
 
-        .loading-msg {
-            text-align: center;
-            color: var(--text-secondary);
-            padding: 3rem 0;
-            font-size: 0.9rem;
-        }
+        .queue-badge { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; background: rgba(234,179,8,0.25); color: #eab308; margin-left: 0.5rem; vertical-align: middle; }
+
+        #statsToast { position: fixed; bottom: 2rem; right: 2rem; background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; color: var(--text-primary); transform: translateY(150%); transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 100; max-width: 400px; font-size: 0.85rem; }
+        #statsToast.show { transform: translateY(0); }
     </style>
 </head>
 
@@ -177,7 +62,7 @@
     <div class="container">
         <header>
             <a href="/" class="header-title-link">
-                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Statistics</h1>
+                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Statistics <span id="queueBadge" class="queue-badge" style="display:none;"></span></h1>
             </a>
             <div class="header-actions">
                 <a href="/" class="header-link-btn" title="Back to Dashboard">&larr; Dashboard</a>
@@ -187,26 +72,28 @@
         </header>
 
         <main>
-            <section class="glass-panel top5-section" id="top5Section" style="display:none;">
-                <h3 style="margin-bottom:0.25rem;">&#11088; Top 5 Recommended Servers</h3>
-                <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.5rem;">Best download speed per country</p>
-                <div class="top5-grid" id="top5Grid"></div>
+            <section class="glass-panel top-section" id="topSection" style="display:none;">
+                <div class="top-header">
+                    <h3>&#11088; Top <select id="topNSelect" class="top-select"></select> Recommended Servers</h3>
+                    <span style="font-size:0.78rem; color:var(--text-secondary);">Best download speed per country</span>
+                </div>
+                <div class="top-grid" id="topGrid"></div>
             </section>
 
             <section class="glass-panel">
                 <div id="statsLoading" class="loading-msg">Loading statistics...</div>
                 <div class="stats-table-wrapper" id="statsTableWrapper" style="display:none;">
-                    <table class="stats-table">
+                    <table class="stats-table" id="statsTable">
                         <thead>
                             <tr>
-                                <th>Country</th>
-                                <th style="text-align:right;">Servers</th>
-                                <th style="text-align:right;">Lowest Latency</th>
-                                <th style="text-align:right;">Best Download</th>
-                                <th style="text-align:right;">Best Upload</th>
-                                <th style="text-align:right;">Succeeded</th>
-                                <th style="text-align:right;">Failed</th>
-                                <th style="text-align:right;">Untested</th>
+                                <th data-key="country">Country <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="servers" style="text-align:right;">Servers <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="lowest_latency" style="text-align:right;">Lowest Latency <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="highest_download" style="text-align:right;">Best Download <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="highest_upload" style="text-align:right;">Best Upload <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="succeeded" style="text-align:right;">Succeeded <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="failed" style="text-align:right;">Failed <span class="sort-arrow">&#9650;</span></th>
+                                <th data-key="untested" style="text-align:right;">Untested <span class="sort-arrow">&#9650;</span></th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -224,19 +111,60 @@
         </main>
     </div>
 
+    <div id="statsToast"></div>
+
     <script>
     (function () {
         'use strict';
 
+        let allCountries = [];
         let totalUntested = 0;
         let totalFailed = 0;
+        let totalCountriesAvailable = 0;
+        let currentTopN = 5;
 
+        // Sort state
+        let sortKey = 'country';
+        let sortAsc = true;
+
+        // Queue state
+        let queuedUntested = 0;
+        let queuedFailed = 0;
+
+        // ---- Toast ----
+        function showToast(msg, isError) {
+            const t = document.getElementById('statsToast');
+            t.textContent = msg;
+            t.style.borderLeft = isError ? '4px solid #ef4444' : '4px solid #10b981';
+            t.classList.add('show');
+            clearTimeout(t._tid);
+            t._tid = setTimeout(() => t.classList.remove('show'), 5000);
+        }
+
+        // ---- Queue badge ----
+        function updateQueueBadge() {
+            const badge = document.getElementById('queueBadge');
+            const parts = [];
+            if (queuedUntested > 0) parts.push(`${queuedUntested} untested`);
+            if (queuedFailed > 0) parts.push(`${queuedFailed} failed`);
+            if (parts.length) {
+                badge.textContent = `Queued: ${parts.join(', ')}`;
+                badge.style.display = '';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // ---- Load statistics ----
         async function loadStats() {
             try {
-                const resp = await fetch('/api/statistics');
+                const resp = await fetch(`/api/statistics?top=${currentTopN}`);
                 const data = await resp.json();
-                renderTop5(data.top5 || []);
-                renderTable(data.countries || []);
+                allCountries = data.countries || [];
+                totalCountriesAvailable = data.total_countries || allCountries.length;
+                buildTopNSelector();
+                renderTop(data.top || []);
+                sortAndRender();
                 document.getElementById('statsLoading').style.display = 'none';
                 document.getElementById('statsTableWrapper').style.display = '';
                 document.getElementById('bulkActions').style.display = '';
@@ -245,25 +173,86 @@
             }
         }
 
-        function renderTop5(top5) {
-            if (!top5.length) return;
-            const grid = document.getElementById('top5Grid');
+        // ---- Top N selector ----
+        function buildTopNSelector() {
+            const sel = document.getElementById('topNSelect');
+            if (sel.options.length > 0) return;
+            const options = [5, 10, 15, 20, 25];
+            if (totalCountriesAvailable > 0 && !options.includes(totalCountriesAvailable)) {
+                options.push(totalCountriesAvailable);
+                options.sort((a, b) => a - b);
+            }
+            options.forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n >= totalCountriesAvailable ? `All (${totalCountriesAvailable})` : n;
+                if (n === currentTopN) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.addEventListener('change', () => {
+                currentTopN = parseInt(sel.value);
+                loadStats();
+            });
+        }
+
+        // ---- Render top servers ----
+        function renderTop(topList) {
+            if (!topList.length) return;
+            const grid = document.getElementById('topGrid');
             grid.innerHTML = '';
-            top5.forEach((s, i) => {
+            topList.forEach((s, i) => {
                 const card = document.createElement('div');
-                card.className = 'top5-card';
+                card.className = 'top-card';
                 card.innerHTML = `
-                    <div class="top5-rank">#${i + 1} — ${s.country}</div>
-                    <div class="top5-domain">${s.domain}</div>
-                    <div class="top5-meta">${s.city}</div>
-                    <div class="top5-speed">${s.rx_speed_mbps.toFixed(1)} Mbps &#8595;</div>
-                    <div class="top5-meta">${s.tx_speed_mbps ? s.tx_speed_mbps.toFixed(1) + ' Mbps &#8593;' : ''} ${s.latency_ms ? '&middot; ' + s.latency_ms.toFixed(1) + ' ms' : ''}</div>
+                    <div class="top-rank">#${i + 1} — ${s.country}</div>
+                    <div class="top-domain">${s.domain}</div>
+                    <div class="top-meta">${s.city}</div>
+                    <div class="top-speed">${s.rx_speed_mbps.toFixed(1)} Mbps &#8595;</div>
+                    <div class="top-meta">${s.tx_speed_mbps ? s.tx_speed_mbps.toFixed(1) + ' Mbps &#8593;' : ''} ${s.latency_ms ? '&middot; ' + s.latency_ms.toFixed(1) + ' ms' : ''}</div>
                 `;
                 grid.appendChild(card);
             });
-            document.getElementById('top5Section').style.display = '';
+            document.getElementById('topSection').style.display = '';
         }
 
+        // ---- Sorting ----
+        function getSortVal(c, key) {
+            const v = c[key];
+            if (v == null) return key === 'country' ? '' : -Infinity;
+            return v;
+        }
+
+        function sortAndRender() {
+            const sorted = [...allCountries].sort((a, b) => {
+                let va = getSortVal(a, sortKey), vb = getSortVal(b, sortKey);
+                if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb || '').toLowerCase(); }
+                if (va < vb) return sortAsc ? -1 : 1;
+                if (va > vb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+            renderTable(sorted);
+            document.querySelectorAll('#statsTable th[data-key]').forEach(th => {
+                const arrow = th.querySelector('.sort-arrow');
+                if (th.dataset.key === sortKey) {
+                    th.classList.add('sort-active');
+                    arrow.innerHTML = sortAsc ? '&#9650;' : '&#9660;';
+                } else {
+                    th.classList.remove('sort-active');
+                    arrow.innerHTML = '&#9650;';
+                }
+            });
+        }
+
+        document.querySelectorAll('#statsTable th[data-key]').forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.key;
+                if (sortKey === key) { sortAsc = !sortAsc; }
+                else { sortKey = key; sortAsc = key === 'country'; }
+                sortAndRender();
+            });
+        });
+
+        // ---- Render table ----
         function renderTable(countries) {
             const tbody = document.getElementById('statsBody');
             tbody.innerHTML = '';
@@ -285,8 +274,11 @@
                     ? `<td class="num green val-hover" title="${c.highest_upload_server}">${c.highest_upload.toFixed(1)} Mbps</td>`
                     : `<td class="num muted">—</td>`;
 
+                const country = c.country;
+                const escCountry = country.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
                 tr.innerHTML = `
-                    <td><strong>${c.country}</strong></td>
+                    <td><strong>${country}</strong></td>
                     <td class="num">${c.servers}</td>
                     ${latCell}
                     ${dlCell}
@@ -295,11 +287,18 @@
                     <td class="num ${c.failed > 0 ? 'red' : 'muted'}">${c.failed}</td>
                     <td class="num ${c.untested > 0 ? 'yellow' : 'muted'}">${c.untested}</td>
                     <td class="actions-cell">
-                        ${c.untested > 0 ? `<button class="stats-btn" onclick="runCountry('${esc(c.country)}','untested')" title="Speedtest ${c.untested} untested">&#9654; Untested (${c.untested})</button>` : ''}
-                        ${c.failed > 0 ? `<button class="stats-btn accent" onclick="runCountry('${esc(c.country)}','failed')" title="Retry ${c.failed} failed">&#128260; Failed (${c.failed})</button>` : ''}
+                        ${c.untested > 0 ? `<button class="stats-btn" data-country="${escCountry}" data-type="untested">&#9654; Untested (${c.untested})</button>` : ''}
+                        ${c.failed > 0 ? `<button class="stats-btn accent" data-country="${escCountry}" data-type="failed">&#128260; Failed (${c.failed})</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);
+            });
+
+            // Attach action button handlers
+            tbody.querySelectorAll('.stats-btn[data-country]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    queueCountry(btn.dataset.country, btn.dataset.type);
+                });
             });
 
             document.getElementById('bulkUntestedCount').textContent = `${totalUntested} untested servers`;
@@ -308,39 +307,24 @@
             document.getElementById('bulkFailedBtn').disabled = totalFailed === 0;
         }
 
-        function esc(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
-
-        window.runCountry = async function (country, type) {
+        // ---- Queue + trigger speedtests ----
+        async function queueCountry(country, type) {
             try {
                 const resp = await fetch(`/api/statistics/domains?country=${encodeURIComponent(country)}`);
                 const data = await resp.json();
                 const domains = type === 'untested' ? data.untested : data.failed;
-                if (!domains.length) { alert('No servers to test.'); return; }
-                await triggerSpeedtest(domains);
+                if (!domains.length) { showToast(`No ${type} servers in ${country}`, true); return; }
+                if (type === 'untested') queuedUntested += domains.length;
+                else queuedFailed += domains.length;
+                updateQueueBadge();
+                showToast(`Queued ${domains.length} ${type} server(s) in ${country}`);
+                await triggerSpeedtest(domains, type);
             } catch (e) {
-                alert('Error: ' + e.message);
+                showToast('Error: ' + e.message, true);
             }
-        };
+        }
 
-        document.getElementById('bulkUntestedBtn').addEventListener('click', async () => {
-            try {
-                const resp = await fetch('/api/statistics/domains');
-                const data = await resp.json();
-                if (!data.untested.length) return;
-                await triggerSpeedtest(data.untested);
-            } catch (e) { alert('Error: ' + e.message); }
-        });
-
-        document.getElementById('bulkFailedBtn').addEventListener('click', async () => {
-            try {
-                const resp = await fetch('/api/statistics/domains');
-                const data = await resp.json();
-                if (!data.failed.length) return;
-                await triggerSpeedtest(data.failed);
-            } catch (e) { alert('Error: ' + e.message); }
-        });
-
-        async function triggerSpeedtest(domains) {
+        async function triggerSpeedtest(domains, type) {
             try {
                 const resp = await fetch('/api/vpn-speedtest', {
                     method: 'POST',
@@ -349,14 +333,42 @@
                 });
                 const result = await resp.json();
                 if (resp.ok) {
-                    alert(`VPN speedtest started for ${domains.length} server(s). Check the dashboard for progress.`);
+                    showToast(`VPN speedtest started for ${domains.length} server(s)`);
                 } else {
-                    alert(result.message || 'Failed to start speedtest');
+                    showToast(result.message || 'Failed to start speedtest', true);
                 }
             } catch (e) {
-                alert('Error starting speedtest: ' + e.message);
+                showToast('Error starting speedtest: ' + e.message, true);
+            } finally {
+                if (type === 'untested') queuedUntested = Math.max(0, queuedUntested - domains.length);
+                else queuedFailed = Math.max(0, queuedFailed - domains.length);
+                updateQueueBadge();
             }
         }
+
+        document.getElementById('bulkUntestedBtn').addEventListener('click', async () => {
+            try {
+                const resp = await fetch('/api/statistics/domains');
+                const data = await resp.json();
+                if (!data.untested.length) return;
+                queuedUntested += data.untested.length;
+                updateQueueBadge();
+                showToast(`Queued ${data.untested.length} untested server(s)`);
+                await triggerSpeedtest(data.untested, 'untested');
+            } catch (e) { showToast('Error: ' + e.message, true); }
+        });
+
+        document.getElementById('bulkFailedBtn').addEventListener('click', async () => {
+            try {
+                const resp = await fetch('/api/statistics/domains');
+                const data = await resp.json();
+                if (!data.failed.length) return;
+                queuedFailed += data.failed.length;
+                updateQueueBadge();
+                showToast(`Queued ${data.failed.length} failed server(s) for retry`);
+                await triggerSpeedtest(data.failed, 'failed');
+            } catch (e) { showToast('Error: ' + e.message, true); }
+        });
 
         loadStats();
     })();

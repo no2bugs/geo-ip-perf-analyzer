@@ -183,6 +183,27 @@ curl "http://HOST:5000/api/v1/top/upload?n=3&amp;country=Switzerland,Germany"</p
                         <p>Returns tail of a log file. Names: <code>general</code>, <code>error</code>, <code>scan</code>.</p>
                         <pre class="api-example">curl "http://HOST:5000/api/logs/file/error?lines=100"</pre>
                     </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/top-servers?n=5</code>
+                        <p>Returns top N servers across countries (best download speed per country). If <code>n</code> exceeds the number of countries with speed data, returns all.</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/top-servers?n=10"</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/statistics?top=5</code>
+                        <p>Per-country statistics: server count, best latency/download/upload, succeeded/failed/untested counts. The <code>top</code> parameter controls how many top servers are included (default 5).</p>
+                        <pre class="api-example">curl "http://HOST:5000/api/statistics?top=10"</pre>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <code class="api-method get">GET</code>
+                        <code class="api-path">/api/schedule/next</code>
+                        <p>Returns next scheduled run times for all active jobs.</p>
+                        <pre class="api-example">curl http://HOST:5000/api/schedule/next</pre>
+                    </div>
                 </div>
             </section>
 

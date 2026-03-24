@@ -1309,7 +1309,8 @@ def get_statistics():
         del s['untested_domains']
         del s['failed_domains']
 
-    # Top 5 recommended: best download speed per country, pick top 5
+    # Top N recommended: best download speed per country
+    top_n = request.args.get('top', 5, type=int)
     best_per_country = []
     for domain, entry in data.items():
         if not isinstance(entry, dict):
@@ -1330,9 +1331,42 @@ def get_statistics():
         c = s['country']
         if c not in best_map or s['rx_speed_mbps'] > best_map[c]['rx_speed_mbps']:
             best_map[c] = s
-    top5 = sorted(best_map.values(), key=lambda x: x['rx_speed_mbps'], reverse=True)[:5]
+    top_sorted = sorted(best_map.values(), key=lambda x: x['rx_speed_mbps'], reverse=True)
+    top_list = top_sorted[:top_n] if top_n < len(top_sorted) else top_sorted
 
-    return jsonify({'countries': stats_list, 'top5': top5})
+    return jsonify({'countries': stats_list, 'top': top_list, 'total_countries': len(best_map)})
+
+
+@app.route('/api/top-servers')
+def get_top_servers():
+    """Return top N servers (best download per country). Query param: n (default 5)."""
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify([])
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return jsonify([])
+    n = request.args.get('n', 5, type=int)
+    best_map = {}
+    for domain, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        rx = entry.get('rx_speed_mbps')
+        if rx and rx > 0:
+            c = entry.get('country', 'Unknown')
+            if c not in best_map or rx > best_map[c]['rx_speed_mbps']:
+                best_map[c] = {
+                    'domain': domain,
+                    'country': c,
+                    'city': entry.get('city', 'Unknown'),
+                    'rx_speed_mbps': rx,
+                    'tx_speed_mbps': entry.get('tx_speed_mbps'),
+                    'latency_ms': entry.get('latency_ms')
+                }
+    top_sorted = sorted(best_map.values(), key=lambda x: x['rx_speed_mbps'], reverse=True)
+    result = top_sorted[:n] if n < len(top_sorted) else top_sorted
+    return jsonify(result)
 
 
 @app.route('/api/statistics/domains')
