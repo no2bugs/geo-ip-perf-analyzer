@@ -393,12 +393,12 @@ class Scanner:
 
         return ('ok', (domain, avg_latency, ip, country, city, None, None))
 
-    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None, stop_event: threading.Event = None):
+    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None, stop_event: threading.Event = None, results_file: str = None):
         """Perform VPN speedtests on endpoints that have matching .ovpn files."""
         from generate.vpn_batch_helper import _perform_vpn_speedtests_batch
         return _perform_vpn_speedtests_batch(
             endpoints_dict, ovpn_dir, username, password, progress,
             batch_size, interactive, selected_domains, self.formatting,
-            stop_event=stop_event
+            stop_event=stop_event, results_file=results_file
         )
 

@@ -67,7 +67,7 @@
         <main>
             <div class="console-section glass-panel">
                 <div class="console-header">
-                    <h2>Log Console <a href="/logs" class="all-logs-link">All Logs</a></h2>
+                    <h2>Log Console <a href="/logs" class="all-logs-link">All Logs</a> <span id="dashQueueBadge" style="display:none;font-size:0.72rem;padding:2px 8px;border-radius:10px;background:rgba(234,179,8,0.25);color:#eab308;vertical-align:middle;margin-left:0.25rem;"></span></h2>
                     <div class="console-actions">
                         <button id="clearLogsBtn" class="secondary-btn btn-sm">Clear</button>
                     </div>
@@ -186,6 +186,32 @@
     </div>
 
     <script src="/static/script.js"></script>
+    <script>
+    (function(){
+        const badge = document.getElementById('dashQueueBadge');
+        if (!badge) return;
+        let timer = null;
+        async function poll() {
+            try {
+                const r = await fetch('/api/queue/status');
+                const d = await r.json();
+                if (d.active || d.pending > 0) {
+                    const parts = [];
+                    if (d.active) parts.push('Running: ' + (d.active.label || d.active.domains + ' servers'));
+                    if (d.pending > 0) parts.push(d.pending + ' queued');
+                    badge.textContent = parts.join(' · ');
+                    badge.style.display = '';
+                    if (!timer) timer = setInterval(poll, 5000);
+                } else {
+                    badge.style.display = 'none';
+                    if (timer) { clearInterval(timer); timer = null; }
+                }
+            } catch { badge.style.display = 'none'; }
+        }
+        poll();
+        setInterval(poll, 15000);
+    })();
+    </script>
 </body>
 
 </html>

@@ -143,29 +143,34 @@
         }
 
         // ---- Queue badge (from server) ----
+        let lastQueueActive = false;
+
         async function pollQueue() {
             try {
                 const resp = await fetch('/api/queue/status');
                 const data = await resp.json();
+                const busy = data.pending > 0 || data.active || data.scan_active;
                 updateQueueBadge(data);
-                if (data.pending > 0) {
+                if (busy) {
                     scheduleQueuePoll();
                 } else {
                     stopQueuePoll();
-                    loadStats();  // Refresh table when queue drains
+                    if (lastQueueActive) loadStats();  // Refresh when queue finishes
                 }
+                lastQueueActive = busy;
             } catch {}
         }
 
         function updateQueueBadge(data) {
             const badge = document.getElementById('queueBadge');
             const clearBtn = document.getElementById('queueClearBtn');
-            if (data && data.pending > 0) {
-                const labels = data.jobs.map(j => j.label || `${j.domains} servers`).join(', ');
-                badge.textContent = `Queue: ${data.pending} job(s), ${data.total_domains} servers`;
-                badge.title = labels;
+            if (data && (data.pending > 0 || data.active)) {
+                const parts = [];
+                if (data.active) parts.push(`Running: ${data.active.label || data.active.domains + ' servers'}`);
+                if (data.pending > 0) parts.push(`${data.pending} queued (${data.total_domains} servers)`);
+                badge.textContent = parts.join(' · ');
                 badge.style.display = '';
-                clearBtn.style.display = '';
+                clearBtn.style.display = data.pending > 0 ? '' : 'none';
             } else {
                 badge.style.display = 'none';
                 clearBtn.style.display = 'none';

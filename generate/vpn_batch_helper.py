@@ -1,8 +1,9 @@
 """VPN speedtest helper - batch processing logic."""
 
-def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None):
+def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None, results_file=None):
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
     import os
+    import json
     import logging
     from datetime import datetime, timezone
     from pathlib import Path
@@ -120,6 +121,14 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                     
                 # Disconnect VPN
                 vpn_manager.disconnect()
+
+                # Incremental save after each server
+                if results_file:
+                    try:
+                        with open(results_file, 'w', encoding='utf-8') as rf:
+                            json.dump(endpoints_dict, rf, indent=2)
+                    except Exception:
+                        pass
                 
             except Exception as e:
                 errors += 1

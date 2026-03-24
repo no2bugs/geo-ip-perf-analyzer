@@ -234,6 +234,7 @@ scan_start_time = None
 _speedtest_queue = []          # [{"domains": [...], "type": "untested"|"failed", "label": "..."}]
 _speedtest_queue_lock = threading.Lock()
 _queue_processor_started = False
+_queue_active_job = None        # Currently processing job (popped from queue)
 
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
@@ -317,11 +318,12 @@ def _ensure_queue_processor():
 
 def _queue_processor_loop():
     """Background loop: wait for scan idle, then dispatch next queued job."""
-    global _queue_processor_started
+    global _queue_processor_started, _queue_active_job
     while True:
         with _speedtest_queue_lock:
             if not _speedtest_queue:
                 _queue_processor_started = False
+                _queue_active_job = None
                 return
             job = _speedtest_queue[0]
 
@@ -333,14 +335,18 @@ def _queue_processor_loop():
         with _speedtest_queue_lock:
             if not _speedtest_queue:
                 _queue_processor_started = False
+                _queue_active_job = None
                 return
             job = _speedtest_queue.pop(0)
+            _queue_active_job = job
 
-        logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))
+        logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))  
         try:
             _run_vpn_speedtest_sync(job['domains'])
         except Exception as e:
             logging.error("Queue job failed: %s", e)
+        finally:
+            _queue_active_job = None
 
 
 def _run_vpn_speedtest_sync(domains):
@@ -390,11 +396,9 @@ def _run_vpn_speedtest_sync(domains):
             batch_size=999,
             interactive=False,
             selected_domains=valid_domains,
-            stop_event=stop_event
+            stop_event=stop_event,
+            results_file=RESULTS_FILE
         ) or {}
-
-        with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2)
 
         duration = _format_duration(time.time() - vpn_start_time)
         report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
@@ -686,14 +690,11 @@ def vpn_speedtest():
                     batch_size=999,  # No batching in Web UI
                     interactive=False,
                     selected_domains=valid_domains,
-                    stop_event=stop_event
+                    stop_event=stop_event,
+                    results_file=RESULTS_FILE
                 ) or {}
             else:
                 raise ValueError("None of the selected domains were found in the scan results")
-            
-            # Save updated results
-            with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(results, f, indent=2)
             
             duration = _format_duration(time.time() - vpn_start_time)
             report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
@@ -764,11 +765,14 @@ def queue_add():
 
 @app.route('/api/queue/status')
 def queue_status():
-    """Return current queue info."""
+    """Return current queue info including active job."""
     with _speedtest_queue_lock:
         jobs = [{"domains": len(j['domains']), "type": j['type'], "label": j['label']} for j in _speedtest_queue]
     total_domains = sum(j['domains'] for j in jobs)
-    return jsonify({"pending": len(jobs), "total_domains": total_domains, "jobs": jobs})
+    active = None
+    if _queue_active_job:
+        active = {"domains": len(_queue_active_job['domains']), "type": _queue_active_job.get('type', ''), "label": _queue_active_job.get('label', '')}
+    return jsonify({"pending": len(jobs), "total_domains": total_domains, "jobs": jobs, "active": active, "scan_active": _is_scan_active()})
 
 @app.route('/api/queue/clear', methods=['POST'])
 def queue_clear():
