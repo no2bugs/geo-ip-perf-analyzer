@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const matrixChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF<>{}|/\\=+-*&^%$#@!';
     let matrixRAF = null;
     const MATRIX_FONT_SIZE = 13;
+    const MATRIX_INTERVAL = 70;   // ms between frames (~14fps)
+    let matrixLastFrame = 0;
 
     function initMatrixDrops() {
         matrixDrops.length = 0;
@@ -37,7 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function drawMatrix() {
+    function drawMatrix(now) {
+        matrixRAF = requestAnimationFrame(drawMatrix);
+        if (now - matrixLastFrame < MATRIX_INTERVAL) return;
+        matrixLastFrame = now;
         matrixCanvases.forEach((c, i) => {
             const ctx = matrixCtxs[i];
             const drops = matrixDrops[i];
@@ -56,14 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 drops[x]++;
             }
         });
-        matrixRAF = requestAnimationFrame(drawMatrix);
     }
 
     function startMatrix() {
         if (matrixRAF) return;
         initMatrixDrops();
+        matrixLastFrame = 0;
         matrixCanvases.forEach(c => c.classList.add('active'));
-        drawMatrix();
+        matrixRAF = requestAnimationFrame(drawMatrix);
     }
     function stopMatrix() {
         if (matrixRAF) { cancelAnimationFrame(matrixRAF); matrixRAF = null; }
