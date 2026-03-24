@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
-    const refreshBtn = document.getElementById('refreshBtn');
+
     const searchInput = document.getElementById('search');
     const resultsBody = document.getElementById('resultsBody');
     const progressBar = document.getElementById('progressBar');
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startBtn.addEventListener('click', startScan);
     stopBtn.addEventListener('click', stopScan);
-    refreshBtn.addEventListener('click', fetchResults);
+
     searchInput.addEventListener('input', filterResults);
 
     // VPN Speedtest controls
