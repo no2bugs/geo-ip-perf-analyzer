@@ -17,6 +17,13 @@
         <header class="config-header">
             <a href="/" class="back-link">&larr; Dashboard</a>
             <h1>Config &amp; Automation</h1>
+            <div class="status-indicator" id="statusIndicator" style="position:absolute;right:2rem;top:50%;transform:translateY(-50%);">
+                <span class="dot" id="globalStatus"></span>
+                <span class="wave-bars" id="waveBars">
+                    <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+                </span>
+                <span id="statusText">Ready</span>
+            </div>
         </header>
 
         <nav class="config-tabs">
@@ -558,6 +565,36 @@
     <div id="toast" class="toast"></div>
 
     <script src="/static/config.js"></script>
+    <script>
+    (function(){
+        let poll;
+        async function checkScan(){
+            try{
+                const r=await fetch('/api/scan/status');
+                const d=await r.json();
+                const dot=document.getElementById('globalStatus');
+                const wb=document.getElementById('waveBars');
+                const si=document.getElementById('statusIndicator');
+                const st=document.getElementById('statusText');
+                if(d.active){
+                    dot.className='dot running';
+                    wb.classList.add('visible');
+                    si.classList.add('active');
+                    const pct=d.progress&&d.progress.total>0?Math.round(d.progress.done/d.progress.total*100):0;
+                    st.textContent=d.progress&&d.progress.total>0?'Scanning '+pct+'%':'Scanning\u2026';
+                    if(!poll) poll=setInterval(checkScan,2000);
+                }else{
+                    dot.className='dot completed';
+                    wb.classList.remove('visible');
+                    si.classList.remove('active');
+                    st.textContent='Ready';
+                    if(poll){clearInterval(poll);poll=null;}
+                }
+            }catch(e){}
+        }
+        checkScan();
+    })();
+    </script>
 </body>
 
 </html>

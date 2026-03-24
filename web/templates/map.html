@@ -265,6 +265,13 @@
                 <a href="/config" class="header-link-btn" title="Config &amp; Automation">&#9881; Config</a>
                 <a href="/help" class="header-link-btn" title="Help &amp; API Reference">&#9432; Help</a>
                 <a href="/" class="header-link-btn" title="Close map" style="font-size:1.1rem;">&times;</a>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="dot" id="globalStatus"></span>
+                    <span class="wave-bars" id="waveBars">
+                        <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+                    </span>
+                    <span id="statusText">Ready</span>
+                </div>
             </div>
         </header>
 
@@ -314,6 +321,36 @@
             // Tell Leaflet to recalculate size
             setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
         });
+    </script>
+    <script>
+    (function(){
+        let poll;
+        async function checkScan(){
+            try{
+                const r=await fetch('/api/scan/status');
+                const d=await r.json();
+                const dot=document.getElementById('globalStatus');
+                const wb=document.getElementById('waveBars');
+                const si=document.getElementById('statusIndicator');
+                const st=document.getElementById('statusText');
+                if(d.active){
+                    dot.className='dot running';
+                    wb.classList.add('visible');
+                    si.classList.add('active');
+                    const pct=d.progress&&d.progress.total>0?Math.round(d.progress.done/d.progress.total*100):0;
+                    st.textContent=d.progress&&d.progress.total>0?'Scanning '+pct+'%':'Scanning\u2026';
+                    if(!poll) poll=setInterval(checkScan,2000);
+                }else{
+                    dot.className='dot completed';
+                    wb.classList.remove('visible');
+                    si.classList.remove('active');
+                    st.textContent='Ready';
+                    if(poll){clearInterval(poll);poll=null;}
+                }
+            }catch(e){}
+        }
+        checkScan();
+    })();
     </script>
 </body>
 

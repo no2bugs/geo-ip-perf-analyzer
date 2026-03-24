@@ -73,6 +73,13 @@
                 <a href="/" class="header-link-btn" title="Back to Dashboard">&larr; Dashboard</a>
                 <a href="/map" class="header-link-btn" title="Server Map">&#127760; Map</a>
                 <a href="/config" class="header-link-btn" title="Config">&#9881; Config</a>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="dot" id="globalStatus"></span>
+                    <span class="wave-bars" id="waveBars">
+                        <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+                    </span>
+                    <span id="statusText">Ready</span>
+                </div>
             </div>
         </header>
 
@@ -410,6 +417,36 @@
         // Initial load
         loadStats();
         pollQueue();  // Check if there's already a queue from before
+    })();
+    </script>
+    <script>
+    (function(){
+        let poll;
+        async function checkScan(){
+            try{
+                const r=await fetch('/api/scan/status');
+                const d=await r.json();
+                const dot=document.getElementById('globalStatus');
+                const wb=document.getElementById('waveBars');
+                const si=document.getElementById('statusIndicator');
+                const st=document.getElementById('statusText');
+                if(d.active){
+                    dot.className='dot running';
+                    wb.classList.add('visible');
+                    si.classList.add('active');
+                    const pct=d.progress&&d.progress.total>0?Math.round(d.progress.done/d.progress.total*100):0;
+                    st.textContent=d.progress&&d.progress.total>0?'Scanning '+pct+'%':'Scanning\u2026';
+                    if(!poll) poll=setInterval(checkScan,2000);
+                }else{
+                    dot.className='dot completed';
+                    wb.classList.remove('visible');
+                    si.classList.remove('active');
+                    st.textContent='Ready';
+                    if(poll){clearInterval(poll);poll=null;}
+                }
+            }catch(e){}
+        }
+        checkScan();
     })();
     </script>
 </body>
