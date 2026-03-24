@@ -89,6 +89,23 @@
     }
 
     function applyWallpaper(name, mode) {
+        // Stop any running video wallpaper
+        if (window.__VIDEO_WALLPAPERS) window.__VIDEO_WALLPAPERS.stop();
+
+        // Video (animated canvas) wallpapers
+        if (name && name.startsWith('video_')) {
+            document.body.style.backgroundImage = 'none';
+            document.body.style.backgroundAttachment = '';
+            document.body.style.backgroundPosition = '';
+            if (window.__VIDEO_WALLPAPERS) {
+                window.__VIDEO_WALLPAPERS.start(name);
+            } else {
+                // video-wallpapers.js not loaded yet — stash for later
+                window.__PENDING_VIDEO_WALLPAPER = name;
+            }
+            return;
+        }
+
         if (name === 'custom') {
             document.body.style.backgroundImage = 'url(/api/wallpaper/custom)';
             document.body.style.backgroundAttachment = 'fixed';

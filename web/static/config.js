@@ -598,9 +598,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentTheme.wallpaper = key;
                 saveTheme();
                 renderWallpapers();
+                renderVideoWallpapers();
                 refreshCustomWallpaperUI();
             });
             wallpaperGrid.appendChild(tile);
+        }
+    }
+
+    /* ── Animated (video) wallpaper tiles ── */
+    const videoWallpaperGrid = document.getElementById('videoWallpaperGrid');
+
+    function renderVideoWallpapers() {
+        if (!videoWallpaperGrid) return;
+        const vw = window.__VIDEO_WALLPAPERS;
+        if (!vw) return;
+        videoWallpaperGrid.innerHTML = '';
+        for (const [key, label] of Object.entries(vw.LABELS || {})) {
+            const tile = document.createElement('div');
+            tile.className = 'wallpaper-tile video-wallpaper-tile' + (currentTheme.wallpaper === key ? ' active' : '');
+            const cvs = document.createElement('canvas');
+            cvs.className = 'video-wallpaper-preview';
+            cvs.width = 180;
+            cvs.height = 100;
+            tile.appendChild(cvs);
+            const lbl = document.createElement('div');
+            lbl.className = 'wallpaper-label';
+            lbl.textContent = label;
+            tile.appendChild(lbl);
+            tile.addEventListener('click', () => {
+                currentTheme.wallpaper = key;
+                saveTheme();
+                renderWallpapers();
+                renderVideoWallpapers();
+                refreshCustomWallpaperUI();
+            });
+            videoWallpaperGrid.appendChild(tile);
+            // Render animated preview
+            vw.renderPreview(key, cvs);
         }
     }
 
@@ -630,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { /* use defaults */ }
         renderPalettes();
         renderWallpapers();
+        renderVideoWallpapers();
         refreshCustomWallpaperUI();
     }
 
