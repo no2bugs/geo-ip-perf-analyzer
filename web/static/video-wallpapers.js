@@ -327,10 +327,16 @@
         const ctx = canvas.getContext('2d');
         r.init(canvas, ctx);
         let frames = 0;
+        const MAX = 200;
+        // Run faster for previews so movement is visible at small size
         function tick() {
-            if (frames > 60) return;
-            r.draw(canvas, ctx);
-            frames++;
+            if (frames >= MAX) return;
+            // Draw multiple steps per rAF tick for visible motion
+            for (let i = 0; i < 3; i++) {
+                r.draw(canvas, ctx);
+                frames++;
+                if (frames >= MAX) break;
+            }
             requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
