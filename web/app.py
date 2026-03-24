@@ -230,14 +230,15 @@ stop_event = threading.Event()
 last_error = None
 scan_start_time = None
 
-# Server-side speedtest queue
-_speedtest_queue = []          # [{"domains": [...], "type": "untested"|"failed", "label": "..."}]
+# Server-side speedtest queue (in-memory for the processor thread)
+_speedtest_queue = []
 _speedtest_queue_lock = threading.Lock()
 _queue_processor_started = False
-_queue_active_job = None        # Currently processing job (popped from queue)
+_queue_active_job = None
 
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
+QUEUE_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_queue_state.json')
 
 STALE_HEARTBEAT_SECONDS = 30  # no heartbeat for 30s = stale (crashed process)
 
@@ -306,6 +307,34 @@ def _state_flusher():
     _flush_scan_state()
 
 
+# ---- File-based queue state (shared across gunicorn workers) ----
+
+def _flush_queue_state():
+    """Persist queue state to file for cross-worker access."""
+    with _speedtest_queue_lock:
+        pending = [{"domains": j["domains"], "type": j["type"], "label": j["label"]} for j in _speedtest_queue]
+    active = None
+    if _queue_active_job:
+        active = {"domains_count": len(_queue_active_job["domains"]), "type": _queue_active_job.get("type", ""), "label": _queue_active_job.get("label", "")}
+    state = {"pending": pending, "active": active, "timestamp": time.time()}
+    try:
+        tmp = QUEUE_STATE_FILE + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(state, f)
+        os.replace(tmp, QUEUE_STATE_FILE)
+    except Exception:
+        pass
+
+
+def _read_queue_state():
+    """Read queue state from shared file."""
+    try:
+        with open(QUEUE_STATE_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {"pending": [], "active": None}
+
+
 def _ensure_queue_processor():
     """Start the queue processor thread if not already running."""
     global _queue_processor_started
@@ -324,6 +353,7 @@ def _queue_processor_loop():
             if not _speedtest_queue:
                 _queue_processor_started = False
                 _queue_active_job = None
+                _flush_queue_state()
                 return
             job = _speedtest_queue[0]
 
@@ -336,9 +366,11 @@ def _queue_processor_loop():
             if not _speedtest_queue:
                 _queue_processor_started = False
                 _queue_active_job = None
+                _flush_queue_state()
                 return
             job = _speedtest_queue.pop(0)
             _queue_active_job = job
+        _flush_queue_state()
 
         logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))  
         try:
@@ -347,6 +379,7 @@ def _queue_processor_loop():
             logging.error("Queue job failed: %s", e)
         finally:
             _queue_active_job = None
+            _flush_queue_state()
 
 
 def _run_vpn_speedtest_sync(domains):
@@ -760,18 +793,18 @@ def queue_add():
     with _speedtest_queue_lock:
         _speedtest_queue.append({"domains": domains, "type": job_type, "label": label})
         pending = len(_speedtest_queue)
+    _flush_queue_state()
     _ensure_queue_processor()
     return jsonify({"status": "queued", "pending": pending})
 
 @app.route('/api/queue/status')
 def queue_status():
-    """Return current queue info including active job."""
-    with _speedtest_queue_lock:
-        jobs = [{"domains": len(j['domains']), "type": j['type'], "label": j['label']} for j in _speedtest_queue]
-    total_domains = sum(j['domains'] for j in jobs)
-    active = None
-    if _queue_active_job:
-        active = {"domains": len(_queue_active_job['domains']), "type": _queue_active_job.get('type', ''), "label": _queue_active_job.get('label', '')}
+    """Return current queue info from shared file (works across gunicorn workers)."""
+    qs = _read_queue_state()
+    pending_jobs = qs.get("pending", [])
+    active = qs.get("active")
+    total_domains = sum(len(j.get("domains", [])) for j in pending_jobs)
+    jobs = [{"domains": len(j.get("domains", [])), "type": j.get("type", ""), "label": j.get("label", "")} for j in pending_jobs]
     return jsonify({"pending": len(jobs), "total_domains": total_domains, "jobs": jobs, "active": active, "scan_active": _is_scan_active()})
 
 @app.route('/api/queue/clear', methods=['POST'])
@@ -780,6 +813,7 @@ def queue_clear():
     with _speedtest_queue_lock:
         count = len(_speedtest_queue)
         _speedtest_queue.clear()
+    _flush_queue_state()
     return jsonify({"status": "cleared", "removed": count})
 
 GEOLITE_RELEASE_URL = 'https://api.github.com/repos/P3TERX/GeoLite.mmdb/releases/latest'

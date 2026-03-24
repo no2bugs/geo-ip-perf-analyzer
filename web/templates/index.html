@@ -190,26 +190,23 @@
     (function(){
         const badge = document.getElementById('dashQueueBadge');
         if (!badge) return;
-        let timer = null;
         async function poll() {
             try {
                 const r = await fetch('/api/queue/status');
                 const d = await r.json();
                 if (d.active || d.pending > 0) {
                     const parts = [];
-                    if (d.active) parts.push('Running: ' + (d.active.label || d.active.domains + ' servers'));
+                    if (d.active) parts.push('Running: ' + (d.active.label || (d.active.domains_count || d.active.domains) + ' servers'));
                     if (d.pending > 0) parts.push(d.pending + ' queued');
                     badge.textContent = parts.join(' · ');
                     badge.style.display = '';
-                    if (!timer) timer = setInterval(poll, 5000);
                 } else {
                     badge.style.display = 'none';
-                    if (timer) { clearInterval(timer); timer = null; }
                 }
             } catch { badge.style.display = 'none'; }
         }
         poll();
-        setInterval(poll, 15000);
+        setInterval(poll, 5000);
     })();
     </script>
 </body>
