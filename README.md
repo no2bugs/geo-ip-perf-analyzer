@@ -14,7 +14,8 @@ Use it to find the best VPN server, the closest CDN edge, or simply understand y
 
 - **Interactive Server Map** — Leaflet-based heatmap with color-coded markers by latency or speed. Fastest server per country pulses. Your measurement origin is displayed so you can see what "relative to" means.
 - **VPN Speedtest** — Measure real download/upload throughput through OpenVPN tunnels. Filter by country. View OVPN configs directly in the browser.
-- **Full Automation** — Schedule scans, GeoLite DB updates, OVPN config downloads, and server list refreshes on daily/weekly/monthly/custom intervals — all from the Config UI.
+- **Statistics Dashboard** — Per-country breakdown of servers, latency, download/upload speeds, succeeded/failed/untested counts. One-click "Speedtest Untested" and "Retry Failed" buttons with a server-side queue that never drops scheduled jobs.
+- **Full Automation** — Schedule scans, GeoLite DB updates, OVPN config downloads, and server list refreshes on daily/weekly/monthly/custom intervals — all from the Config UI. Scheduled speedtests queue automatically if another operation is running.
 - **12 Themes & Custom Wallpapers** — Dark palettes (Dracula, Nord, Carbon, etc.) and 19 background patterns, plus custom wallpaper upload.
 - **Push Notifications** — Get notified via [ntfy](https://ntfy.sh) when scans complete, updates finish, or errors occur.
 - **REST API** — Full programmatic access: trigger scans, fetch results, manage config, upload data.
@@ -28,6 +29,12 @@ Use it to find the best VPN server, the closest CDN edge, or simply understand y
 *Download speed — zoomed into Zurich with "Show all servers" enabled:*
 
 ![Map – download speed](assets/map.png)
+
+### Statistics
+
+*Per-country breakdown with one-click speedtest actions and totals:*
+
+![Statistics](assets/statistics.png)
 
 ### Config & Automation
 
