@@ -63,6 +63,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const resp = await fetch('/api/config');
             const config = await resp.json();
             populateForm(config);
+            // Load next scheduled run times
+            try {
+                const nrResp = await fetch('/api/schedule/next');
+                const nextRuns = await nrResp.json();
+                const mapping = {
+                    'vpn_speedtest': 'cfgVpnLastRun',
+                    'geolite': 'cfgGeoLastRun',
+                    'ovpn': 'cfgOvpnLastRun',
+                    'servers_update': 'cfgSrvLastRun'
+                };
+                for (const [jobId, elId] of Object.entries(mapping)) {
+                    if (nextRuns[jobId]) {
+                        const el = document.getElementById(elId);
+                        if (el) el.textContent += (el.textContent ? '  \u00B7  ' : '') + 'Next run: ' + nextRuns[jobId];
+                    }
+                }
+            } catch (e) { /* silent */ }
         } catch (e) {
             showToast('Failed to load config', true);
         }

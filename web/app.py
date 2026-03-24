@@ -1239,6 +1239,136 @@ def run_schedule_now():
     runner()
     return jsonify({'status': 'ok', 'message': f'{job_name} started'})
 
+
+@app.route('/api/schedule/next')
+def get_schedule_next_runs():
+    """Return next scheduled run times for all active jobs."""
+    result = {}
+    for job in scheduler.get_jobs():
+        nrt = job.next_run_time
+        if nrt:
+            result[job.id] = nrt.strftime('%Y-%m-%d %H:%M')
+    return jsonify(result)
+
+
+@app.route('/api/statistics')
+def get_statistics():
+    """Return per-country statistics for the statistics page."""
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify({'countries': [], 'top5': []})
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return jsonify({'countries': [], 'top5': []})
+
+    countries = {}  # country -> stats dict
+    for domain, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        country = entry.get('country', 'Unknown')
+        if country not in countries:
+            countries[country] = {
+                'country': country,
+                'servers': 0,
+                'lowest_latency': None, 'lowest_latency_server': None,
+                'highest_download': None, 'highest_download_server': None,
+                'highest_upload': None, 'highest_upload_server': None,
+                'succeeded': 0, 'failed': 0, 'untested': 0,
+                'untested_domains': [], 'failed_domains': []
+            }
+        c = countries[country]
+        c['servers'] += 1
+        lat = entry.get('latency_ms')
+        rx = entry.get('rx_speed_mbps')
+        tx = entry.get('tx_speed_mbps')
+        ts = entry.get('speedtest_timestamp')
+        if lat is not None and lat > 0:
+            if c['lowest_latency'] is None or lat < c['lowest_latency']:
+                c['lowest_latency'] = lat
+                c['lowest_latency_server'] = domain
+        if rx is not None and rx > 0:
+            c['succeeded'] += 1
+            if c['highest_download'] is None or rx > c['highest_download']:
+                c['highest_download'] = rx
+                c['highest_download_server'] = domain
+        elif ts:
+            c['failed'] += 1
+            c['failed_domains'].append(domain)
+        else:
+            c['untested'] += 1
+            c['untested_domains'].append(domain)
+        if tx is not None and tx > 0:
+            if c['highest_upload'] is None or tx > c['highest_upload']:
+                c['highest_upload'] = tx
+                c['highest_upload_server'] = domain
+
+    stats_list = sorted(countries.values(), key=lambda x: x['country'])
+    # Remove domain lists from response (keep counts only, use separate lists for action)
+    for s in stats_list:
+        del s['untested_domains']
+        del s['failed_domains']
+
+    # Top 5 recommended: best download speed per country, pick top 5
+    best_per_country = []
+    for domain, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        rx = entry.get('rx_speed_mbps')
+        if rx and rx > 0:
+            best_per_country.append({
+                'domain': domain,
+                'country': entry.get('country', 'Unknown'),
+                'city': entry.get('city', 'Unknown'),
+                'rx_speed_mbps': rx,
+                'tx_speed_mbps': entry.get('tx_speed_mbps'),
+                'latency_ms': entry.get('latency_ms')
+            })
+    # Group by country, pick best download per country
+    best_map = {}
+    for s in best_per_country:
+        c = s['country']
+        if c not in best_map or s['rx_speed_mbps'] > best_map[c]['rx_speed_mbps']:
+            best_map[c] = s
+    top5 = sorted(best_map.values(), key=lambda x: x['rx_speed_mbps'], reverse=True)[:5]
+
+    return jsonify({'countries': stats_list, 'top5': top5})
+
+
+@app.route('/api/statistics/domains')
+def get_statistics_domains():
+    """Return untested/failed domain lists per country (or all) for speedtest triggering."""
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify({'untested': [], 'failed': []})
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return jsonify({'untested': [], 'failed': []})
+    country_filter = request.args.get('country')
+    untested = []
+    failed = []
+    for domain, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        if country_filter and entry.get('country') != country_filter:
+            continue
+        rx = entry.get('rx_speed_mbps')
+        ts = entry.get('speedtest_timestamp')
+        if rx is not None and rx > 0:
+            continue  # succeeded
+        if ts:
+            failed.append(domain)
+        else:
+            untested.append(domain)
+    return jsonify({'untested': untested, 'failed': failed})
+
+
+@app.route('/statistics')
+def statistics_page():
+    return render_template('statistics.html')
+
+
 # ============================================================
 # Prune stale results (servers no longer in servers.list)
 # ============================================================

@@ -108,9 +108,13 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
                         succeeded += 1
                     else:
-                        logger.info(f"✗ {domain}: Speedtest failed (no result)")
+                        if isinstance(endpoints_dict[domain], dict):
+                            endpoints_dict[domain]['speedtest_timestamp'] = datetime.now(timezone.utc).isoformat()
+                        logger.info(f"\u2717 {domain}: Speedtest failed (no result)")
                         speedtest_failed += 1
                 else:
+                    if isinstance(endpoints_dict[domain], dict):
+                        endpoints_dict[domain]['speedtest_timestamp'] = datetime.now(timezone.utc).isoformat()
                     logger.info(f"✗ {domain}: VPN connection failed")
                     vpn_failed += 1
                     

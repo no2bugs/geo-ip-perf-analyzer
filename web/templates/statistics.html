@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics — GeoIP Performance Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/theme.js"></script>
+    <style>
+        .stats-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .top5-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .top5-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .top5-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+        }
+
+        .top5-rank {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .top5-domain {
+            font-weight: 600;
+            color: var(--accent-color, #3b82f6);
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+
+        .top5-meta {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .top5-speed {
+            font-weight: 700;
+            color: #10b981;
+            font-size: 0.95rem;
+        }
+
+        .stats-table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .stats-table th {
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+        }
+
+        .stats-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+            color: var(--text-primary);
+        }
+
+        .stats-table tbody tr:hover {
+            background: rgba(148, 163, 184, 0.05);
+        }
+
+        .stats-table .num {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+
+        .stats-table .num.green { color: #10b981; }
+        .stats-table .num.yellow { color: #eab308; }
+        .stats-table .num.red { color: #ef4444; }
+        .stats-table .num.muted { color: var(--text-secondary); }
+
+        .val-hover {
+            cursor: help;
+            border-bottom: 1px dotted var(--text-secondary);
+        }
+
+        .stats-table .actions-cell {
+            white-space: nowrap;
+        }
+
+        .stats-btn {
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-primary);
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .stats-btn:hover { background: rgba(30, 41, 59, 0.9); }
+        .stats-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .stats-btn.accent { background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.3); }
+        .stats-btn.accent:hover { background: rgba(59, 130, 246, 0.35); }
+
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+        }
+
+        .bulk-btn {
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            color: var(--text-primary);
+            font-size: 0.82rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .bulk-btn:hover { background: rgba(30, 41, 59, 0.9); }
+        .bulk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .bulk-count {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-msg {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 3rem 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="header-title-link">
+                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Statistics</h1>
+            </a>
+            <div class="header-actions">
+                <a href="/" class="header-link-btn" title="Back to Dashboard">&larr; Dashboard</a>
+                <a href="/map" class="header-link-btn" title="Server Map">&#127760; Map</a>
+                <a href="/config" class="header-link-btn" title="Config">&#9881; Config</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="glass-panel top5-section" id="top5Section" style="display:none;">
+                <h3 style="margin-bottom:0.25rem;">&#11088; Top 5 Recommended Servers</h3>
+                <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.5rem;">Best download speed per country</p>
+                <div class="top5-grid" id="top5Grid"></div>
+            </section>
+
+            <section class="glass-panel">
+                <div id="statsLoading" class="loading-msg">Loading statistics...</div>
+                <div class="stats-table-wrapper" id="statsTableWrapper" style="display:none;">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Country</th>
+                                <th style="text-align:right;">Servers</th>
+                                <th style="text-align:right;">Lowest Latency</th>
+                                <th style="text-align:right;">Best Download</th>
+                                <th style="text-align:right;">Best Upload</th>
+                                <th style="text-align:right;">Succeeded</th>
+                                <th style="text-align:right;">Failed</th>
+                                <th style="text-align:right;">Untested</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statsBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="bulk-actions" id="bulkActions" style="display:none;">
+                    <button class="bulk-btn" id="bulkUntestedBtn" disabled>&#9654; Speedtest All Untested</button>
+                    <span class="bulk-count" id="bulkUntestedCount"></span>
+                    <button class="bulk-btn" id="bulkFailedBtn" disabled>&#128260; Retry All Failed</button>
+                    <span class="bulk-count" id="bulkFailedCount"></span>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        let totalUntested = 0;
+        let totalFailed = 0;
+
+        async function loadStats() {
+            try {
+                const resp = await fetch('/api/statistics');
+                const data = await resp.json();
+                renderTop5(data.top5 || []);
+                renderTable(data.countries || []);
+                document.getElementById('statsLoading').style.display = 'none';
+                document.getElementById('statsTableWrapper').style.display = '';
+                document.getElementById('bulkActions').style.display = '';
+            } catch (e) {
+                document.getElementById('statsLoading').textContent = 'Failed to load statistics.';
+            }
+        }
+
+        function renderTop5(top5) {
+            if (!top5.length) return;
+            const grid = document.getElementById('top5Grid');
+            grid.innerHTML = '';
+            top5.forEach((s, i) => {
+                const card = document.createElement('div');
+                card.className = 'top5-card';
+                card.innerHTML = `
+                    <div class="top5-rank">#${i + 1} — ${s.country}</div>
+                    <div class="top5-domain">${s.domain}</div>
+                    <div class="top5-meta">${s.city}</div>
+                    <div class="top5-speed">${s.rx_speed_mbps.toFixed(1)} Mbps &#8595;</div>
+                    <div class="top5-meta">${s.tx_speed_mbps ? s.tx_speed_mbps.toFixed(1) + ' Mbps &#8593;' : ''} ${s.latency_ms ? '&middot; ' + s.latency_ms.toFixed(1) + ' ms' : ''}</div>
+                `;
+                grid.appendChild(card);
+            });
+            document.getElementById('top5Section').style.display = '';
+        }
+
+        function renderTable(countries) {
+            const tbody = document.getElementById('statsBody');
+            tbody.innerHTML = '';
+            totalUntested = 0;
+            totalFailed = 0;
+
+            countries.forEach(c => {
+                totalUntested += c.untested;
+                totalFailed += c.failed;
+
+                const tr = document.createElement('tr');
+                const latCell = c.lowest_latency != null
+                    ? `<td class="num green val-hover" title="${c.lowest_latency_server}">${c.lowest_latency.toFixed(2)} ms</td>`
+                    : `<td class="num muted">—</td>`;
+                const dlCell = c.highest_download != null
+                    ? `<td class="num green val-hover" title="${c.highest_download_server}">${c.highest_download.toFixed(1)} Mbps</td>`
+                    : `<td class="num muted">—</td>`;
+                const ulCell = c.highest_upload != null
+                    ? `<td class="num green val-hover" title="${c.highest_upload_server}">${c.highest_upload.toFixed(1)} Mbps</td>`
+                    : `<td class="num muted">—</td>`;
+
+                tr.innerHTML = `
+                    <td><strong>${c.country}</strong></td>
+                    <td class="num">${c.servers}</td>
+                    ${latCell}
+                    ${dlCell}
+                    ${ulCell}
+                    <td class="num green">${c.succeeded}</td>
+                    <td class="num ${c.failed > 0 ? 'red' : 'muted'}">${c.failed}</td>
+                    <td class="num ${c.untested > 0 ? 'yellow' : 'muted'}">${c.untested}</td>
+                    <td class="actions-cell">
+                        ${c.untested > 0 ? `<button class="stats-btn" onclick="runCountry('${esc(c.country)}','untested')" title="Speedtest ${c.untested} untested">&#9654; Untested (${c.untested})</button>` : ''}
+                        ${c.failed > 0 ? `<button class="stats-btn accent" onclick="runCountry('${esc(c.country)}','failed')" title="Retry ${c.failed} failed">&#128260; Failed (${c.failed})</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('bulkUntestedCount').textContent = `${totalUntested} untested servers`;
+            document.getElementById('bulkFailedCount').textContent = `${totalFailed} failed servers`;
+            document.getElementById('bulkUntestedBtn').disabled = totalUntested === 0;
+            document.getElementById('bulkFailedBtn').disabled = totalFailed === 0;
+        }
+
+        function esc(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+        window.runCountry = async function (country, type) {
+            try {
+                const resp = await fetch(`/api/statistics/domains?country=${encodeURIComponent(country)}`);
+                const data = await resp.json();
+                const domains = type === 'untested' ? data.untested : data.failed;
+                if (!domains.length) { alert('No servers to test.'); return; }
+                await triggerSpeedtest(domains);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        };
+
+        document.getElementById('bulkUntestedBtn').addEventListener('click', async () => {
+            try {
+                const resp = await fetch('/api/statistics/domains');
+                const data = await resp.json();
+                if (!data.untested.length) return;
+                await triggerSpeedtest(data.untested);
+            } catch (e) { alert('Error: ' + e.message); }
+        });
+
+        document.getElementById('bulkFailedBtn').addEventListener('click', async () => {
+            try {
+                const resp = await fetch('/api/statistics/domains');
+                const data = await resp.json();
+                if (!data.failed.length) return;
+                await triggerSpeedtest(data.failed);
+            } catch (e) { alert('Error: ' + e.message); }
+        });
+
+        async function triggerSpeedtest(domains) {
+            try {
+                const resp = await fetch('/api/vpn-speedtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domains })
+                });
+                const result = await resp.json();
+                if (resp.ok) {
+                    alert(`VPN speedtest started for ${domains.length} server(s). Check the dashboard for progress.`);
+                } else {
+                    alert(result.message || 'Failed to start speedtest');
+                }
+            } catch (e) {
+                alert('Error starting speedtest: ' + e.message);
+            }
+        }
+
+        loadStats();
+    })();
+    </script>
+</body>
+
+</html>
