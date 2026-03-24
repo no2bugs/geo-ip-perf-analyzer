@@ -230,6 +230,11 @@ stop_event = threading.Event()
 last_error = None
 scan_start_time = None
 
+# Server-side speedtest queue
+_speedtest_queue = []          # [{"domains": [...], "type": "untested"|"failed", "label": "..."}]
+_speedtest_queue_lock = threading.Lock()
+_queue_processor_started = False
+
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
 
@@ -298,6 +303,117 @@ def _state_flusher():
         _flush_scan_state()
         time.sleep(1)
     _flush_scan_state()
+
+
+def _ensure_queue_processor():
+    """Start the queue processor thread if not already running."""
+    global _queue_processor_started
+    if _queue_processor_started:
+        return
+    _queue_processor_started = True
+    t = threading.Thread(target=_queue_processor_loop, daemon=True)
+    t.start()
+
+
+def _queue_processor_loop():
+    """Background loop: wait for scan idle, then dispatch next queued job."""
+    global _queue_processor_started
+    while True:
+        with _speedtest_queue_lock:
+            if not _speedtest_queue:
+                _queue_processor_started = False
+                return
+            job = _speedtest_queue[0]
+
+        # Wait until no scan is active
+        while _is_scan_active():
+            time.sleep(5)
+
+        # Pop the job (re-check under lock — might have been cleared)
+        with _speedtest_queue_lock:
+            if not _speedtest_queue:
+                _queue_processor_started = False
+                return
+            job = _speedtest_queue.pop(0)
+
+        logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))
+        try:
+            _run_vpn_speedtest_sync(job['domains'])
+        except Exception as e:
+            logging.error("Queue job failed: %s", e)
+
+
+def _run_vpn_speedtest_sync(domains):
+    """Run VPN speedtest synchronously (blocking). Used by queue processor."""
+    global scan_active, scan_progress, last_error, stop_event, scan_start_time
+    stop_event.clear()
+    scan_active = True
+    scan_start_time = time.time()
+    scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running VPN speedtest..."}
+    last_error = None
+    _flush_scan_state()
+
+    flusher = threading.Thread(target=_state_flusher, daemon=True)
+    flusher.start()
+
+    try:
+        if not os.path.exists(RESULTS_FILE):
+            raise FileNotFoundError("Results file not found. Please run a scan first.")
+
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+
+        # Auto-migrate if needed (same as vpn_speedtest endpoint)
+        if isinstance(results, list):
+            new_results = {}
+            for entry in results:
+                if isinstance(entry, dict) and 'domain' in entry:
+                    domain = entry.pop('domain')
+                    new_results[domain] = entry
+            results = new_results
+        elif isinstance(results, dict):
+            for domain, data in results.items():
+                if isinstance(data, list):
+                    new_results = {}
+                    for d, entry in results.items():
+                        if isinstance(entry, list) and len(entry) >= 4:
+                            new_results[d] = {
+                                "latency_ms": entry[0], "ip": entry[1],
+                                "country": entry[2], "city": entry[3],
+                                "rx_speed_mbps": None, "tx_speed_mbps": None,
+                                "speedtest_performed": False
+                            }
+                        else:
+                            new_results[d] = entry
+                    results = new_results
+                    break
+
+        test_domains = [d for d in domains if d in results]
+        if not test_domains:
+            raise ValueError("No matching domains found in results.")
+
+        from generate.vpn_batch_helper import run_vpn_speedtests
+        run_vpn_speedtests(
+            domains=test_domains, results=results, results_file=RESULTS_FILE,
+            progress_container=scan_progress, stop_event=stop_event
+        )
+
+        if stop_event.is_set():
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = 'VPN speedtest interrupted'
+        else:
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = f'VPN speedtest completed for {len(test_domains)} servers'
+
+    except Exception as e:
+        scan_progress['status'] = 'error'
+        scan_progress['message'] = str(e)
+        last_error = str(e)
+        logging.error("Queue VPN speedtest error: %s", e)
+    finally:
+        scan_active = False
+        _flush_scan_state()
+        _update_last_run('vpn_speedtest')
 
 def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
     global scan_active, scan_progress, last_error, stop_event, scan_start_time
@@ -626,6 +742,39 @@ def stop_scan():
         pass
     logging.info("Stop signal sent to scanner...")
     return jsonify({"status": "stopping"})
+
+# ---- Speedtest Queue API ----
+
+@app.route('/api/queue/add', methods=['POST'])
+def queue_add():
+    """Add domains to the server-side speedtest queue."""
+    data = request.json or {}
+    domains = data.get('domains', [])
+    job_type = data.get('type', 'untested')
+    label = data.get('label', '')
+    if not domains:
+        return jsonify({"status": "error", "message": "No domains provided"}), 400
+    with _speedtest_queue_lock:
+        _speedtest_queue.append({"domains": domains, "type": job_type, "label": label})
+        pending = len(_speedtest_queue)
+    _ensure_queue_processor()
+    return jsonify({"status": "queued", "pending": pending})
+
+@app.route('/api/queue/status')
+def queue_status():
+    """Return current queue info."""
+    with _speedtest_queue_lock:
+        jobs = [{"domains": len(j['domains']), "type": j['type'], "label": j['label']} for j in _speedtest_queue]
+    total_domains = sum(j['domains'] for j in jobs)
+    return jsonify({"pending": len(jobs), "total_domains": total_domains, "jobs": jobs})
+
+@app.route('/api/queue/clear', methods=['POST'])
+def queue_clear():
+    """Clear all pending queue items (does not stop a running scan)."""
+    with _speedtest_queue_lock:
+        count = len(_speedtest_queue)
+        _speedtest_queue.clear()
+    return jsonify({"status": "cleared", "removed": count})
 
 GEOLITE_RELEASE_URL = 'https://api.github.com/repos/P3TERX/GeoLite.mmdb/releases/latest'
 GEOLITE_CITY_FILENAME = 'GeoLite2-City.mmdb'

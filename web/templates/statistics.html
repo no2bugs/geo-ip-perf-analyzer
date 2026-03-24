@@ -52,6 +52,8 @@
         .loading-msg { text-align: center; color: var(--text-secondary); padding: 3rem 0; font-size: 0.9rem; }
 
         .queue-badge { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; background: rgba(234,179,8,0.25); color: #eab308; margin-left: 0.5rem; vertical-align: middle; }
+        .queue-clear-btn { display: inline-block; font-size: 0.68rem; padding: 2px 6px; border-radius: 6px; background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); cursor: pointer; margin-left: 0.3rem; vertical-align: middle; transition: background 0.2s; }
+        .queue-clear-btn:hover { background: rgba(239,68,68,0.4); }
 
         #statsToast { position: fixed; bottom: 2rem; right: 2rem; background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; color: var(--text-primary); transform: translateY(150%); transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 100; max-width: 400px; font-size: 0.85rem; }
         #statsToast.show { transform: translateY(0); }
@@ -62,7 +64,7 @@
     <div class="container">
         <header>
             <a href="/" class="header-title-link">
-                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Statistics <span id="queueBadge" class="queue-badge" style="display:none;"></span></h1>
+                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Statistics <span id="queueBadge" class="queue-badge" style="display:none;"></span><button id="queueClearBtn" class="queue-clear-btn" style="display:none;" title="Clear queue">&#10005; Clear</button></h1>
             </a>
             <div class="header-actions">
                 <a href="/" class="header-link-btn" title="Back to Dashboard">&larr; Dashboard</a>
@@ -127,11 +129,8 @@
         let sortKey = 'country';
         let sortAsc = true;
 
-        // Queue state — real sequential queue that waits for scan completion
-        const speedtestQueue = [];  // [{domains: [...], type: 'untested'|'failed', label: '...'}]
-        let queueProcessing = false;
-        let queuedUntested = 0;
-        let queuedFailed = 0;
+        // Queue poll timer
+        let queuePollTimer = null;
 
         // ---- Toast ----
         function showToast(msg, isError) {
@@ -143,22 +142,55 @@
             t._tid = setTimeout(() => t.classList.remove('show'), 5000);
         }
 
-        // ---- Queue badge ----
-        function updateQueueBadge(extra) {
+        // ---- Queue badge (from server) ----
+        async function pollQueue() {
+            try {
+                const resp = await fetch('/api/queue/status');
+                const data = await resp.json();
+                updateQueueBadge(data);
+                if (data.pending > 0) {
+                    scheduleQueuePoll();
+                } else {
+                    stopQueuePoll();
+                    loadStats();  // Refresh table when queue drains
+                }
+            } catch {}
+        }
+
+        function updateQueueBadge(data) {
             const badge = document.getElementById('queueBadge');
-            const remaining = speedtestQueue.length;
-            const parts = [];
-            if (queuedUntested > 0) parts.push(`${queuedUntested} untested`);
-            if (queuedFailed > 0) parts.push(`${queuedFailed} failed`);
-            if (parts.length || remaining > 0) {
-                let text = `Queue: ${parts.join(', ') || remaining + ' pending'}`;
-                if (extra === 'waiting') text += ' (waiting…)';
-                badge.textContent = text;
+            const clearBtn = document.getElementById('queueClearBtn');
+            if (data && data.pending > 0) {
+                const labels = data.jobs.map(j => j.label || `${j.domains} servers`).join(', ');
+                badge.textContent = `Queue: ${data.pending} job(s), ${data.total_domains} servers`;
+                badge.title = labels;
                 badge.style.display = '';
+                clearBtn.style.display = '';
             } else {
                 badge.style.display = 'none';
+                clearBtn.style.display = 'none';
             }
         }
+
+        function scheduleQueuePoll() {
+            if (queuePollTimer) return;
+            queuePollTimer = setInterval(pollQueue, 5000);
+        }
+
+        function stopQueuePoll() {
+            if (queuePollTimer) { clearInterval(queuePollTimer); queuePollTimer = null; }
+        }
+
+        // ---- Clear queue ----
+        document.getElementById('queueClearBtn').addEventListener('click', async () => {
+            try {
+                const resp = await fetch('/api/queue/clear', { method: 'POST' });
+                const data = await resp.json();
+                showToast(`Queue cleared (${data.removed} job(s) removed)`);
+                stopQueuePoll();
+                updateQueueBadge({ pending: 0 });
+            } catch (e) { showToast('Error clearing queue: ' + e.message, true); }
+        });
 
         // ---- Load statistics ----
         async function loadStats() {
@@ -312,91 +344,45 @@
             document.getElementById('bulkFailedBtn').disabled = totalFailed === 0;
         }
 
-        // ---- Queue + trigger speedtests ----
+        // ---- Queue (server-side) ----
         async function queueCountry(country, type) {
             try {
                 const resp = await fetch(`/api/statistics/domains?country=${encodeURIComponent(country)}`);
                 const data = await resp.json();
                 const domains = type === 'untested' ? data.untested : data.failed;
                 if (!domains.length) { showToast(`No ${type} servers in ${country}`, true); return; }
-                enqueue(domains, type, `${country} (${type})`);
+                await addToQueue(domains, type, `${country} (${type})`);
             } catch (e) {
                 showToast('Error: ' + e.message, true);
             }
         }
 
-        function enqueue(domains, type, label) {
-            if (type === 'untested') queuedUntested += domains.length;
-            else queuedFailed += domains.length;
-            speedtestQueue.push({ domains, type, label });
-            updateQueueBadge();
-            showToast(`Queued ${domains.length} ${type} server(s): ${label}`);
-            processQueue();
-        }
-
-        async function processQueue() {
-            if (queueProcessing || !speedtestQueue.length) return;
-            queueProcessing = true;
-
-            // Wait until no scan is active
-            while (await isScanActive()) {
-                updateQueueBadge('waiting');
-                await sleep(5000);
-            }
-
-            const job = speedtestQueue.shift();
-            if (!job) { queueProcessing = false; return; }
-
-            updateQueueBadge();
+        async function addToQueue(domains, type, label) {
             try {
-                const resp = await fetch('/api/vpn-speedtest', {
+                const resp = await fetch('/api/queue/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains: job.domains })
+                    body: JSON.stringify({ domains, type, label })
                 });
-                const result = await resp.json();
+                const data = await resp.json();
                 if (resp.ok) {
-                    showToast(`Speedtest started: ${job.label} (${job.domains.length} servers)`);
-                    // Wait for this scan to finish before processing next
-                    await waitForScanComplete();
+                    showToast(`Queued ${domains.length} ${type} server(s): ${label}`);
+                    pollQueue();
+                    scheduleQueuePoll();
                 } else {
-                    showToast(result.message || 'Failed to start speedtest', true);
+                    showToast(data.message || 'Failed to queue', true);
                 }
             } catch (e) {
-                showToast('Error starting speedtest: ' + e.message, true);
-            } finally {
-                if (job.type === 'untested') queuedUntested = Math.max(0, queuedUntested - job.domains.length);
-                else queuedFailed = Math.max(0, queuedFailed - job.domains.length);
-                updateQueueBadge();
-            }
-
-            queueProcessing = false;
-            if (speedtestQueue.length) processQueue();
-            else loadStats();  // Refresh table when all done
-        }
-
-        async function isScanActive() {
-            try {
-                const resp = await fetch('/api/scan/status');
-                const data = await resp.json();
-                return data.active;
-            } catch { return false; }
-        }
-
-        async function waitForScanComplete() {
-            while (await isScanActive()) {
-                await sleep(5000);
+                showToast('Error: ' + e.message, true);
             }
         }
-
-        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
         document.getElementById('bulkUntestedBtn').addEventListener('click', async () => {
             try {
                 const resp = await fetch('/api/statistics/domains');
                 const data = await resp.json();
                 if (!data.untested.length) return;
-                enqueue(data.untested, 'untested', 'All untested');
+                await addToQueue(data.untested, 'untested', 'All untested');
             } catch (e) { showToast('Error: ' + e.message, true); }
         });
 
@@ -405,11 +391,13 @@
                 const resp = await fetch('/api/statistics/domains');
                 const data = await resp.json();
                 if (!data.failed.length) return;
-                enqueue(data.failed, 'failed', 'All failed');
+                await addToQueue(data.failed, 'failed', 'All failed');
             } catch (e) { showToast('Error: ' + e.message, true); }
         });
 
+        // Initial load
         loadStats();
+        pollQueue();  // Check if there's already a queue from before
     })();
     </script>
 </body>
