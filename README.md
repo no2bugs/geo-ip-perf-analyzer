@@ -6,7 +6,7 @@ Network performance depends entirely on *where you are*. A server that's fast fo
 
 Use it to find the best VPN server, the closest CDN edge, or simply understand your network topology.
 
-![Web UI](assets/web-ui.png)
+<video src="assets/web-ui.mp4" autoplay loop muted playsinline width="100%"></video>
 
 ---
 
