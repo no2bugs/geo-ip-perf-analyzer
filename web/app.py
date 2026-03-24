@@ -349,7 +349,7 @@ def _run_vpn_speedtest_sync(domains):
     stop_event.clear()
     scan_active = True
     scan_start_time = time.time()
-    scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running VPN speedtest..."}
+    scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running VPN speedtest (queued)..."}
     last_error = None
     _flush_scan_state()
 
@@ -363,47 +363,49 @@ def _run_vpn_speedtest_sync(domains):
         with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
             results = json.load(f)
 
-        # Auto-migrate if needed (same as vpn_speedtest endpoint)
-        if isinstance(results, list):
-            new_results = {}
-            for entry in results:
-                if isinstance(entry, dict) and 'domain' in entry:
-                    domain = entry.pop('domain')
-                    new_results[domain] = entry
-            results = new_results
-        elif isinstance(results, dict):
-            for domain, data in results.items():
-                if isinstance(data, list):
-                    new_results = {}
-                    for d, entry in results.items():
-                        if isinstance(entry, list) and len(entry) >= 4:
-                            new_results[d] = {
-                                "latency_ms": entry[0], "ip": entry[1],
-                                "country": entry[2], "city": entry[3],
-                                "rx_speed_mbps": None, "tx_speed_mbps": None,
-                                "speedtest_performed": False
-                            }
-                        else:
-                            new_results[d] = entry
-                    results = new_results
-                    break
+        if not isinstance(results, dict):
+            raise ValueError("Results file is in an invalid format.")
 
-        test_domains = [d for d in domains if d in results]
-        if not test_domains:
+        valid_domains = [d for d in domains if d in results]
+        if not valid_domains:
             raise ValueError("No matching domains found in results.")
 
-        from generate.vpn_batch_helper import run_vpn_speedtests
-        run_vpn_speedtests(
-            domains=test_domains, results=results, results_file=RESULTS_FILE,
-            progress_container=scan_progress, stop_event=stop_event
+        scan_progress['total'] = len(valid_domains)
+
+        scanner = Scanner(
+            targets_file=SERVERS_FILE,
+            city_db=GEOIP_CITY,
+            country_db=GEOIP_COUNTRY,
+            results_json=RESULTS_FILE,
+            excl_countries_fle='exclude_countries.list'
         )
 
+        vpn_start_time = time.time()
+        report = scanner._perform_vpn_speedtests(
+            results,
+            VPN_OVPN_DIR,
+            VPN_USERNAME,
+            VPN_PASSWORD,
+            scan_progress,
+            batch_size=999,
+            interactive=False,
+            selected_domains=valid_domains,
+            stop_event=stop_event
+        ) or {}
+
+        with open(RESULTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+
+        duration = _format_duration(time.time() - vpn_start_time)
+        report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
         if stop_event.is_set():
             scan_progress['status'] = 'completed'
-            scan_progress['message'] = 'VPN speedtest interrupted'
+            scan_progress['message'] = f'VPN speedtest interrupted — {report_msg}'
         else:
             scan_progress['status'] = 'completed'
-            scan_progress['message'] = f'VPN speedtest completed for {len(test_domains)} servers'
+            scan_progress['message'] = f'VPN speedtest completed — {report_msg}'
+            send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete (Queue)',
+                      f'{len(valid_domains)} servers tested ({duration})\n{report_msg}')
 
     except Exception as e:
         scan_progress['status'] = 'error'
