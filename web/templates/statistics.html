@@ -64,9 +64,11 @@
 <body>
     <div class="container">
         <header>
-            <a href="/" class="header-title-link">
-                <h1><img src="/static/favicon.svg" alt="" class="header-logo">Statistics <span id="queueBadge" class="queue-badge" style="display:none;"></span><button id="queueClearBtn" class="queue-clear-btn" style="display:none;" title="Clear queue">&#10005; Clear</button></h1>
-            </a>
+            <h1>
+                <a href="/" class="header-title-link"><img src="/static/favicon.svg" alt="" class="header-logo">Statistics</a>
+                <span id="queueBadge" class="queue-badge" style="display:none;cursor:pointer;" onclick="window.location='/'"></span>
+                <button id="queueClearBtn" class="queue-clear-btn" style="display:none;" title="Clear queue">&#10005; Clear</button>
+            </h1>
             <div class="header-actions">
                 <a href="/" class="header-link-btn" title="Back to Dashboard">&larr; Dashboard</a>
                 <a href="/map" class="header-link-btn" title="Server Map">&#127760; Map</a>
