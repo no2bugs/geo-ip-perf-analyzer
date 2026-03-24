@@ -1912,23 +1912,20 @@ DAY_MAP = {
     'thursday': 'thu', 'friday': 'fri', 'saturday': 'sat', 'sunday': 'sun'
 }
 
-def scheduled_vpn_speedtest():
-    global scan_active, scan_progress, last_error, stop_event, scan_start_time
-    if _is_scan_active():
-        logging.info("Scheduled VPN speedtest skipped: operation already in progress")
-        return
+def _resolve_scheduled_domains():
+    """Resolve the domain list for the scheduled VPN speedtest. Returns list or None on error."""
     if not os.path.exists(RESULTS_FILE):
         logging.error("Scheduled VPN speedtest skipped: no results.json (run a scan first)")
         send_ntfy('vpn_speedtest_error', 'VPN Speedtest Failed',
                   'No results.json found. Run a scan first.', priority='high')
-        return
+        return None
     try:
         with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
             results = json.load(f)
         all_domains = list(results.keys()) if isinstance(results, dict) else []
         if not all_domains:
             logging.error("Scheduled VPN speedtest skipped: no domains in results")
-            return
+            return None
         # Filter by countries if configured
         config = load_config()
         vpn_countries = config.get('schedule', {}).get('vpn_speedtest', {}).get('countries', [])
@@ -1937,7 +1934,31 @@ def scheduled_vpn_speedtest():
             all_domains = [d for d in all_domains if isinstance(results.get(d), dict) and results[d].get('country', '').casefold() in country_set]
             if not all_domains:
                 logging.error("Scheduled VPN speedtest skipped: no servers match selected countries")
-                return
+                return None
+        return all_domains
+    except Exception as e:
+        logging.error(f"Scheduled VPN speedtest failed to resolve domains: {e}")
+        return None
+
+
+def scheduled_vpn_speedtest():
+    global scan_active, scan_progress, last_error, stop_event, scan_start_time
+
+    all_domains = _resolve_scheduled_domains()
+    if not all_domains:
+        return
+
+    # If another scan/test is running, queue instead of skipping
+    if _is_scan_active():
+        logging.info("Scheduled VPN speedtest queued: operation already in progress (%d domains)", len(all_domains))
+        scan_logger.info('Scheduled VPN speedtest queued (scan in progress): %d domains', len(all_domains))
+        _queue_add_job(all_domains, 'scheduled', f'Scheduled ({len(all_domains)} servers)')
+        _ensure_queue_processor()
+        return
+
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            results = json.load(f)
         logging.info(f"Starting scheduled VPN speedtest on {len(all_domains)} servers...")
         scan_logger.info(f'Scheduled VPN speedtest started: {len(all_domains)} servers')
         vpn_start_time = time.time()
@@ -1969,12 +1990,12 @@ def scheduled_vpn_speedtest():
         report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
         if stop_event.is_set():
             scan_progress['status'] = 'completed'
-            scan_progress['message'] = f'Scheduled VPN speedtest interrupted \u2014 {report_msg}'
-            scan_logger.info(f'Scheduled VPN speedtest interrupted: {scan_progress["done"]}/{len(all_domains)} servers ({duration}) \u2014 {report_msg}')
+            scan_progress['message'] = f'Scheduled VPN speedtest interrupted — {report_msg}'
+            scan_logger.info(f'Scheduled VPN speedtest interrupted: {scan_progress["done"]}/{len(all_domains)} servers ({duration}) — {report_msg}')
         else:
             scan_progress['status'] = 'completed'
-            scan_progress['message'] = f'Scheduled VPN speedtest completed \u2014 {report_msg}'
-            scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({duration}) \u2014 {report_msg}')
+            scan_progress['message'] = f'Scheduled VPN speedtest completed — {report_msg}'
+            scan_logger.info(f'Scheduled VPN speedtest completed: {len(all_domains)} servers ({duration}) — {report_msg}')
             send_ntfy('vpn_speedtest_complete', 'VPN Speedtest Complete',
                       f'{len(all_domains)} servers tested ({duration})\n{report_msg}')
     except Exception as e:
