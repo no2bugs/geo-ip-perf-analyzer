@@ -234,8 +234,10 @@ class Scanner:
             # Preserve existing speedtest timestamp if carrying over old speed values
             speedtest_ts = None
             if domain in existing_results and isinstance(existing_results[domain], dict):
-                if rx_speed is not None and rx_speed == existing_results[domain].get('rx_speed_mbps'):
-                    speedtest_ts = existing_results[domain].get('speedtest_timestamp')
+                old_ts = existing_results[domain].get('speedtest_timestamp')
+                if old_ts:
+                    # Preserve timestamp for both succeeded (speed carried over) and failed tests
+                    speedtest_ts = old_ts
 
             endpoints_dict[domain] = {
                 'latency_ms': item[1],
