@@ -127,7 +127,9 @@
         let sortKey = 'country';
         let sortAsc = true;
 
-        // Queue state
+        // Queue state — real sequential queue that waits for scan completion
+        const speedtestQueue = [];  // [{domains: [...], type: 'untested'|'failed', label: '...'}]
+        let queueProcessing = false;
         let queuedUntested = 0;
         let queuedFailed = 0;
 
@@ -142,13 +144,16 @@
         }
 
         // ---- Queue badge ----
-        function updateQueueBadge() {
+        function updateQueueBadge(extra) {
             const badge = document.getElementById('queueBadge');
+            const remaining = speedtestQueue.length;
             const parts = [];
             if (queuedUntested > 0) parts.push(`${queuedUntested} untested`);
             if (queuedFailed > 0) parts.push(`${queuedFailed} failed`);
-            if (parts.length) {
-                badge.textContent = `Queued: ${parts.join(', ')}`;
+            if (parts.length || remaining > 0) {
+                let text = `Queue: ${parts.join(', ') || remaining + ' pending'}`;
+                if (extra === 'waiting') text += ' (waiting…)';
+                badge.textContent = text;
                 badge.style.display = '';
             } else {
                 badge.style.display = 'none';
@@ -314,47 +319,84 @@
                 const data = await resp.json();
                 const domains = type === 'untested' ? data.untested : data.failed;
                 if (!domains.length) { showToast(`No ${type} servers in ${country}`, true); return; }
-                if (type === 'untested') queuedUntested += domains.length;
-                else queuedFailed += domains.length;
-                updateQueueBadge();
-                showToast(`Queued ${domains.length} ${type} server(s) in ${country}`);
-                await triggerSpeedtest(domains, type);
+                enqueue(domains, type, `${country} (${type})`);
             } catch (e) {
                 showToast('Error: ' + e.message, true);
             }
         }
 
-        async function triggerSpeedtest(domains, type) {
+        function enqueue(domains, type, label) {
+            if (type === 'untested') queuedUntested += domains.length;
+            else queuedFailed += domains.length;
+            speedtestQueue.push({ domains, type, label });
+            updateQueueBadge();
+            showToast(`Queued ${domains.length} ${type} server(s): ${label}`);
+            processQueue();
+        }
+
+        async function processQueue() {
+            if (queueProcessing || !speedtestQueue.length) return;
+            queueProcessing = true;
+
+            // Wait until no scan is active
+            while (await isScanActive()) {
+                updateQueueBadge('waiting');
+                await sleep(5000);
+            }
+
+            const job = speedtestQueue.shift();
+            if (!job) { queueProcessing = false; return; }
+
+            updateQueueBadge();
             try {
                 const resp = await fetch('/api/vpn-speedtest', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains })
+                    body: JSON.stringify({ domains: job.domains })
                 });
                 const result = await resp.json();
                 if (resp.ok) {
-                    showToast(`VPN speedtest started for ${domains.length} server(s)`);
+                    showToast(`Speedtest started: ${job.label} (${job.domains.length} servers)`);
+                    // Wait for this scan to finish before processing next
+                    await waitForScanComplete();
                 } else {
                     showToast(result.message || 'Failed to start speedtest', true);
                 }
             } catch (e) {
                 showToast('Error starting speedtest: ' + e.message, true);
             } finally {
-                if (type === 'untested') queuedUntested = Math.max(0, queuedUntested - domains.length);
-                else queuedFailed = Math.max(0, queuedFailed - domains.length);
+                if (job.type === 'untested') queuedUntested = Math.max(0, queuedUntested - job.domains.length);
+                else queuedFailed = Math.max(0, queuedFailed - job.domains.length);
                 updateQueueBadge();
             }
+
+            queueProcessing = false;
+            if (speedtestQueue.length) processQueue();
+            else loadStats();  // Refresh table when all done
         }
+
+        async function isScanActive() {
+            try {
+                const resp = await fetch('/api/scan/status');
+                const data = await resp.json();
+                return data.active;
+            } catch { return false; }
+        }
+
+        async function waitForScanComplete() {
+            while (await isScanActive()) {
+                await sleep(5000);
+            }
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
         document.getElementById('bulkUntestedBtn').addEventListener('click', async () => {
             try {
                 const resp = await fetch('/api/statistics/domains');
                 const data = await resp.json();
                 if (!data.untested.length) return;
-                queuedUntested += data.untested.length;
-                updateQueueBadge();
-                showToast(`Queued ${data.untested.length} untested server(s)`);
-                await triggerSpeedtest(data.untested, 'untested');
+                enqueue(data.untested, 'untested', 'All untested');
             } catch (e) { showToast('Error: ' + e.message, true); }
         });
 
@@ -363,10 +405,7 @@
                 const resp = await fetch('/api/statistics/domains');
                 const data = await resp.json();
                 if (!data.failed.length) return;
-                queuedFailed += data.failed.length;
-                updateQueueBadge();
-                showToast(`Queued ${data.failed.length} failed server(s) for retry`);
-                await triggerSpeedtest(data.failed, 'failed');
+                enqueue(data.failed, 'failed', 'All failed');
             } catch (e) { showToast('Error: ' + e.message, true); }
         });
 
