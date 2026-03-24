@@ -69,7 +69,8 @@
         </div>
 
         <main>
-            <div class="console-section glass-panel">
+            <div class="console-section glass-panel" style="position:relative;overflow:hidden;">
+                <canvas class="matrix-canvas" id="matrixLog"></canvas>
                 <div class="console-header">
                     <h2>Log Console <a href="/logs" class="all-logs-link">All Logs</a> <span id="dashQueueBadge" style="display:none;font-size:0.72rem;padding:2px 8px;border-radius:10px;background:rgba(234,179,8,0.25);color:#eab308;vertical-align:middle;margin-left:0.25rem;"></span></h2>
                     <div class="console-actions">
@@ -81,7 +82,8 @@
                 </div>
             </div>
 
-            <div class="controls-section glass-panel">
+            <div class="controls-section glass-panel" style="position:relative;overflow:hidden;">
+                <canvas class="matrix-canvas" id="matrixControls"></canvas>
                 <div style="display:flex;align-items:center;gap:1rem;">
                     <h2 style="flex:1;">Scan Configuration</h2>
                     <a href="/statistics" class="secondary-btn" style="text-decoration:none;">&#128202; Statistics</a>

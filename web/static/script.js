@@ -14,6 +14,68 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusIndicator = document.getElementById('statusIndicator');
     const controlsPanel = document.querySelector('.controls-section');
 
+    // ── Matrix rain setup ──
+    const matrixCanvases = [
+        document.getElementById('matrixLog'),
+        document.getElementById('matrixControls')
+    ].filter(Boolean);
+    const matrixCtxs = matrixCanvases.map(c => c.getContext('2d'));
+    const matrixDrops = [];          // per-canvas drops array
+    const matrixChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF<>{}|/\\=+-*&^%$#@!';
+    let matrixRAF = null;
+    const MATRIX_FONT_SIZE = 13;
+
+    function initMatrixDrops() {
+        matrixDrops.length = 0;
+        matrixCanvases.forEach((c, i) => {
+            c.width  = c.parentElement.offsetWidth;
+            c.height = c.parentElement.offsetHeight;
+            const cols = Math.floor(c.width / MATRIX_FONT_SIZE);
+            const arr  = new Array(cols);
+            for (let j = 0; j < cols; j++) arr[j] = Math.random() * -40 | 0;
+            matrixDrops[i] = arr;
+        });
+    }
+
+    function drawMatrix() {
+        matrixCanvases.forEach((c, i) => {
+            const ctx = matrixCtxs[i];
+            const drops = matrixDrops[i];
+            if (!ctx || !drops) return;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
+            ctx.fillRect(0, 0, c.width, c.height);
+            ctx.font = MATRIX_FONT_SIZE + 'px monospace';
+            for (let x = 0; x < drops.length; x++) {
+                const ch = matrixChars[Math.random() * matrixChars.length | 0];
+                const bright = Math.random();
+                ctx.fillStyle = bright > 0.9
+                    ? 'rgba(180,255,180,0.9)'
+                    : 'rgba(0,' + (140 + (bright * 115) | 0) + ',65,' + (0.35 + bright * 0.45).toFixed(2) + ')';
+                ctx.fillText(ch, x * MATRIX_FONT_SIZE, drops[x] * MATRIX_FONT_SIZE);
+                if (drops[x] * MATRIX_FONT_SIZE > c.height && Math.random() > 0.975) drops[x] = 0;
+                drops[x]++;
+            }
+        });
+        matrixRAF = requestAnimationFrame(drawMatrix);
+    }
+
+    function startMatrix() {
+        if (matrixRAF) return;
+        initMatrixDrops();
+        matrixCanvases.forEach(c => c.classList.add('active'));
+        drawMatrix();
+    }
+    function stopMatrix() {
+        if (matrixRAF) { cancelAnimationFrame(matrixRAF); matrixRAF = null; }
+        matrixCanvases.forEach(c => {
+            c.classList.remove('active');
+            const ctx = c.getContext('2d');
+            ctx.clearRect(0, 0, c.width, c.height);
+        });
+    }
+    // Resize canvases when window changes
+    window.addEventListener('resize', () => { if (matrixRAF) initMatrixDrops(); });
+
     let isScanning = false;
     let pollInterval = null;
     let scanStartTime = null; // epoch seconds from server
@@ -146,6 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Animated border on controls panel
         if (controlsPanel) controlsPanel.classList.toggle('scanning', isScanning);
+
+        // Matrix rain background
+        if (isScanning) startMatrix(); else stopMatrix();
 
         // Track scan start time from server
         if (isScanning && data.start_time) {
