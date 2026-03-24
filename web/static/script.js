@@ -9,7 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressDetail = document.getElementById('progressDetail');
     const progressSection = document.getElementById('progressSection');
     const statusText = document.getElementById('statusText');
-    const globalStatus = document.querySelector('.status-indicator .dot');
+    const globalStatus = document.getElementById('globalStatus');
+    const waveBars = document.getElementById('waveBars');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const controlsPanel = document.querySelector('.controls-section');
 
     let isScanning = false;
     let pollInterval = null;
@@ -135,14 +138,30 @@ document.addEventListener('DOMContentLoaded', () => {
         isScanning = data.active;
         startBtn.disabled = isScanning;
 
-        statusText.textContent = isScanning ? "Scanning..." : "Ready";
         globalStatus.className = 'dot ' + (isScanning ? 'running' : 'completed');
+
+        // Wave bars + indicator glow
+        if (waveBars) waveBars.classList.toggle('visible', isScanning);
+        if (statusIndicator) statusIndicator.classList.toggle('active', isScanning);
+
+        // Animated border on controls panel
+        if (controlsPanel) controlsPanel.classList.toggle('scanning', isScanning);
 
         // Track scan start time from server
         if (isScanning && data.start_time) {
             scanStartTime = data.start_time;
         } else if (!isScanning) {
             scanStartTime = null;
+        }
+
+        // Dynamic status text with live percentage
+        if (isScanning && data.progress && data.progress.total > 0) {
+            const pct = Math.round((data.progress.done / data.progress.total) * 100);
+            statusText.textContent = 'Scanning ' + pct + '%';
+        } else if (isScanning) {
+            statusText.textContent = 'Scanning\u2026';
+        } else {
+            statusText.textContent = 'Ready';
         }
 
         // Show elapsed / ETA inline below progress bar
@@ -153,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let etaText = 'Elapsed: ' + _fmtDuration(elapsed);
             if (done > 0 && total > 0) {
                 const remaining = (elapsed / done) * (total - done);
-                etaText += '  ·  ETA: ~' + _fmtDuration(remaining);
+                etaText += '  \u00b7  ETA: ~' + _fmtDuration(remaining);
             }
             if (progressEta) progressEta.textContent = etaText;
         } else {
@@ -188,8 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
             progressBar.style.width = percent + '%';
+            progressBar.classList.toggle('animating', isScanning);
             progressText.textContent = percent + '%';
             progressDetail.textContent = `${done}/${total}`;
+        } else {
+            progressBar.classList.remove('animating');
         }
 
         if (data.error) {

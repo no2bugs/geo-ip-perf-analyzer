@@ -39,8 +39,12 @@
                 </div>
                 <a href="/config" class="header-link-btn" title="Config &amp; Automation">&#9881; Config</a>
                 <a href="/help" class="header-link-btn" title="Help &amp; API Reference">&#9432; Help</a>
-                <div class="status-indicator" id="globalStatus">
-                    <span class="dot"></span> <span id="statusText">Ready</span>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="dot" id="globalStatus"></span>
+                    <span class="wave-bars" id="waveBars">
+                        <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+                    </span>
+                    <span id="statusText">Ready</span>
                 </div>
             </div>
         </header>

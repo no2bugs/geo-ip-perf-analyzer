@@ -84,6 +84,16 @@ h1 {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* ── Scanning glow on Scan Configuration panel ── */
+@keyframes borderGlow {
+    0%   { border-color: rgba(59,130,246,0.4); box-shadow: 0 0 8px rgba(59,130,246,0.15), inset 0 0 8px rgba(59,130,246,0.05); }
+    50%  { border-color: rgba(16,185,129,0.5); box-shadow: 0 0 18px rgba(16,185,129,0.2), inset 0 0 12px rgba(16,185,129,0.06); }
+    100% { border-color: rgba(59,130,246,0.4); box-shadow: 0 0 8px rgba(59,130,246,0.15), inset 0 0 8px rgba(59,130,246,0.05); }
+}
+.controls-section.scanning {
+    animation: borderGlow 3s ease-in-out infinite;
+}
+
 .controls-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -175,11 +185,28 @@ input:focus {
     margin-bottom: 0.5rem;
 }
 
+@keyframes progressShimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
 .progress-bar {
     background: linear-gradient(90deg, var(--accent-color), var(--success-color));
     height: 100%;
     width: 0%;
     transition: width 0.3s ease;
+    position: relative;
+}
+.progress-bar.animating {
+    background: linear-gradient(
+        90deg,
+        var(--accent-color) 0%,
+        var(--success-color) 30%,
+        rgba(255,255,255,0.25) 50%,
+        var(--success-color) 70%,
+        var(--accent-color) 100%
+    );
+    background-size: 200% 100%;
+    animation: progressShimmer 2s linear infinite;
 }
 
 .progress-stats {
@@ -292,6 +319,11 @@ tr:hover td {
     padding: 0.5rem 1rem;
     border-radius: 999px;
     border: 1px solid var(--border-color);
+    transition: border-color 0.4s, box-shadow 0.4s;
+}
+.status-indicator.active {
+    border-color: rgba(59,130,246,0.35);
+    box-shadow: 0 0 12px rgba(59,130,246,0.15);
 }
 
 .dot {
@@ -312,6 +344,44 @@ tr:hover td {
 
 .dot.error {
     background-color: var(--error-color);
+}
+
+/* ── Wave bars (scanning animation) ── */
+.wave-bars {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+}
+.wave-bars.visible { display: inline-flex; }
+.wave-bar {
+    width: 3px;
+    border-radius: 1px;
+    background: var(--accent-color);
+}
+@keyframes waveBar {
+    0%, 100% { height: 4px; opacity: 0.4; }
+    50%      { height: 14px; opacity: 1; }
+}
+.wave-bar:nth-child(1) { animation: waveBar 1s ease-in-out -0.4s infinite; }
+.wave-bar:nth-child(2) { animation: waveBar 1s ease-in-out -0.2s infinite; }
+.wave-bar:nth-child(3) { animation: waveBar 1s ease-in-out  0s   infinite; }
+.wave-bar:nth-child(4) { animation: waveBar 1s ease-in-out -0.3s infinite; }
+
+/* ── Radar ring pulse ── */
+@keyframes radarPulse {
+    0%   { transform: scale(1);   opacity: 0.6; box-shadow: 0 0 4px var(--accent-color); }
+    100% { transform: scale(2.8); opacity: 0;   box-shadow: 0 0 0 transparent; }
+}
+.dot.running { position: relative; }
+.dot.running::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--accent-color);
+    animation: radarPulse 1.8s ease-out infinite;
+    pointer-events: none;
 }
 
 /* Toast */
