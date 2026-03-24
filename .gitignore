@@ -9,3 +9,4 @@ ovpn/*
 venv/
 logs/
 .pytest_cache/
+assets/web-ui-full.mp4
