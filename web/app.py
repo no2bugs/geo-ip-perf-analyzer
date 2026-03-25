@@ -111,6 +111,15 @@ DEFAULT_CONFIG = {
             'time': '03:00',
             'countries': []
         },
+        'latency_scan': {
+            'enabled': False,
+            'interval': 'daily',
+            'day': 'monday',
+            'days': [],
+            'dom': 1,
+            'time': '02:00',
+            'countries': []
+        },
         'geolite_update': {
             'enabled': False,
             'interval': 'weekly',
@@ -146,6 +155,8 @@ DEFAULT_CONFIG = {
             'events': {
                 'vpn_speedtest_complete': False,
                 'vpn_speedtest_error': True,
+                'latency_scan_complete': False,
+                'latency_scan_error': True,
                 'geolite_updated': False,
                 'geolite_update_error': True,
                 'ovpn_updated': False,
@@ -1583,6 +1594,7 @@ def run_schedule_now():
     job_name = data.get('job', '')
     runners = {
         'vpn_speedtest': lambda: threading.Thread(target=scheduled_vpn_speedtest, daemon=True).start(),
+        'latency_scan': lambda: threading.Thread(target=scheduled_latency_scan, daemon=True).start(),
         'geolite_update': lambda: threading.Thread(target=scheduled_geolite_update, daemon=True).start(),
         'ovpn_update': lambda: threading.Thread(target=scheduled_ovpn_update, daemon=True).start(),
         'servers_update': lambda: threading.Thread(target=scheduled_servers_update, daemon=True).start(),
@@ -2058,6 +2070,72 @@ def scheduled_vpn_speedtest():
         _flush_scan_state()
         _update_last_run('vpn_speedtest')
 
+def scheduled_latency_scan():
+    global scan_active, scan_progress, last_error, stop_event, scan_start_time
+
+    if _is_scan_active():
+        logging.info("Scheduled latency scan skipped: operation already in progress")
+        return
+
+    try:
+        if not (os.path.exists(GEOIP_CITY) and os.path.exists(GEOIP_COUNTRY)):
+            raise FileNotFoundError(f"GeoIP databases not found at {GEOIP_CITY} or {GEOIP_COUNTRY}")
+
+        config = load_config()
+        lat_countries = config.get('schedule', {}).get('latency_scan', {}).get('countries', [])
+        include_countries = lat_countries if lat_countries else None
+
+        scanner = Scanner(
+            targets_file=SERVERS_FILE,
+            city_db=GEOIP_CITY,
+            country_db=GEOIP_COUNTRY,
+            results_json=RESULTS_FILE,
+            excl_countries_fle='exclude_countries.list',
+            include_countries=include_countries
+        )
+
+        stop_event.clear()
+        scan_active = True
+        scan_start_time = time.time()
+        scan_progress = {"done": 0, "total": 0, "status": "running", "message": "Running scheduled latency scan..."}
+        last_error = None
+        _flush_scan_state()
+        flusher = threading.Thread(target=_state_flusher, daemon=True)
+        flusher.start()
+
+        logging.info("Starting scheduled latency scan...")
+        scan_logger.info('Scheduled latency scan started')
+        scanner.scan(
+            pings_num=1,
+            timeout_ms=1000,
+            workers=10,
+            progress_container=scan_progress,
+            vpn_speedtest=False,
+            stop_event=stop_event
+        )
+        duration = _format_duration(time.time() - scan_start_time)
+        total = scan_progress.get('total', 0)
+        if stop_event.is_set():
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = f'Scheduled latency scan interrupted — {scan_progress["done"]}/{total} servers'
+            scan_logger.info(f'Scheduled latency scan interrupted: {scan_progress["done"]}/{total} servers ({duration})')
+        else:
+            scan_progress['status'] = 'completed'
+            scan_progress['message'] = f'Scheduled latency scan completed — {total} servers'
+            scan_logger.info(f'Scheduled latency scan completed: {total} servers ({duration})')
+            send_ntfy('latency_scan_complete', 'Latency Scan Complete',
+                      f'{total} servers scanned ({duration})')
+    except Exception as e:
+        last_error = str(e)
+        scan_progress['status'] = 'error'
+        scan_progress['message'] = str(e)
+        logging.error(f"Scheduled latency scan failed: {e}")
+        send_ntfy('latency_scan_error', 'Latency Scan Failed', str(e), priority='high')
+    finally:
+        scan_active = False
+        _flush_scan_state()
+        _update_last_run('latency_scan')
+
 def scheduled_geolite_update():
     try:
         downloaded = _do_geolite_update()
@@ -2178,6 +2256,12 @@ def apply_schedules():
     if vpn_cfg.get('enabled'):
         kw = _build_cron_kwargs(vpn_cfg)
         scheduler.add_job(scheduled_vpn_speedtest, CronTrigger(**kw), id='vpn_speedtest', replace_existing=True)
+
+    # Latency scan schedule
+    lat_cfg = config.get('schedule', {}).get('latency_scan', {})
+    if lat_cfg.get('enabled'):
+        kw = _build_cron_kwargs(lat_cfg)
+        scheduler.add_job(scheduled_latency_scan, CronTrigger(**kw), id='latency_scan', replace_existing=True)
 
     # GeoLite2 schedule
     geo_cfg = config.get('schedule', {}).get('geolite_update', {})

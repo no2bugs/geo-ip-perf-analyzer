@@ -113,6 +113,79 @@
 
             <section class="config-card">
                 <div class="card-header">
+                    <h3>Latency Scan</h3>
+                    <div class="card-header-actions">
+                        <button type="button" class="run-now-btn" data-job="latency_scan" title="Run now">&#9654; Run Now</button>
+                        <label class="switch">
+                            <input type="checkbox" id="cfgLatEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <p class="card-desc">Runs ping latency scan on all servers in the servers list.</p>
+                <p class="card-last-run" id="cfgLatLastRun"></p>
+                <div id="cfgLatOptions" class="card-options">
+                    <div class="interval-row">
+                        <div class="field">
+                            <label for="cfgLatInterval">Interval</label>
+                            <select id="cfgLatInterval">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgLatDayWrap">
+                            <label for="cfgLatDay">Day</label>
+                            <select id="cfgLatDay">
+                                <option value="monday">Monday</option>
+                                <option value="tuesday">Tuesday</option>
+                                <option value="wednesday">Wednesday</option>
+                                <option value="thursday">Thursday</option>
+                                <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
+                                <option value="sunday">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="field" id="cfgLatDomWrap">
+                            <label for="cfgLatDom">Day of Month</label>
+                            <input type="number" id="cfgLatDom" min="1" max="28" value="1">
+                        </div>
+                        <div class="field">
+                            <label for="cfgLatTime">Time</label>
+                            <input type="time" id="cfgLatTime" value="02:00">
+                        </div>
+                        <div class="field">
+                            <label>Countries</label>
+                            <div class="country-picker" id="cfgLatCountryPicker">
+                                <button type="button" class="secondary-btn btn-sm" id="cfgLatCountryBtn">All Countries</button>
+                                <div class="country-dropdown" id="cfgLatCountryDropdown" style="display:none;">
+                                    <div class="country-dropdown-header">
+                                        <input type="text" class="country-search" placeholder="Filter countries..." id="cfgLatCountrySearch">
+                                        <button type="button" class="country-clear-btn" id="cfgLatCountryClear">Clear All</button>
+                                    </div>
+                                    <div class="country-list" id="cfgLatCountryList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="day-picker" id="cfgLatDays">
+                        <label>Days</label>
+                        <div class="day-btns">
+                            <button type="button" class="day-btn" data-day="monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="sunday">Sun</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-card">
+                <div class="card-header">
                     <h3>GeoLite2 DB Update</h3>
                     <div class="card-header-actions">
                         <button type="button" class="run-now-btn" data-job="geolite_update" title="Run now">&#9654; Run Now</button>
@@ -341,6 +414,7 @@
                             <div class="events-col">
                                 <span class="events-col-title">Operations</span>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtVpnComplete"> VPN speedtest complete</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtLatComplete"> Latency scan complete</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtGeoUpdated"> GeoLite2 updated</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtOvpnUpdated"> OVPN configs updated</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtSrvUpdated"> Servers list updated</label>
@@ -348,6 +422,7 @@
                             <div class="events-col">
                                 <span class="events-col-title">Errors</span>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtVpnError" checked> VPN speedtest error</label>
+                                <label class="event-label"><input type="checkbox" id="cfgEvtLatError" checked> Latency scan error</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtGeoError" checked> GeoLite2 update error</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtOvpnError" checked> OVPN update error</label>
                                 <label class="event-label"><input type="checkbox" id="cfgEvtSrvError" checked> Servers list update error</label>

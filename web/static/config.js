@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateVisibility() {
         const sections = [
             { enabled: 'cfgVpnEnabled', opts: 'cfgVpnOptions', interval: 'cfgVpnInterval', dayWrap: 'cfgVpnDayWrap', dayPicker: 'cfgVpnDays', domWrap: 'cfgVpnDomWrap' },
+            { enabled: 'cfgLatEnabled', opts: 'cfgLatOptions', interval: 'cfgLatInterval', dayWrap: 'cfgLatDayWrap', dayPicker: 'cfgLatDays', domWrap: 'cfgLatDomWrap' },
             { enabled: 'cfgGeoEnabled', opts: 'cfgGeoOptions', interval: 'cfgGeoInterval', dayWrap: 'cfgGeoDayWrap', dayPicker: 'cfgGeoDays', domWrap: 'cfgGeoDomWrap' },
             { enabled: 'cfgOvpnSchedEnabled', opts: 'cfgOvpnSchedOptions', interval: 'cfgOvpnInterval', dayWrap: 'cfgOvpnDayWrap', dayPicker: 'cfgOvpnDays', domWrap: 'cfgOvpnDomWrap' },
             { enabled: 'cfgSrvEnabled', opts: 'cfgSrvOptions', interval: 'cfgSrvInterval', dayWrap: 'cfgSrvDayWrap', dayPicker: 'cfgSrvDays', domWrap: 'cfgSrvDomWrap' }
@@ -50,9 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Attach listeners
-    ['cfgVpnEnabled', 'cfgGeoEnabled', 'cfgOvpnSchedEnabled', 'cfgSrvEnabled', 'cfgNtfyEnabled'].forEach(id =>
+    ['cfgVpnEnabled', 'cfgLatEnabled', 'cfgGeoEnabled', 'cfgOvpnSchedEnabled', 'cfgSrvEnabled', 'cfgNtfyEnabled'].forEach(id =>
         document.getElementById(id).addEventListener('change', updateVisibility));
-    ['cfgVpnInterval', 'cfgGeoInterval', 'cfgOvpnInterval', 'cfgSrvInterval'].forEach(id =>
+    ['cfgVpnInterval', 'cfgLatInterval', 'cfgGeoInterval', 'cfgOvpnInterval', 'cfgSrvInterval'].forEach(id =>
         document.getElementById(id).addEventListener('change', updateVisibility));
 
     // ========================================
@@ -69,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const nextRuns = await nrResp.json();
                 const mapping = {
                     'vpn_speedtest': 'cfgVpnLastRun',
+                    'latency_scan': 'cfgLatLastRun',
                     'geolite': 'cfgGeoLastRun',
                     'ovpn': 'cfgOvpnLastRun',
                     'servers_update': 'cfgSrvLastRun'
@@ -109,6 +111,17 @@ document.addEventListener('DOMContentLoaded', () => {
         loadVpnCountries();
         document.getElementById('cfgVpnLastRun').textContent = vpn.last_run ? `Last run: ${vpn.last_run}` : '';
 
+        const lat = config.schedule?.latency_scan || {};
+        document.getElementById('cfgLatEnabled').checked = lat.enabled || false;
+        document.getElementById('cfgLatInterval').value = lat.interval || 'daily';
+        document.getElementById('cfgLatDay').value = lat.day || 'monday';
+        document.getElementById('cfgLatDom').value = lat.dom || 1;
+        document.getElementById('cfgLatTime').value = lat.time || '02:00';
+        setDayButtons('cfgLatDays', lat.days);
+        latSelectedCountries = lat.countries || [];
+        loadLatCountries();
+        document.getElementById('cfgLatLastRun').textContent = lat.last_run ? `Last run: ${lat.last_run}` : '';
+
         const geo = config.schedule?.geolite_update || {};
         document.getElementById('cfgGeoEnabled').checked = geo.enabled || false;
         document.getElementById('cfgGeoInterval').value = geo.interval || 'weekly';
@@ -144,6 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgNtfyUrl').value = ntfy.url || '';
         document.getElementById('cfgEvtVpnComplete').checked = ntfy.events?.vpn_speedtest_complete || false;
         document.getElementById('cfgEvtVpnError').checked = ntfy.events?.vpn_speedtest_error !== false;
+        document.getElementById('cfgEvtLatComplete').checked = ntfy.events?.latency_scan_complete || false;
+        document.getElementById('cfgEvtLatError').checked = ntfy.events?.latency_scan_error !== false;
         document.getElementById('cfgEvtGeoUpdated').checked = ntfy.events?.geolite_updated || false;
         document.getElementById('cfgEvtGeoError').checked = ntfy.events?.geolite_update_error !== false;
         document.getElementById('cfgEvtOvpnUpdated').checked = ntfy.events?.ovpn_updated || false;
@@ -168,6 +183,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     dom: parseInt(document.getElementById('cfgVpnDom').value) || 1,
                     time: document.getElementById('cfgVpnTime').value,
                     countries: vpnSelectedCountries
+                },
+                latency_scan: {
+                    enabled: document.getElementById('cfgLatEnabled').checked,
+                    interval: document.getElementById('cfgLatInterval').value,
+                    day: document.getElementById('cfgLatDay').value,
+                    days: getDayButtons('cfgLatDays'),
+                    dom: parseInt(document.getElementById('cfgLatDom').value) || 1,
+                    time: document.getElementById('cfgLatTime').value,
+                    countries: latSelectedCountries
                 },
                 geolite_update: {
                     enabled: document.getElementById('cfgGeoEnabled').checked,
@@ -204,6 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     events: {
                         vpn_speedtest_complete: document.getElementById('cfgEvtVpnComplete').checked,
                         vpn_speedtest_error: document.getElementById('cfgEvtVpnError').checked,
+                        latency_scan_complete: document.getElementById('cfgEvtLatComplete').checked,
+                        latency_scan_error: document.getElementById('cfgEvtLatError').checked,
                         geolite_updated: document.getElementById('cfgEvtGeoUpdated').checked,
                         geolite_update_error: document.getElementById('cfgEvtGeoError').checked,
                         ovpn_updated: document.getElementById('cfgEvtOvpnUpdated').checked,
@@ -518,6 +544,96 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('cfgVpnCountryPicker').contains(e.target)) {
             vpnCountryDropdown.style.display = 'none';
             vpnCountryBtn.closest('.config-card').classList.remove('dropdown-open');
+        }
+    });
+
+    // ========================================
+    // Latency Scan Country Picker
+    // ========================================
+    let latSelectedCountries = [];
+    let latCountriesData = [];
+    const latCountryBtn = document.getElementById('cfgLatCountryBtn');
+    const latCountryDropdown = document.getElementById('cfgLatCountryDropdown');
+    const latCountryList = document.getElementById('cfgLatCountryList');
+    const latCountrySearch = document.getElementById('cfgLatCountrySearch');
+    const latCountryClear = document.getElementById('cfgLatCountryClear');
+
+    function updateLatCountryBtn() {
+        if (latSelectedCountries.length === 0) {
+            latCountryBtn.textContent = 'All Countries';
+        } else {
+            const total = latSelectedCountries.reduce((sum, c) => {
+                const found = latCountriesData.find(d => d.country === c);
+                return sum + (found ? found.count : 0);
+            }, 0);
+            latCountryBtn.textContent = `${latSelectedCountries.length} countries (${total} servers)`;
+        }
+    }
+
+    function renderLatCountryList(filter = '') {
+        latCountryList.innerHTML = '';
+        const lf = filter.toLowerCase();
+        const filtered = latCountriesData.filter(d => !lf || d.country.toLowerCase().includes(lf));
+        filtered.sort((a, b) => {
+            const aChecked = latSelectedCountries.includes(a.country);
+            const bChecked = latSelectedCountries.includes(b.country);
+            if (aChecked !== bChecked) return aChecked ? -1 : 1;
+            return a.country.localeCompare(b.country);
+        });
+        filtered.forEach(d => {
+                const label = document.createElement('label');
+                label.className = 'country-option';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = latSelectedCountries.includes(d.country);
+                cb.addEventListener('change', () => {
+                    if (cb.checked) {
+                        if (!latSelectedCountries.includes(d.country)) latSelectedCountries.push(d.country);
+                    } else {
+                        latSelectedCountries = latSelectedCountries.filter(c => c !== d.country);
+                    }
+                    updateLatCountryBtn();
+                });
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(d.country));
+                const span = document.createElement('span');
+                span.className = 'country-count';
+                span.textContent = d.count;
+                label.appendChild(span);
+                latCountryList.appendChild(label);
+            });
+    }
+
+    async function loadLatCountries() {
+        try {
+            const resp = await fetch('/api/countries');
+            latCountriesData = await resp.json();
+        } catch (e) {
+            latCountriesData = [];
+        }
+        renderLatCountryList();
+        updateLatCountryBtn();
+    }
+
+    latCountryBtn.addEventListener('click', () => {
+        const visible = latCountryDropdown.style.display !== 'none';
+        latCountryDropdown.style.display = visible ? 'none' : 'flex';
+        latCountryBtn.closest('.config-card').classList.toggle('dropdown-open', !visible);
+        if (!visible) latCountrySearch.focus();
+    });
+
+    latCountrySearch.addEventListener('input', () => renderLatCountryList(latCountrySearch.value));
+
+    latCountryClear.addEventListener('click', () => {
+        latSelectedCountries = [];
+        renderLatCountryList(latCountrySearch.value);
+        updateLatCountryBtn();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!document.getElementById('cfgLatCountryPicker').contains(e.target)) {
+            latCountryDropdown.style.display = 'none';
+            latCountryBtn.closest('.config-card').classList.remove('dropdown-open');
         }
     });
 
