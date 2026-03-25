@@ -510,6 +510,42 @@ def _run_vpn_speedtest_sync(domains):
         _flush_scan_state()
         _update_last_run('vpn_speedtest')
 
+def _filtered_servers_file(countries):
+    """Create a temp servers file with only domains matching the given countries (using results.json).
+    Returns the temp file path, or SERVERS_FILE if no filtering needed.
+    Caller must delete the temp file after use."""
+    if not countries:
+        return SERVERS_FILE, False
+    country_set = {c.casefold() for c in countries}
+    # Load results.json for country lookup
+    if not os.path.exists(RESULTS_FILE):
+        return SERVERS_FILE, False
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+    except Exception:
+        return SERVERS_FILE, False
+    # Read all servers
+    if not os.path.exists(SERVERS_FILE):
+        return SERVERS_FILE, False
+    with open(SERVERS_FILE, 'r', encoding='utf-8') as f:
+        all_domains = [line.strip() for line in f if line.strip()]
+    # Filter: include domain if its country matches, or if we have no result for it yet
+    filtered = []
+    for d in all_domains:
+        entry = results.get(d)
+        if isinstance(entry, dict):
+            if entry.get('country', '').casefold() in country_set:
+                filtered.append(d)
+        else:
+            filtered.append(d)  # unknown domain, include it
+    if not filtered:
+        return SERVERS_FILE, False
+    tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.list', delete=False, dir='/tmp')
+    tmp.write('\n'.join(filtered) + '\n')
+    tmp.close()
+    return tmp.name, True
+
 def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False, countries=None):
     global scan_active, scan_progress, last_error, stop_event, scan_start_time
     
@@ -523,19 +559,18 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False, countri
     flusher = threading.Thread(target=_state_flusher, daemon=True)
     flusher.start()
     
+    servers_file, is_temp = _filtered_servers_file(countries)
     try:
         # Check if DBs exist
         if not (os.path.exists(GEOIP_CITY) and os.path.exists(GEOIP_COUNTRY)):
             raise FileNotFoundError(f"GeoIP databases not found at {GEOIP_CITY} or {GEOIP_COUNTRY}")
         
-        include_countries = countries if countries else None
         scanner = Scanner(
-            targets_file=SERVERS_FILE,
+            targets_file=servers_file,
             city_db=GEOIP_CITY,
             country_db=GEOIP_COUNTRY,
             results_json=RESULTS_FILE,
-            excl_countries_fle='exclude_countries.list',
-            include_countries=include_countries
+            excl_countries_fle='exclude_countries.list'
         )
         
         # Override exclude/include if needed or just use defaults
@@ -573,6 +608,11 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False, countri
     finally:
         scan_active = False
         _flush_scan_state()
+        if is_temp:
+            try:
+                os.unlink(servers_file)
+            except OSError:
+                pass
 
 @app.route('/')
 def index():
@@ -2092,18 +2132,17 @@ def scheduled_latency_scan():
         config = load_config()
         lat_cfg = config.get('schedule', {}).get('latency_scan', {})
         lat_countries = lat_cfg.get('countries', [])
-        include_countries = lat_countries if lat_countries else None
         pings_num = max(1, min(10, int(lat_cfg.get('pings', 1))))
         timeout_ms = max(100, min(10000, int(lat_cfg.get('timeout', 1000))))
         workers = max(1, min(100, int(lat_cfg.get('workers', 20))))
 
+        servers_file, is_temp = _filtered_servers_file(lat_countries)
         scanner = Scanner(
-            targets_file=SERVERS_FILE,
+            targets_file=servers_file,
             city_db=GEOIP_CITY,
             country_db=GEOIP_COUNTRY,
             results_json=RESULTS_FILE,
-            excl_countries_fle='exclude_countries.list',
-            include_countries=include_countries
+            excl_countries_fle='exclude_countries.list'
         )
 
         stop_event.clear()
@@ -2147,6 +2186,11 @@ def scheduled_latency_scan():
         scan_active = False
         _flush_scan_state()
         _update_last_run('latency_scan')
+        if is_temp:
+            try:
+                os.unlink(servers_file)
+            except OSError:
+                pass
 
 def scheduled_geolite_update():
     try:
