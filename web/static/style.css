@@ -1655,6 +1655,27 @@ tr:hover td {
 }
 
 /* ========================================
+   OVPN Upload Row
+   ======================================== */
+.ovpn-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.ovpn-upload-btn {
+    cursor: pointer;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.75rem;
+}
+
+.upload-status {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+/* ========================================
    Help Page: API Documentation
    ======================================== */
 .help-card {

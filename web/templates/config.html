@@ -183,6 +183,13 @@
                     </div>
                 </div>
                 <p class="card-desc">Download fresh OVPN configs from the configured URL.</p>
+                <div class="ovpn-upload-row">
+                    <label class="secondary-btn ovpn-upload-btn">
+                        <input type="file" id="cfgOvpnFileInput" accept=".zip" hidden>
+                        &#128193; Upload ZIP
+                    </label>
+                    <span id="cfgOvpnUploadStatus" class="upload-status"></span>
+                </div>
                 <p class="card-last-run" id="cfgOvpnLastRun"></p>
                 <div id="cfgOvpnSchedOptions" class="card-options">
                     <div class="field field-full" style="margin-bottom: 0.75rem;">

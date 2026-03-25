@@ -621,7 +621,25 @@ document.addEventListener('DOMContentLoaded', () => {
         exportDropdown.querySelectorAll('.export-option').forEach(btn => {
             btn.addEventListener('click', () => {
                 const fmt = btn.dataset.format;
-                window.location.href = '/api/results/export/' + fmt;
+                const data = filteredResults.length ? filteredResults : allResults;
+                let blob, filename;
+                if (fmt === 'json') {
+                    const obj = {};
+                    data.forEach(r => { obj[r.domain] = { ip: r.ip, latency_ms: r.latency_ms, country: r.country, city: r.city, rx_speed_mbps: r.rx_speed_mbps, tx_speed_mbps: r.tx_speed_mbps }; });
+                    blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+                    filename = 'results.json';
+                } else {
+                    const rows = [['Domain', 'IP', 'Latency (ms)', 'Country', 'City', 'Download (Mbps)', 'Upload (Mbps)']];
+                    data.forEach(r => rows.push([r.domain, r.ip || '', r.latency_ms ?? '', r.country, r.city, r.rx_speed_mbps ?? '', r.tx_speed_mbps ?? '']));
+                    const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+                    blob = new Blob([csv], { type: 'text/csv' });
+                    filename = 'results.csv';
+                }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
                 exportDropdown.style.display = 'none';
             });
         });

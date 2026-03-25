@@ -276,6 +276,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ========================================
+    // OVPN ZIP Upload
+    // ========================================
+    const cfgOvpnFileInput = document.getElementById('cfgOvpnFileInput');
+    const cfgOvpnUploadStatus = document.getElementById('cfgOvpnUploadStatus');
+    if (cfgOvpnFileInput) {
+        cfgOvpnFileInput.addEventListener('change', async () => {
+            const file = cfgOvpnFileInput.files[0];
+            if (!file) return;
+            cfgOvpnUploadStatus.textContent = 'Uploading...';
+            const form = new FormData();
+            form.append('file', file);
+            try {
+                const resp = await fetch('/api/ovpn/upload', { method: 'POST', body: form });
+                const data = await resp.json();
+                if (data.status === 'ok') {
+                    cfgOvpnUploadStatus.textContent = `Uploaded! ${data.count} configs extracted.`;
+                } else {
+                    cfgOvpnUploadStatus.textContent = data.message || 'Upload failed';
+                }
+            } catch (e) {
+                cfgOvpnUploadStatus.textContent = 'Upload failed';
+            }
+            cfgOvpnFileInput.value = '';
+            setTimeout(() => { cfgOvpnUploadStatus.textContent = ''; }, 5000);
+        });
+    }
+
+    // ========================================
     // Prune Stale Servers
     // ========================================
     const pruneNowBtn = document.getElementById('pruneNowBtn');
