@@ -1284,7 +1284,7 @@ def get_origin():
 
     return jsonify({'error': 'Could not determine origin location'}), 500
 VALID_PALETTES = {'default', 'midnight', 'emerald', 'sunset', 'arctic', 'rose', 'sandstorm', 'carbon', 'pihole', 'backstage', 'dracula', 'nord'}
-VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom', 'video_matrix', 'video_starfield', 'video_particles', 'video_aurora', 'video_fireflies', 'video_custom'}
+VALID_WALLPAPERS = {'none', 'grid', 'dots', 'hexagons', 'circuit_board', 'network', 'globe', 'radar', 'city_lights', 'data_flow', 'topology', 'server_rack', 'signal_waves', 'matrix', 'constellation', 'diamonds', 'crosses', 'waves', 'triangles', 'custom', 'video_matrix', 'video_starfield', 'video_particles', 'video_aurora', 'video_fireflies', 'video_blue_polygon', 'video_black_hole', 'video_digital_globe', 'video_blue_code', 'video_white_lines', 'video_custom'}
 ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.svg'}
 ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.webm'}
 MAX_WALLPAPER_SIZE = 5 * 1024 * 1024  # 5 MB

@@ -259,13 +259,19 @@
         video_aurora:        'Aurora Waves',
         video_fireflies:     'Fireflies',
         video_blue_polygon:  'Blue Polygon',
-        video_black_hole:    'Black Hole'
+        video_black_hole:    'Black Hole',
+        video_digital_globe: 'Digital Globe',
+        video_blue_code:     'Blue Code',
+        video_white_lines:   'White Lines'
     };
 
     /* ── Built-in video wallpapers (shipped with the app) ── */
     const BUILTIN_VIDEOS = {
         video_blue_polygon:  '/static/videos/blue-polygon.mp4',
-        video_black_hole:    '/static/videos/rotating-black-hole.mp4'
+        video_black_hole:    '/static/videos/rotating-black-hole.mp4',
+        video_digital_globe: '/static/videos/3d-digital-globe.mp4',
+        video_blue_code:     '/static/videos/blue-digital-programming.mp4',
+        video_white_lines:   '/static/videos/white-lines-on-blue.mp4'
     };
 
     /* ── Custom video (MP4) playback ── */
