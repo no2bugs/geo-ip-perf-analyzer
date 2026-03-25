@@ -636,6 +636,55 @@ def get_results():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/results/export/<fmt>')
+def export_results(fmt):
+    """Export all results as CSV or JSON file download."""
+    if fmt not in ('csv', 'json'):
+        return jsonify({'status': 'error', 'message': 'Format must be csv or json'}), 400
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify({'status': 'error', 'message': 'No results available'}), 404
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    if fmt == 'json':
+        resp = app.response_class(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            mimetype='application/json',
+            headers={'Content-Disposition': 'attachment; filename=results.json'}
+        )
+        return resp
+
+    # CSV export
+    import csv as csv_mod
+    import io as io_mod
+    buf = io_mod.StringIO()
+    writer = csv_mod.writer(buf)
+    writer.writerow(['Domain', 'IP', 'Latency (ms)', 'Country', 'City',
+                     'Download (Mbps)', 'Upload (Mbps)'])
+    for domain, entry in sorted(data.items()):
+        if not isinstance(entry, dict):
+            continue
+        writer.writerow([
+            domain,
+            entry.get('ip', ''),
+            entry.get('latency_ms', ''),
+            entry.get('country', ''),
+            entry.get('city', ''),
+            entry.get('rx_speed_mbps', ''),
+            entry.get('tx_speed_mbps', ''),
+        ])
+    resp = app.response_class(
+        buf.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=results.csv'}
+    )
+    return resp
+
+
 @app.route('/api/countries')
 def get_countries():
     """Return list of countries with server counts from results.json."""

@@ -605,7 +605,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.querySelector('.country-filter-wrapper').contains(e.target)) {
             countryFilterDropdown.style.display = 'none';
         }
+        const exportWrapper = document.querySelector('.export-wrapper');
+        if (exportWrapper && !exportWrapper.contains(e.target)) {
+            document.getElementById('exportDropdown').style.display = 'none';
+        }
     });
+
+    /* ── Export dropdown ── */
+    const exportBtn = document.getElementById('exportBtn');
+    const exportDropdown = document.getElementById('exportDropdown');
+    if (exportBtn && exportDropdown) {
+        exportBtn.addEventListener('click', () => {
+            exportDropdown.style.display = exportDropdown.style.display === 'none' ? 'flex' : 'none';
+        });
+        exportDropdown.querySelectorAll('.export-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const fmt = btn.dataset.format;
+                window.location.href = '/api/results/export/' + fmt;
+                exportDropdown.style.display = 'none';
+            });
+        });
+    }
 
     function sortResults(field, order) {
         currentSortField = field;

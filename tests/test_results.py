@@ -1,5 +1,5 @@
 """
-E2E tests for /api/results, /api/countries, /api/results/geo, /api/top-servers,
+E2E tests for /api/results, /api/results/export, /api/countries, /api/results/geo, /api/top-servers,
 /api/statistics, /api/statistics/domains, /api/prune-stale, and /api/v1/top/* endpoints.
 """
 
@@ -30,6 +30,38 @@ class TestResults:
             f.write("NOT JSON")
         resp = client.get("/api/results")
         assert resp.status_code == 500
+
+
+# ===================================================================
+# /api/results/export/<fmt>
+# ===================================================================
+
+class TestExportResults:
+
+    def test_invalid_format(self, client):
+        resp = client.get("/api/results/export/xml")
+        assert resp.status_code == 400
+
+    def test_no_results_file_returns_404(self, client):
+        resp = client.get("/api/results/export/csv")
+        assert resp.status_code == 404
+
+    def test_export_json(self, client, sample_results):
+        resp = client.get("/api/results/export/json")
+        assert resp.status_code == 200
+        assert resp.content_type == "application/json"
+        assert "attachment" in resp.headers.get("Content-Disposition", "")
+        data = json.loads(resp.data)
+        assert "server1.example.com" in data
+
+    def test_export_csv(self, client, sample_results):
+        resp = client.get("/api/results/export/csv")
+        assert resp.status_code == 200
+        assert "text/csv" in resp.content_type
+        assert "attachment" in resp.headers.get("Content-Disposition", "")
+        text = resp.data.decode()
+        assert "Domain" in text
+        assert "server1.example.com" in text
 
 
 # ===================================================================

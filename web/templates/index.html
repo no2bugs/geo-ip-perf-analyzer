@@ -145,7 +145,13 @@
                                 <div class="country-list" id="countryFilterList"></div>
                             </div>
                         </div>
-                        <a href="/statistics" class="secondary-btn" style="text-decoration:none;text-align:center;">Statistics</a>
+                        <div class="export-wrapper">
+                            <button id="exportBtn" class="secondary-btn" title="Export results">&#128229; Export</button>
+                            <div class="export-dropdown" id="exportDropdown" style="display:none;">
+                                <button type="button" class="export-option" data-format="csv">&#128196; Export as CSV</button>
+                                <button type="button" class="export-option" data-format="json">&#128195; Export as JSON</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
