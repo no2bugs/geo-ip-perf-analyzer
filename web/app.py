@@ -118,6 +118,9 @@ DEFAULT_CONFIG = {
             'days': [],
             'dom': 1,
             'time': '02:00',
+            'pings': 1,
+            'timeout': 1000,
+            'workers': 20,
             'countries': []
         },
         'geolite_update': {
@@ -2082,8 +2085,12 @@ def scheduled_latency_scan():
             raise FileNotFoundError(f"GeoIP databases not found at {GEOIP_CITY} or {GEOIP_COUNTRY}")
 
         config = load_config()
-        lat_countries = config.get('schedule', {}).get('latency_scan', {}).get('countries', [])
+        lat_cfg = config.get('schedule', {}).get('latency_scan', {})
+        lat_countries = lat_cfg.get('countries', [])
         include_countries = lat_countries if lat_countries else None
+        pings_num = max(1, min(10, int(lat_cfg.get('pings', 1))))
+        timeout_ms = max(100, min(10000, int(lat_cfg.get('timeout', 1000))))
+        workers = max(1, min(100, int(lat_cfg.get('workers', 20))))
 
         scanner = Scanner(
             targets_file=SERVERS_FILE,
@@ -2106,9 +2113,9 @@ def scheduled_latency_scan():
         logging.info("Starting scheduled latency scan...")
         scan_logger.info('Scheduled latency scan started')
         scanner.scan(
-            pings_num=1,
-            timeout_ms=1000,
-            workers=10,
+            pings_num=pings_num,
+            timeout_ms=timeout_ms,
+            workers=workers,
             progress_container=scan_progress,
             vpn_speedtest=False,
             stop_event=stop_event

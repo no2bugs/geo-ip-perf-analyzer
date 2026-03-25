@@ -117,6 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgLatDay').value = lat.day || 'monday';
         document.getElementById('cfgLatDom').value = lat.dom || 1;
         document.getElementById('cfgLatTime').value = lat.time || '02:00';
+        document.getElementById('cfgLatPings').value = lat.pings || 1;
+        document.getElementById('cfgLatTimeout').value = lat.timeout || 1000;
+        document.getElementById('cfgLatWorkers').value = lat.workers || 20;
         setDayButtons('cfgLatDays', lat.days);
         latSelectedCountries = lat.countries || [];
         loadLatCountries();
@@ -191,6 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     days: getDayButtons('cfgLatDays'),
                     dom: parseInt(document.getElementById('cfgLatDom').value) || 1,
                     time: document.getElementById('cfgLatTime').value,
+                    pings: parseInt(document.getElementById('cfgLatPings').value) || 1,
+                    timeout: parseInt(document.getElementById('cfgLatTimeout').value) || 1000,
+                    workers: parseInt(document.getElementById('cfgLatWorkers').value) || 20,
                     countries: latSelectedCountries
                 },
                 geolite_update: {
