@@ -910,7 +910,7 @@ def _download_ovpn_from_url(url):
         ovpn_path.mkdir(parents=True, exist_ok=True)
 
         for old in ovpn_path.glob('*.ovpn'):
-            old.unlink()
+            old.unlink(missing_ok=True)
 
         extracted = 0
         for name in zf.namelist():
@@ -1034,7 +1034,7 @@ def ovpn_upload():
             ovpn_path.mkdir(parents=True, exist_ok=True)
 
             for old in ovpn_path.glob('*.ovpn'):
-                old.unlink()
+                old.unlink(missing_ok=True)
 
             extracted = 0
             for name in zf.namelist():
