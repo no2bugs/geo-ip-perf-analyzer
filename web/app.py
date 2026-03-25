@@ -573,7 +573,7 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False, countri
         # Override exclude/include if needed or just use defaults
         
         scan_logger.info(f'Scan started: pings={pings}, timeout={timeout}, workers={workers}, vpn={vpn_speedtest}')
-        scanner.scan(
+        _results, failed_domains = scanner.scan(
             pings_num=pings,
             timeout_ms=timeout,
             workers=workers,
@@ -584,6 +584,18 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False, countri
             vpn_password=VPN_PASSWORD,
             stop_event=stop_event
         )
+        # Remove failed domains from servers.list (full scans only)
+        if failed_domains and not is_temp:
+            try:
+                with open(SERVERS_FILE, 'r', encoding='utf-8') as f:
+                    lines = [l.strip() for l in f if l.strip()]
+                cleaned = [d for d in lines if d not in failed_domains]
+                if cleaned:
+                    with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(cleaned) + '\n')
+                    scan_logger.info(f'Removed {len(failed_domains)} failed servers from servers.list')
+            except Exception as e:
+                logging.error(f"Failed to clean servers.list: {e}")
         if stop_event.is_set():
             scan_progress['status'] = 'completed'
             scan_progress['message'] = 'Scan interrupted by stop request'
@@ -2153,7 +2165,7 @@ def scheduled_latency_scan():
 
         logging.info("Starting scheduled latency scan...")
         scan_logger.info('Scheduled latency scan started')
-        scanner.scan(
+        _results, failed_domains = scanner.scan(
             pings_num=pings_num,
             timeout_ms=timeout_ms,
             workers=workers,
@@ -2161,6 +2173,18 @@ def scheduled_latency_scan():
             vpn_speedtest=False,
             stop_event=stop_event
         )
+        # Remove failed domains from servers.list (full scans only)
+        if failed_domains and not is_temp:
+            try:
+                with open(SERVERS_FILE, 'r', encoding='utf-8') as f:
+                    lines = [l.strip() for l in f if l.strip()]
+                cleaned = [d for d in lines if d not in failed_domains]
+                if cleaned:
+                    with open(SERVERS_FILE, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(cleaned) + '\n')
+                    scan_logger.info(f'Removed {len(failed_domains)} failed servers from servers.list')
+            except Exception as e:
+                logging.error(f"Failed to clean servers.list: {e}")
         duration = _format_duration(time.time() - scan_start_time)
         total = scan_progress.get('total', 0)
         if stop_event.is_set():

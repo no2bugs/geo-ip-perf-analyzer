@@ -81,7 +81,7 @@ class Scanner:
 
         return excludes
 
-    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 10, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None, stop_event: threading.Event = None) -> Dict[str, List]:
+    def scan(self, pings_num: int = 1, timeout_ms: int = 1000, workers: int = 10, all_a_records: bool = False, progress_container: Dict = None, vpn_speedtest: bool = False, vpn_ovpn_dir: str = 'ovpn', vpn_username: str = '', vpn_password: str = '', vpn_batch_size: int = 20, vpn_batch_interactive: bool = True, vpn_selected_domains: List[str] = None, stop_event: threading.Event = None) -> Tuple[Dict[str, List], set]:
         domains = self.get_servers_list()
         excl_countries = None
         include_countries = self.include_countries
@@ -131,6 +131,7 @@ class Scanner:
                     vpn_selected_domains, stop_event):
         skipped_total = 0
         errors_total = 0
+        failed_domains = set()
         lock = threading.Lock()
 
         if self.exclude_countries():
@@ -171,6 +172,7 @@ class Scanner:
                 self.formatting.output('red')
                 print('Unable to resolve', domain, 'Skipping...')
                 errors_total += 1
+                failed_domains.add(domain)
                 self.formatting.output('reset')
                 continue
             except Exception as error:
@@ -178,6 +180,7 @@ class Scanner:
                 print('Error with endpoint:', domain, 'Skipping...')
                 print(error)
                 errors_total += 1
+                failed_domains.add(domain)
                 self.formatting.output('reset')
                 continue
 
@@ -222,6 +225,8 @@ class Scanner:
                     skipped_total += 1
                 elif status == 'error':
                     errors_total += 1
+                    if payload:
+                        failed_domains.add(payload)
 
         endpoints_list.sort(key=lambda x: x[1])
 
@@ -278,6 +283,9 @@ class Scanner:
             # Merge new results into existing, preserving servers not in this scan
             merged = OrderedDict(existing_results)
             merged.update(endpoints_dict)
+            # Remove failed domains from results
+            for fd in failed_domains:
+                merged.pop(fd, None)
             self.write_json_file(json_file=self.results_json, data=merged)
             self.formatting.output('reset')
         else:
@@ -301,9 +309,11 @@ class Scanner:
             if endpoints_dict:
                 merged = OrderedDict(existing_results)
                 merged.update(endpoints_dict)
+                for fd in failed_domains:
+                    merged.pop(fd, None)
                 self.write_json_file(json_file=self.results_json, data=merged)
 
-        return endpoints_dict
+        return endpoints_dict, failed_domains
 
     @staticmethod
     def _ping_avg_latency(ip: str, pings_num: int, timeout_ms: int) -> Optional[float]:
@@ -373,7 +383,7 @@ class Scanner:
                 logger.info(msg)
                 print(error)
                 self.formatting.output('reset')
-            return ('error', None)
+            return ('error', domain)
 
         if excl_countries and country and country.casefold() in excl_countries:
             with lock:
@@ -409,7 +419,7 @@ class Scanner:
                 print(msg)
                 logger.info(msg)
                 self.formatting.output('reset')
-            return ('error', None)
+            return ('error', domain)
 
         with lock:
             self.formatting.output('green')
