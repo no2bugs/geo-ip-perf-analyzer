@@ -530,15 +530,12 @@ def _filtered_servers_file(countries):
         return SERVERS_FILE, False
     with open(SERVERS_FILE, 'r', encoding='utf-8') as f:
         all_domains = [line.strip() for line in f if line.strip()]
-    # Filter: include domain if its country matches, or if we have no result for it yet
+    # Filter: include domain only if its country matches
     filtered = []
     for d in all_domains:
         entry = results.get(d)
-        if isinstance(entry, dict):
-            if entry.get('country', '').casefold() in country_set:
-                filtered.append(d)
-        else:
-            filtered.append(d)  # unknown domain, include it
+        if isinstance(entry, dict) and entry.get('country', '').casefold() in country_set:
+            filtered.append(d)
     if not filtered:
         return SERVERS_FILE, False
     tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.list', delete=False, dir='/tmp')
