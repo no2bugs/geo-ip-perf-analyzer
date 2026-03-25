@@ -273,7 +273,7 @@
         v.loop = true;
         v.muted = true;
         v.playsInline = true;
-        v.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none;opacity:0;transition:opacity 0.8s;';
+        v.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:contain;z-index:-1;pointer-events:none;opacity:0;transition:opacity 0.8s;';
         document.body.prepend(v);
         v.play().catch(err => { console.warn('Video wallpaper autoplay blocked:', err.message); });
         requestAnimationFrame(() => { v.style.opacity = '1'; });
