@@ -510,7 +510,7 @@ def _run_vpn_speedtest_sync(domains):
         _flush_scan_state()
         _update_last_run('vpn_speedtest')
 
-def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
+def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False, countries=None):
     global scan_active, scan_progress, last_error, stop_event, scan_start_time
     
     stop_event.clear()
@@ -527,13 +527,15 @@ def run_scan_in_background(pings, timeout, workers, vpn_speedtest=False):
         # Check if DBs exist
         if not (os.path.exists(GEOIP_CITY) and os.path.exists(GEOIP_COUNTRY)):
             raise FileNotFoundError(f"GeoIP databases not found at {GEOIP_CITY} or {GEOIP_COUNTRY}")
-            
+        
+        include_countries = countries if countries else None
         scanner = Scanner(
             targets_file=SERVERS_FILE,
             city_db=GEOIP_CITY,
             country_db=GEOIP_COUNTRY,
             results_json=RESULTS_FILE,
-            excl_countries_fle='exclude_countries.list' # varying based on mount
+            excl_countries_fle='exclude_countries.list',
+            include_countries=include_countries
         )
         
         # Override exclude/include if needed or just use defaults
@@ -618,8 +620,11 @@ def start_scan():
     timeout = max(100, min(30000, int(data.get('timeout', 1000))))
     workers = max(1, min(100, int(data.get('workers', 10))))
     vpn_speedtest = bool(data.get('vpn_speedtest', False))
+    countries = data.get('countries', [])
+    if not isinstance(countries, list):
+        countries = []
     
-    thread = threading.Thread(target=run_scan_in_background, args=(pings, timeout, workers, vpn_speedtest))
+    thread = threading.Thread(target=run_scan_in_background, args=(pings, timeout, workers, vpn_speedtest, countries))
     thread.daemon = True
     thread.start()
     

@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/scan/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pings, timeout, workers, vpn_speedtest: vpnSpeedtest })
+                body: JSON.stringify({ pings, timeout, workers, vpn_speedtest: vpnSpeedtest, countries: Array.from(selectedCountries) })
             });
 
             if (response.ok) {
