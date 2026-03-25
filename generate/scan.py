@@ -275,7 +275,10 @@ class Scanner:
             }
 
         if endpoints_list:
-            self.write_json_file(json_file=self.results_json, data=endpoints_dict)
+            # Merge new results into existing, preserving servers not in this scan
+            merged = OrderedDict(existing_results)
+            merged.update(endpoints_dict)
+            self.write_json_file(json_file=self.results_json, data=merged)
             self.formatting.output('reset')
         else:
             self.formatting.output('red')
@@ -294,9 +297,11 @@ class Scanner:
                 interactive=vpn_batch_interactive,
                 selected_domains=vpn_selected_domains
             )
-            # Save results after speedtests
+            # Save results after speedtests (merge into existing)
             if endpoints_dict:
-                self.write_json_file(json_file=self.results_json, data=endpoints_dict)
+                merged = OrderedDict(existing_results)
+                merged.update(endpoints_dict)
+                self.write_json_file(json_file=self.results_json, data=merged)
 
         return endpoints_dict
 
