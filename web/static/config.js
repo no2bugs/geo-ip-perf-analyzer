@@ -642,14 +642,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const vw = window.__VIDEO_WALLPAPERS;
         if (!vw) return;
         videoWallpaperGrid.innerHTML = '';
+        const builtinVideos = vw.BUILTIN_VIDEOS || {};
         for (const [key, label] of Object.entries(vw.LABELS || {})) {
             const tile = document.createElement('div');
             tile.className = 'wallpaper-tile video-wallpaper-tile' + (currentTheme.wallpaper === key ? ' active' : '');
-            const cvs = document.createElement('canvas');
-            cvs.className = 'video-wallpaper-preview';
-            cvs.width = 180;
-            cvs.height = 100;
-            tile.appendChild(cvs);
+            if (builtinVideos[key]) {
+                const vid = document.createElement('video');
+                vid.className = 'video-wallpaper-preview';
+                vid.src = builtinVideos[key];
+                vid.autoplay = true;
+                vid.loop = true;
+                vid.muted = true;
+                vid.playsInline = true;
+                tile.appendChild(vid);
+            } else {
+                const cvs = document.createElement('canvas');
+                cvs.className = 'video-wallpaper-preview';
+                cvs.width = 180;
+                cvs.height = 100;
+                tile.appendChild(cvs);
+                vw.renderPreview(key, cvs);
+            }
             const lbl = document.createElement('div');
             lbl.className = 'wallpaper-label';
             lbl.textContent = label;
@@ -662,8 +675,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 refreshCustomWallpaperUI();
             });
             videoWallpaperGrid.appendChild(tile);
-            // Render animated preview
-            vw.renderPreview(key, cvs);
         }
     }
 

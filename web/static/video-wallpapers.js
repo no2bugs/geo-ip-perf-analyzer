@@ -257,7 +257,15 @@
         video_starfield:     'Starfield',
         video_particles:     'Particle Network',
         video_aurora:        'Aurora Waves',
-        video_fireflies:     'Fireflies'
+        video_fireflies:     'Fireflies',
+        video_blue_polygon:  'Blue Polygon',
+        video_black_hole:    'Black Hole'
+    };
+
+    /* ── Built-in video wallpapers (shipped with the app) ── */
+    const BUILTIN_VIDEOS = {
+        video_blue_polygon:  '/static/videos/blue-polygon.mp4',
+        video_black_hole:    '/static/videos/rotating-black-hole.mp4'
     };
 
     /* ── Custom video (MP4) playback ── */
@@ -289,6 +297,23 @@
         }
     }
 
+    function startBuiltinVideo(type) {
+        stopCustomVideo();
+        stop();
+        const v = document.createElement('video');
+        v.id = 'videoBgVideo';
+        v.src = BUILTIN_VIDEOS[type];
+        v.autoplay = true;
+        v.loop = true;
+        v.muted = true;
+        v.playsInline = true;
+        v.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none;opacity:0;transition:opacity 0.8s;';
+        document.body.prepend(v);
+        v.play().catch(err => { console.warn('Video wallpaper autoplay blocked:', err.message); });
+        requestAnimationFrame(() => { v.style.opacity = '1'; });
+        customVideo = v;
+    }
+
     function start(type) {
         if (activeType === type) return;
         stop();
@@ -296,6 +321,11 @@
         if (type === 'video_custom') {
             activeType = type;
             startCustomVideo();
+            return;
+        }
+        if (BUILTIN_VIDEOS[type]) {
+            activeType = type;
+            startBuiltinVideo(type);
             return;
         }
         if (!FACTORIES[type]) return;
@@ -347,6 +377,7 @@
     window.__VIDEO_WALLPAPERS = {
         FACTORIES,
         LABELS,
+        BUILTIN_VIDEOS,
         start,
         stop,
         startCustomVideo,
