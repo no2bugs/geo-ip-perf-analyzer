@@ -145,6 +145,15 @@
                                 <div class="country-list" id="countryFilterList"></div>
                             </div>
                         </div>
+                        <div class="status-filter-wrapper">
+                            <button id="statusFilterBtn" class="secondary-btn" title="Filter by status">All Servers</button>
+                            <div class="status-filter-dropdown" id="statusFilterDropdown" style="display:none;">
+                                <button type="button" class="status-option active" data-status="all">All Servers</button>
+                                <button type="button" class="status-option" data-status="succeeded">✅ Succeeded</button>
+                                <button type="button" class="status-option" data-status="failed">⚠ Failed</button>
+                                <button type="button" class="status-option" data-status="untested">⭕ Untested</button>
+                            </div>
+                        </div>
                         <div class="export-wrapper">
                             <button id="exportBtn" class="secondary-btn" title="Export results">&#128229; Export</button>
                             <div class="export-dropdown" id="exportDropdown" style="display:none;">

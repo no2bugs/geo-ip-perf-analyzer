@@ -102,6 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const countryFilterSearch = document.getElementById('countryFilterSearch');
     const countryFilterClear = document.getElementById('countryFilterClear');
 
+    // Status filter state
+    let statusFilter = 'all';
+    const statusFilterBtn = document.getElementById('statusFilterBtn');
+    const statusFilterDropdown = document.getElementById('statusFilterDropdown');
+
     // Initial Load
     fetchStatus();
     fetchResults();
@@ -424,10 +429,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const dlSpeed = item.rx_speed !== null && item.rx_speed !== undefined ? item.rx_speed.toFixed(2) : 'N/A';
             const ulSpeed = item.tx_speed !== null && item.tx_speed !== undefined ? item.tx_speed.toFixed(2) : 'N/A';
 
-            // # Counter column
+            const scanTitle = item.scan_timestamp ? formatTimestamp(item.scan_timestamp) : '';
+            const speedTitle = item.speedtest_timestamp ? formatTimestamp(item.speedtest_timestamp) : '';
+            const failedTitle = item.speedtest_failed_timestamp ? formatTimestamp(item.speedtest_failed_timestamp) : '';
+            const hasSpeed = item.rx_speed !== null && item.rx_speed !== undefined && item.rx_speed > 0;
+            const hasRecentFailure = failedTitle && (!speedTitle || item.speedtest_failed_timestamp > item.speedtest_timestamp);
+
+            // Highlight whole row yellow if recent failure
+            if (hasRecentFailure) {
+                row.style.background = 'rgba(240, 192, 64, 0.08)';
+            }
+
+            // # Counter column - with warning icon for failed
             const indexTd = document.createElement('td');
-            indexTd.textContent = actualIndex + 1;
             indexTd.className = 'text-secondary mono';
+            if (hasRecentFailure) {
+                indexTd.textContent = '\u26a0 ' + (actualIndex + 1);
+                indexTd.style.color = '#f0c040';
+            } else {
+                indexTd.textContent = actualIndex + 1;
+            }
             row.appendChild(indexTd);
 
             const checkboxTd = document.createElement('td');
@@ -440,24 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
             checkboxTd.appendChild(checkbox);
             row.appendChild(checkboxTd);
 
-            const scanTitle = item.scan_timestamp ? formatTimestamp(item.scan_timestamp) : '';
-            const speedTitle = item.speedtest_timestamp ? formatTimestamp(item.speedtest_timestamp) : '';
-            const failedTitle = item.speedtest_failed_timestamp ? formatTimestamp(item.speedtest_failed_timestamp) : '';
-            const hasRecentFailure = failedTitle && (!speedTitle || item.speedtest_failed_timestamp > item.speedtest_timestamp);
-
             // Build cells safely using textContent to prevent XSS
             const domainTd = document.createElement('td');
             const domainStrong = document.createElement('strong');
             domainStrong.className = 'domain-link';
             domainStrong.dataset.domain = item.domain;
+            domainStrong.textContent = item.domain;
             if (hasRecentFailure) {
-                domainStrong.textContent = '⚠ ' + item.domain;
-                domainStrong.style.color = '#f0c040';
                 let tip = 'Last failure: ' + failedTitle;
-                if (speedTitle) tip = 'Last success: ' + speedTitle + '\n' + tip;
+                if (hasSpeed && speedTitle) tip = 'Last success: ' + speedTitle + '\n' + tip;
                 domainTd.title = tip;
-            } else {
-                domainStrong.textContent = item.domain;
             }
             domainTd.appendChild(domainStrong);
             row.appendChild(domainTd);
@@ -483,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const dlTd = document.createElement('td');
             dlTd.className = 'ts-cell';
-            if (speedTitle) {
+            if (hasSpeed && speedTitle) {
                 dlTd.title = 'Successfully tested: ' + speedTitle;
             } else if (failedTitle) {
                 dlTd.title = 'Last failure: ' + failedTitle;
@@ -493,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const ulTd = document.createElement('td');
             ulTd.className = 'ts-cell';
-            if (speedTitle) {
+            if (hasSpeed && speedTitle) {
                 ulTd.title = 'Successfully tested: ' + speedTitle;
             } else if (failedTitle) {
                 ulTd.title = 'Last failure: ' + failedTitle;
@@ -547,6 +560,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const query = searchInput.value.toLowerCase();
         filteredResults = allResults.filter(item => {
             if (selectedCountries.size > 0 && !selectedCountries.has(item.country)) return false;
+            if (statusFilter !== 'all') {
+                const st = _itemStatus(item);
+                if (st !== statusFilter) return false;
+            }
             if (!query) return true;
             return item.domain.toLowerCase().includes(query) ||
                 (item.ip && item.ip.toLowerCase().includes(query)) ||
@@ -555,6 +572,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         currentPage = 1;
         renderResults();
+    }
+
+    function _itemStatus(item) {
+        const hasSpeed = item.rx_speed !== null && item.rx_speed !== undefined && item.rx_speed > 0;
+        const hasFailed = item.speedtest_failed_timestamp;
+        const hasSucceeded = item.speedtest_timestamp;
+        if (!hasSucceeded && !hasFailed) return 'untested';
+        if (hasFailed && (!hasSucceeded || item.speedtest_failed_timestamp > item.speedtest_timestamp)) return 'failed';
+        if (hasSpeed) return 'succeeded';
+        return 'untested';
     }
 
     // ========================================
@@ -636,6 +663,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (exportWrapper && !exportWrapper.contains(e.target)) {
             document.getElementById('exportDropdown').style.display = 'none';
         }
+        const statusWrapper = document.querySelector('.status-filter-wrapper');
+        if (statusWrapper && !statusWrapper.contains(e.target)) {
+            statusFilterDropdown.style.display = 'none';
+        }
+    });
+
+    /* ── Status filter dropdown ── */
+    statusFilterBtn.addEventListener('click', () => {
+        const visible = statusFilterDropdown.style.display !== 'none';
+        statusFilterDropdown.style.display = visible ? 'none' : 'flex';
+    });
+    statusFilterDropdown.querySelectorAll('.status-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            statusFilter = btn.dataset.status;
+            statusFilterBtn.textContent = btn.textContent;
+            statusFilterDropdown.querySelectorAll('.status-option').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            statusFilterDropdown.style.display = 'none';
+            filterResults();
+        });
     });
 
     /* ── Export dropdown ── */

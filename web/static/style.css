@@ -1509,6 +1509,51 @@ tr:hover td {
 }
 
 /* ========================================
+   Status Filter Dropdown (Dashboard)
+   ======================================== */
+.status-filter-wrapper {
+    position: relative;
+    z-index: 49;
+}
+
+.status-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 200;
+    background: #0f1729;
+    border: 1px solid #3b82f6;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    width: 180px;
+    flex-direction: column;
+    padding: 0.25rem 0;
+    margin-top: 4px;
+}
+
+.status-option {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.status-option:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.status-option.active {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* ========================================
    Country Picker (Config & Dashboard)
    ======================================== */
 .country-picker,

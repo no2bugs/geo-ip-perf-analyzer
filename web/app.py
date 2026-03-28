@@ -1706,18 +1706,22 @@ def get_statistics():
         rx = entry.get('rx_speed_mbps')
         tx = entry.get('tx_speed_mbps')
         ts = entry.get('speedtest_timestamp')
+        fts = entry.get('speedtest_failed_timestamp')
         if lat is not None and lat > 0:
             if c['lowest_latency'] is None or lat < c['lowest_latency']:
                 c['lowest_latency'] = lat
                 c['lowest_latency_server'] = domain
-        if rx is not None and rx > 0:
+        # Determine status: failed if most recent event is a failure
+        has_recent_failure = fts and (not ts or fts > ts)
+        has_speed = rx is not None and rx > 0
+        if has_recent_failure:
+            c['failed'] += 1
+            c['failed_domains'].append(domain)
+        elif has_speed:
             c['succeeded'] += 1
             if c['highest_download'] is None or rx > c['highest_download']:
                 c['highest_download'] = rx
                 c['highest_download_server'] = domain
-        elif ts:
-            c['failed'] += 1
-            c['failed_domains'].append(domain)
         else:
             c['untested'] += 1
             c['untested_domains'].append(domain)
