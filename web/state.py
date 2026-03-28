@@ -439,34 +439,36 @@ def _ensure_queue_processor():
 def _queue_processor_loop():
     """Background loop: wait for scan idle, then dispatch next queued job."""
     global _queue_processor_started, _queue_active_job
-    while True:
-        st = _read_queue_file()
-        if not st.get("pending"):
+    try:
+        while True:
+            st = _read_queue_file()
+            if not st.get("pending"):
+                _queue_active_job = None
+                _queue_set_active(None)
+                return
+
+            while _is_scan_active():
+                time.sleep(5)
+
+            job = _queue_pop_job()
+            if not job:
+                _queue_active_job = None
+                return
+
+            _queue_active_job = job
+            logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))
+            scan_logger.info('Queue dispatching %d domains (%s)', len(job['domains']), job.get('label', ''))
+            try:
+                _run_vpn_speedtest_sync(job['domains'])
+            except Exception as e:
+                logging.error("Queue job failed: %s", e)
+                scan_logger.error('Queue job failed: %s', e)
+            finally:
+                _queue_active_job = None
+                _queue_set_active(None)
+    finally:
+        with _queue_processor_lock:
             _queue_processor_started = False
-            _queue_active_job = None
-            _queue_set_active(None)
-            return
-
-        while _is_scan_active():
-            time.sleep(5)
-
-        job = _queue_pop_job()
-        if not job:
-            _queue_processor_started = False
-            _queue_active_job = None
-            return
-
-        _queue_active_job = job
-        logging.info("Queue: dispatching %d domains (%s)", len(job['domains']), job.get('label', ''))
-        scan_logger.info('Queue dispatching %d domains (%s)', len(job['domains']), job.get('label', ''))
-        try:
-            _run_vpn_speedtest_sync(job['domains'])
-        except Exception as e:
-            logging.error("Queue job failed: %s", e)
-            scan_logger.error('Queue job failed: %s', e)
-        finally:
-            _queue_active_job = None
-            _queue_set_active(None)
 
 def _run_vpn_speedtest_sync(domains):
     """Run VPN speedtest synchronously (blocking). Used by queue processor."""

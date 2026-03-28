@@ -10,3 +10,5 @@ venv/
 logs/
 .pytest_cache/
 assets/web-ui-full.mp4
+GeoLite2-City.mmdb.tmp
+config.yaml

@@ -256,7 +256,8 @@ def scheduled_servers_update():
 def _build_cron_kwargs(cfg):
     """Build CronTrigger kwargs from a schedule config block."""
     parts = str(cfg.get('time', '03:00')).split(':')
-    hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    hour = max(0, min(23, int(parts[0])))
+    minute = max(0, min(59, int(parts[1]))) if len(parts) > 1 else 0
     kw = {'hour': hour, 'minute': minute}
     interval = cfg.get('interval', 'daily')
     if interval == 'weekly':

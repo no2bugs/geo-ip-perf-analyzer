@@ -68,6 +68,10 @@ def _isolated_workspace(tmp_path, monkeypatch):
     monkeypatch.setattr(state_mod, "_queue_processor_started", False)
     monkeypatch.setattr(state_mod, "_queue_active_job", None)
 
+    # Reset config cache so tests don't see stale config from previous tests
+    state_mod._config_cache = None
+    state_mod._config_cache_mtime = 0
+
     # Expose paths for use by individual tests
     monkeypatch.setattr(state_mod, "_test_paths", {
         "results": results_file,
