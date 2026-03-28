@@ -1837,10 +1837,13 @@ def get_statistics_domains():
             continue
         rx = entry.get('rx_speed_mbps')
         ts = entry.get('speedtest_timestamp')
-        if rx is not None and rx > 0:
-            continue  # succeeded
-        if ts:
+        fts = entry.get('speedtest_failed_timestamp')
+        has_speed = rx is not None and rx > 0
+        has_recent_failure = fts and (not ts or fts > ts)
+        if has_recent_failure:
             failed.append(domain)
+        elif has_speed:
+            continue  # succeeded
         else:
             untested.append(domain)
     return jsonify({'untested': untested, 'failed': failed})

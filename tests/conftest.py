@@ -146,7 +146,9 @@ def sample_results(paths):
             "rx_speed_mbps": 0,
             "tx_speed_mbps": 0,
             "scan_timestamp": "2026-03-20T10:00:00",
-            "speedtest_timestamp": "2026-03-20T10:08:00"
+            "speedtest_timestamp": "2026-03-20T10:08:00",
+            "speedtest_failed_timestamp": "2026-03-20T10:10:00",
+            "speedtest_failed_reason": "vpn_failed"
         }
     }
     with open(paths["results"], "w") as f:
