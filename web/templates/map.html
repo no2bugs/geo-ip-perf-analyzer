@@ -220,6 +220,20 @@
         }
         .reset-view-btn:hover { background: rgba(30, 41, 59, 0.95); }
 
+        .fs-controls {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            padding: 4px 8px;
+            backdrop-filter: blur(6px);
+        }
+        .fs-controls.hidden { display: none; }
+
         .distance-overlay {
             position: absolute;
             top: 80px;
@@ -292,11 +306,22 @@
                     <div class="legend-bar" id="legendBar"></div>
                     <span id="legendHigh">Slow</span>
                 </div>
+                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;">
+                    <input type="checkbox" id="bestVisibleServer" style="accent-color:#fbbf24;">
+                    Best visible
+                </label>
                 <span class="map-stats" id="mapStats"></span>
             </div>
             <div class="map-container" id="mapContainer">
                 <div id="map"></div>
                 <div class="distance-overlay hidden" id="distanceOverlay"></div>
+                <div class="fs-controls hidden" id="fsControls">
+                    <select id="fsMetricSelect" class="metric-select" style="font-size:0.78rem;padding:0.3rem 0.5rem;">
+                        <option value="latency">Latency (ms)</option>
+                        <option value="rx_speed">Download (Mbps)</option>
+                        <option value="tx_speed">Upload (Mbps)</option>
+                    </select>
+                </div>
                 <button class="reset-view-btn" id="resetViewBtn" title="Reset view to vantage point">🏠</button>
                 <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen">&#x26F6;</button>
             </div>
@@ -314,10 +339,20 @@
                 document.exitFullscreen();
             }
         });
+        // Sync fullscreen metric select with main metric select
+        const fsMetric = document.getElementById('fsMetricSelect');
+        const mainMetric = document.getElementById('metricSelect');
+        fsMetric.value = mainMetric.value;
+        fsMetric.addEventListener('change', () => { mainMetric.value = fsMetric.value; mainMetric.dispatchEvent(new Event('change')); });
+        mainMetric.addEventListener('change', () => { fsMetric.value = mainMetric.value; });
+
         document.addEventListener('fullscreenchange', () => {
             const btn = document.getElementById('fullscreenBtn');
-            btn.textContent = document.fullscreenElement ? '\u2716' : '\u26F6';
-            btn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Toggle fullscreen';
+            const fsc = document.getElementById('fsControls');
+            const isFs = !!document.fullscreenElement;
+            btn.textContent = isFs ? '\u2716' : '\u26F6';
+            btn.title = isFs ? 'Exit fullscreen' : 'Toggle fullscreen';
+            fsc.classList.toggle('hidden', !isFs);
             // Tell Leaflet to recalculate size
             setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
         });

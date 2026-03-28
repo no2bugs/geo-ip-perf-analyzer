@@ -72,6 +72,13 @@
         return null;
     }
 
+    function isFailed(item) {
+        const fts = item.speedtest_failed_timestamp;
+        if (!fts) return false;
+        const ts = item.speedtest_timestamp;
+        return !ts || fts > ts;
+    }
+
     // ---- Render markers ----
     function renderMarkers() {
         markers.forEach(m => map.removeLayer(m));
@@ -115,9 +122,10 @@
             legendBar.style.background = 'linear-gradient(to right, #10b981, #eab308, #ef4444)';
         }
 
-        // Determine best server per country for the current metric
+        // Determine best server per country for the current metric (exclude failed)
         const bestByCountry = {};
         filtered.forEach(s => {
+            if (isFailed(s)) return;
             const val = getValue(s, metric);
             if (val == null || val <= 0) return;
             const c = s.country;
@@ -127,6 +135,7 @@
         });
         const bestSet = new Set();
         filtered.forEach(s => {
+            if (isFailed(s)) { s._isBest = false; return; }
             const val = getValue(s, metric);
             if (val != null && val > 0 && val === bestByCountry[s.country] && !bestSet.has(s.country)) {
                 bestSet.add(s.country);
@@ -204,6 +213,7 @@
             : `${withData} servers with ${isSpeed ? 'speed' : 'latency'} data`;
 
         updateDistanceOverlay();
+        updateBestVisible();
     }
 
     // ---- Load data ----
@@ -264,8 +274,64 @@
         }
     }
 
+    // Best visible server feature
+    const bestVisibleCheckbox = document.getElementById('bestVisibleServer');
+    let bestVisibleMarker = null;
+
+    function updateBestVisible() {
+        // Remove previous marker
+        if (bestVisibleMarker) { map.removeLayer(bestVisibleMarker); bestVisibleMarker = null; }
+        if (!bestVisibleCheckbox || !bestVisibleCheckbox.checked) return;
+
+        const metric = metricSelect.value;
+        const isSpeed = metric !== 'latency';
+        const bounds = map.getBounds();
+
+        let best = null;
+        serverData.forEach(s => {
+            if (s.lat == null || s.lon == null) return;
+            if (!bounds.contains([s.lat, s.lon])) return;
+            if (isFailed(s)) return;
+            const val = getValue(s, metric);
+            if (val == null || val <= 0) return;
+            if (!best || (isSpeed ? val > best.val : val < best.val)) {
+                best = { server: s, val: val };
+            }
+        });
+
+        if (!best) return;
+        const s = best.server;
+        const label = isSpeed ? 'Fastest' : 'Lowest latency';
+        const valStr = isSpeed
+            ? s.rx_speed_mbps != null ? s.rx_speed_mbps.toFixed(1) + ' Mbps' : ''
+            : s.latency_ms != null ? s.latency_ms.toFixed(2) + ' ms' : '';
+        const icon = L.divIcon({
+            className: '',
+            html: `<div style="position:relative;width:28px;height:28px;">
+                <div style="position:absolute;width:28px;height:28px;border-radius:50%;border:2px solid #fbbf24;animation:origin-pulse 2s ease-out infinite;"></div>
+                <div style="width:28px;height:28px;border-radius:50%;background:radial-gradient(circle,#fbbf24 30%,rgba(251,191,36,0.15) 100%);border:2px solid #fde68a;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 14px rgba(251,191,36,0.6);">&#11088;</div>
+            </div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+        bestVisibleMarker = L.marker([s.lat, s.lon], { icon: icon, zIndexOffset: 999 }).addTo(map);
+        bestVisibleMarker.bindTooltip(`⭐ ${label} visible: ${s.domain} (${valStr})`, {
+            permanent: false, direction: 'top', className: 'best-tooltip'
+        });
+        bestVisibleMarker.bindPopup(`
+            <div class="popup-domain">⭐ ${label} Visible Server</div>
+            <div class="popup-row"><span class="popup-label">Domain</span> <span class="popup-val">${s.domain}</span></div>
+            <div class="popup-row"><span class="popup-label">IP</span> <span class="popup-val">${s.ip}</span></div>
+            <div class="popup-row"><span class="popup-label">Location</span> <span class="popup-val">${s.city}, ${s.country}</span></div>
+            <div class="popup-row"><span class="popup-label">Latency</span> <span class="popup-val">${s.latency_ms != null ? s.latency_ms.toFixed(2) + ' ms' : 'N/A'}</span></div>
+            <div class="popup-row"><span class="popup-label">Download</span> <span class="popup-val">${s.rx_speed_mbps != null ? s.rx_speed_mbps.toFixed(1) + ' Mbps' : 'N/A'}</span></div>
+            <div class="popup-row"><span class="popup-label">Upload</span> <span class="popup-val">${s.tx_speed_mbps != null ? s.tx_speed_mbps.toFixed(1) + ' Mbps' : 'N/A'}</span></div>
+        `);
+    }
+
     metricSelect.addEventListener('change', renderMarkers);
     if (showAllCheckbox) showAllCheckbox.addEventListener('change', renderMarkers);
+    if (bestVisibleCheckbox) bestVisibleCheckbox.addEventListener('change', () => { updateBestVisible(); });
 
     // ---- Distance overlay ----
     function showDistanceTo(s) {
@@ -313,7 +379,7 @@
             lastDistanceTarget = null;
         }
     }
-    map.on('moveend', updateDistanceOverlay);
+    map.on('moveend', () => { updateDistanceOverlay(); updateBestVisible(); });
 
     // Reset view button — fly to vantage point at country zoom
     document.getElementById('resetViewBtn').addEventListener('click', () => {

@@ -415,7 +415,9 @@ def get_results_geo():
                     'city': entry.get('city', 'Unknown'),
                     'latency_ms': entry.get('latency_ms'),
                     'rx_speed_mbps': entry.get('rx_speed_mbps'),
-                    'tx_speed_mbps': entry.get('tx_speed_mbps')
+                    'tx_speed_mbps': entry.get('tx_speed_mbps'),
+                    'speedtest_timestamp': entry.get('speedtest_timestamp'),
+                    'speedtest_failed_timestamp': entry.get('speedtest_failed_timestamp')
                 })
         finally:
             reader.close()
