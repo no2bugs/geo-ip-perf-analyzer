@@ -263,6 +263,8 @@ class Scanner:
             # Preserve existing speedtest timestamps if carrying over old speed values
             speedtest_ts = None
             speedtest_failed_ts = None
+            speedtest_failed_reason = None
+            old_history = None
             if domain in existing_results and isinstance(existing_results[domain], dict):
                 old_ts = existing_results[domain].get('speedtest_timestamp')
                 if old_ts:
@@ -270,6 +272,8 @@ class Scanner:
                 old_failed_ts = existing_results[domain].get('speedtest_failed_timestamp')
                 if old_failed_ts:
                     speedtest_failed_ts = old_failed_ts
+                speedtest_failed_reason = existing_results[domain].get('speedtest_failed_reason')
+                old_history = existing_results[domain].get('history')
 
             entry = {
                 'latency_ms': item[1],
@@ -283,6 +287,10 @@ class Scanner:
             }
             if speedtest_failed_ts:
                 entry['speedtest_failed_timestamp'] = speedtest_failed_ts
+            if speedtest_failed_reason:
+                entry['speedtest_failed_reason'] = speedtest_failed_reason
+            if old_history:
+                entry['history'] = old_history
             endpoints_dict[domain] = entry
 
         if endpoints_list:
@@ -440,12 +448,12 @@ class Scanner:
 
         return ('ok', (domain, avg_latency, ip, country, city, None, None))
 
-    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None, stop_event: threading.Event = None, results_file: str = None):
+    def _perform_vpn_speedtests(self, endpoints_dict: Dict, ovpn_dir: str, username: str, password: str, progress: Dict, batch_size: int = 20, interactive: bool = True, selected_domains: List[str] = None, stop_event: threading.Event = None, results_file: str = None, source: str = 'user'):
         """Perform VPN speedtests on endpoints that have matching .ovpn files."""
         from generate.vpn_batch_helper import _perform_vpn_speedtests_batch
         return _perform_vpn_speedtests_batch(
             endpoints_dict, ovpn_dir, username, password, progress,
             batch_size, interactive, selected_domains, self.formatting,
-            stop_event=stop_event, results_file=results_file
+            stop_event=stop_event, results_file=results_file, source=source
         )
 

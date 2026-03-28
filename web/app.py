@@ -1208,6 +1208,27 @@ def get_ovpn_config(domain):
 
 
 # ============================================================
+# Server History API
+# ============================================================
+@app.route('/api/server/<domain>/history')
+def get_server_history(domain):
+    """Return the history array for a given domain."""
+    if not all(c.isalnum() or c in '.-' for c in domain):
+        return jsonify({'status': 'error', 'message': 'Invalid domain'}), 400
+    if not os.path.exists(RESULTS_FILE):
+        return jsonify({'status': 'ok', 'history': []})
+    try:
+        with open(RESULTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        entry = data.get(domain)
+        if not entry or not isinstance(entry, dict):
+            return jsonify({'status': 'ok', 'history': []})
+        return jsonify({'status': 'ok', 'history': entry.get('history', [])})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# ============================================================
 # Geo Results API (for map view)
 # ============================================================
 @app.route('/api/results/geo')
@@ -2103,7 +2124,7 @@ def scheduled_vpn_speedtest():
             results, VPN_OVPN_DIR, VPN_USERNAME, VPN_PASSWORD,
             scan_progress, batch_size=999, interactive=False,
             selected_domains=all_domains, stop_event=stop_event,
-            results_file=RESULTS_FILE
+            results_file=RESULTS_FILE, source='scheduled'
         ) or {}
         # Final save (results_file handles incremental saves already)
         _tmp = RESULTS_FILE + '.tmp'

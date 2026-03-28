@@ -1,6 +1,6 @@
 """VPN speedtest helper - batch processing logic."""
 
-def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None, results_file=None):
+def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None, results_file=None, source='user'):
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
     import os
     import json
@@ -97,6 +97,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                 
                 # Connect to VPN
                 ovpn_file = ovpn_files[domain]
+                now_iso = datetime.now(timezone.utc).isoformat()
                 if vpn_manager.connect(ovpn_file, username, password):
                     # Run speedtest
                     result = speedtest.run_speedtest()
@@ -104,21 +105,31 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         if isinstance(endpoints_dict[domain], dict):
                             endpoints_dict[domain]['rx_speed_mbps'] = result['download_mbps']
                             endpoints_dict[domain]['tx_speed_mbps'] = result['upload_mbps']
-                            endpoints_dict[domain]['speedtest_timestamp'] = datetime.now(timezone.utc).isoformat()
+                            endpoints_dict[domain]['speedtest_timestamp'] = now_iso
                             endpoints_dict[domain].pop('speedtest_failed_timestamp', None)
+                            endpoints_dict[domain].pop('speedtest_failed_reason', None)
+                            history = endpoints_dict[domain].setdefault('history', [])
+                            history.append({'timestamp': now_iso, 'event': 'success', 'source': source,
+                                            'download_mbps': result['download_mbps'], 'upload_mbps': result['upload_mbps']})
                         
-                        print(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
-                        logger.info(f"✓ {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
+                        print(f"\u2713 {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
+                        logger.info(f"\u2713 {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
                         succeeded += 1
                     else:
                         if isinstance(endpoints_dict[domain], dict):
-                            endpoints_dict[domain]['speedtest_failed_timestamp'] = datetime.now(timezone.utc).isoformat()
+                            endpoints_dict[domain]['speedtest_failed_timestamp'] = now_iso
+                            endpoints_dict[domain]['speedtest_failed_reason'] = 'speedtest_failed'
+                            history = endpoints_dict[domain].setdefault('history', [])
+                            history.append({'timestamp': now_iso, 'event': 'speedtest_failed', 'source': source})
                         logger.info(f"\u2717 {domain}: Speedtest failed (no result)")
                         speedtest_failed += 1
                 else:
                     if isinstance(endpoints_dict[domain], dict):
-                        endpoints_dict[domain]['speedtest_failed_timestamp'] = datetime.now(timezone.utc).isoformat()
-                    logger.info(f"✗ {domain}: VPN connection failed")
+                        endpoints_dict[domain]['speedtest_failed_timestamp'] = now_iso
+                        endpoints_dict[domain]['speedtest_failed_reason'] = 'vpn_failed'
+                        history = endpoints_dict[domain].setdefault('history', [])
+                        history.append({'timestamp': now_iso, 'event': 'vpn_failed', 'source': source})
+                    logger.info(f"\u2717 {domain}: VPN connection failed")
                     vpn_failed += 1
                     
                 # Disconnect VPN

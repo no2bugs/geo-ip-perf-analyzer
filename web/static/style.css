@@ -1358,6 +1358,87 @@ tr:hover td {
     overflow: auto;
 }
 
+/* Modal tabs */
+.modal-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0.75rem;
+}
+.modal-tab {
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: color 0.2s, border-color 0.2s;
+}
+.modal-tab:hover {
+    color: var(--text-primary);
+}
+.modal-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+
+/* History list */
+.history-list {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+.history-empty {
+    color: var(--text-secondary);
+    padding: 2rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+.history-entry {
+    display: grid;
+    grid-template-columns: 1.2rem 1fr auto auto;
+    gap: 0.5rem;
+    align-items: baseline;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.82rem;
+}
+.history-entry:last-child {
+    border-bottom: none;
+}
+.history-icon {
+    font-weight: bold;
+    text-align: center;
+}
+.history-success .history-icon {
+    color: #4caf50;
+}
+.history-failure .history-icon {
+    color: #f0c040;
+}
+.history-desc {
+    color: var(--text-primary);
+}
+.history-source {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.06);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+}
+.history-date {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.history-detail {
+    grid-column: 2 / -1;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-family: 'Courier New', monospace;
+}
+
 .ovpn-config-pre {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-color);

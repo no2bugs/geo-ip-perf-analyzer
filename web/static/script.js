@@ -361,7 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         tx_speed: entry.tx_speed_mbps,
                         scan_timestamp: entry.scan_timestamp || null,
                         speedtest_timestamp: entry.speedtest_timestamp || null,
-                        speedtest_failed_timestamp: entry.speedtest_failed_timestamp || null
+                        speedtest_failed_timestamp: entry.speedtest_failed_timestamp || null,
+                        speedtest_failed_reason: entry.speedtest_failed_reason || null
                     };
                 }
                 // Old format (array)
@@ -446,6 +447,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hasRecentFailure) {
                 indexTd.textContent = '\u26a0 ' + (actualIndex + 1);
                 indexTd.style.color = '#f0c040';
+                const reasonMap = {vpn_failed: 'VPN connection failed', speedtest_failed: 'Speedtest failed'};
+                const reason = reasonMap[item.speedtest_failed_reason] || 'Failed';
+                indexTd.title = reason + '\n' + failedTitle;
             } else {
                 indexTd.textContent = actualIndex + 1;
             }
@@ -1137,32 +1141,99 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ========================================
-    // OVPN Config Viewer (domain click)
+    // Domain Detail Modal (tabbed: History + OVPN Config)
     // ========================================
     const ovpnModal = document.getElementById('ovpnConfigModal');
     const ovpnTitle = document.getElementById('ovpnConfigTitle');
     const ovpnContent = document.getElementById('ovpnConfigContent');
     const closeOvpnBtn = document.getElementById('closeOvpnModal');
     const copyOvpnBtn = document.getElementById('copyOvpnBtn');
+    const historyContent = document.getElementById('historyContent');
+    const historyTab = document.getElementById('historyTabContent');
+    const ovpnTab = document.getElementById('ovpnTabContent');
+    const modalTabs = document.querySelectorAll('.modal-tab');
+
+    function switchModalTab(tabName) {
+        modalTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+        historyTab.style.display = tabName === 'history' ? '' : 'none';
+        historyTab.classList.toggle('active', tabName === 'history');
+        ovpnTab.style.display = tabName === 'ovpn' ? '' : 'none';
+        ovpnTab.classList.toggle('active', tabName === 'ovpn');
+    }
+
+    function renderHistory(events) {
+        if (!events || events.length === 0) {
+            return '<div class="history-empty">No history recorded yet</div>';
+        }
+        // Show newest first
+        const sorted = [...events].reverse();
+        return sorted.map(ev => {
+            const date = formatTimestamp(ev.timestamp);
+            const sourceLabel = ev.source === 'scheduled' ? 'Scheduled' : 'User';
+            let icon, desc, detail = '';
+            if (ev.event === 'success') {
+                icon = '\u2713';
+                desc = 'Speedtest succeeded';
+                detail = `DL: ${ev.download_mbps} Mbps, UL: ${ev.upload_mbps} Mbps`;
+            } else if (ev.event === 'vpn_failed') {
+                icon = '\u2717';
+                desc = 'VPN connection failed';
+            } else if (ev.event === 'speedtest_failed') {
+                icon = '\u2717';
+                desc = 'Speedtest failed';
+            } else {
+                icon = '\u2022';
+                desc = ev.event;
+            }
+            const cls = ev.event === 'success' ? 'history-success' : 'history-failure';
+            return `<div class="history-entry ${cls}">` +
+                `<span class="history-icon">${icon}</span>` +
+                `<span class="history-desc">${desc}</span>` +
+                `<span class="history-source">${sourceLabel}</span>` +
+                `<span class="history-date">${date}</span>` +
+                (detail ? `<span class="history-detail">${detail}</span>` : '') +
+                `</div>`;
+        }).join('');
+    }
 
     if (ovpnModal) {
+        modalTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchModalTab(tab.dataset.tab);
+                // Lazy-load OVPN config on first switch
+                if (tab.dataset.tab === 'ovpn' && ovpnContent.dataset.loaded !== 'true') {
+                    const domain = ovpnTitle.textContent;
+                    ovpnContent.textContent = 'Loading...';
+                    fetch(`/api/ovpn/config/${encodeURIComponent(domain)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            ovpnContent.textContent = data.status === 'ok' ? data.content : (data.message || 'Not found');
+                            ovpnContent.dataset.loaded = 'true';
+                        })
+                        .catch(() => { ovpnContent.textContent = 'Failed to load config'; });
+                }
+            });
+        });
+
         resultsBody.addEventListener('click', async (e) => {
             const link = e.target.closest('.domain-link');
             if (!link) return;
             const domain = link.dataset.domain;
             ovpnTitle.textContent = domain;
-            ovpnContent.textContent = 'Loading...';
+            ovpnContent.dataset.loaded = 'false';
+            ovpnContent.textContent = '';
+
+            // Reset to History tab
+            switchModalTab('history');
+            historyContent.innerHTML = 'Loading...';
             ovpnModal.style.display = 'flex';
+
             try {
-                const resp = await fetch(`/api/ovpn/config/${encodeURIComponent(domain)}`);
+                const resp = await fetch(`/api/server/${encodeURIComponent(domain)}/history`);
                 const data = await resp.json();
-                if (data.status === 'ok') {
-                    ovpnContent.textContent = data.content;
-                } else {
-                    ovpnContent.textContent = data.message || 'Not found';
-                }
+                historyContent.innerHTML = data.status === 'ok' ? renderHistory(data.history) : 'Failed to load history';
             } catch (e) {
-                ovpnContent.textContent = 'Failed to load config';
+                historyContent.innerHTML = 'Failed to load history';
             }
         });
 
