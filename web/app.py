@@ -824,6 +824,8 @@ def get_statistics():
     for domain, entry in data.items():
         if not isinstance(entry, dict):
             continue
+        if state._is_failed_server(entry):
+            continue
         rx = entry.get('rx_speed_mbps')
         if rx and rx > 0:
             best_per_country.append({
