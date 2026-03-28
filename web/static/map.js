@@ -6,12 +6,38 @@
 
     const map = L.map('map', { zoomControl: true }).setView([48, 10], 4);
 
-    // Dark tile layer (CartoDB Dark Matter — free, no API key)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Tile layers
+    const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 19
-    }).addTo(map);
+    });
+    const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    });
+
+    // Default to light; restore preference from localStorage
+    const savedMapStyle = localStorage.getItem('mapTileStyle') || 'light';
+    if (savedMapStyle === 'dark') { darkTiles.addTo(map); } else { lightTiles.addTo(map); }
+
+    // Map style toggle
+    const mapStyleSelect = document.getElementById('mapStyleSelect');
+    if (mapStyleSelect) {
+        mapStyleSelect.value = savedMapStyle;
+        mapStyleSelect.addEventListener('change', () => {
+            const style = mapStyleSelect.value;
+            localStorage.setItem('mapTileStyle', style);
+            if (style === 'dark') {
+                map.removeLayer(lightTiles);
+                darkTiles.addTo(map);
+            } else {
+                map.removeLayer(darkTiles);
+                lightTiles.addTo(map);
+            }
+        });
+    }
 
     const metricSelect = document.getElementById('metricSelect');
     const legendLow = document.getElementById('legendLow');

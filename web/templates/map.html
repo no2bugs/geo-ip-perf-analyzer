@@ -290,6 +290,11 @@
 
         <main>
             <div class="map-controls">
+                <label style="font-size:0.85rem; color: var(--text-secondary);" title="Switch between light and dark map tiles">Map:</label>
+                <select id="mapStyleSelect" class="metric-select">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
                 <label style="font-size:0.85rem; color: var(--text-secondary);" title="Choose which metric determines marker colors on the map">Color by:</label>
                 <select id="metricSelect" class="metric-select">
                     <option value="latency">Latency (ms)</option>
@@ -301,7 +306,7 @@
                     Show all servers
                 </label>
                 <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;" title="Highlight the single best server currently visible on the map (recalculates on zoom/pan)">
-                    <input type="checkbox" id="bestVisibleServer" style="accent-color:#fbbf24;">
+                    <input type="checkbox" id="bestVisibleServer" style="accent-color:#fbbf24;" checked>
                     Best visible
                 </label>
                 <div class="map-legend">
