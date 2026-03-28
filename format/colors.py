@@ -29,11 +29,7 @@ class Format:
                 try:
                     choices.append(formats[item])
                 except KeyError:
-                    print('\nError: unknown format choice', item)
-                    print('Pick from:')
-                    for i in formats:
-                        print('-', i)
-                    sys.exit(1)
+                    raise ValueError(f'Unknown format choice: {item}. Pick from: {", ".join(formats)}')
 
             formatting = ''.join(choices)
 

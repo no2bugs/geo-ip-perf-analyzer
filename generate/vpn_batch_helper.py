@@ -1,21 +1,21 @@
 """VPN speedtest helper - batch processing logic."""
 
+import os
+import json
+import sys
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+
+from generate.vpn import VPNManager
+from generate.speedtest import SpeedTest
+
 MAX_HISTORY = 50  # Keep last N history entries per server
+logger = logging.getLogger(__name__)
 
 def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None, results_file=None, source='user'):
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
-    import os
-    import json
-    
     batch_size = max(1, min(9999, int(batch_size)))
-    import logging
-    from datetime import datetime, timezone
-    from pathlib import Path
-    from generate.vpn import VPNManager
-    from generate.speedtest import SpeedTest
-    
-    import sys
-    logger = logging.getLogger(__name__)
     
     # Find matching .ovpn files
     ovpn_path = Path(ovpn_dir)

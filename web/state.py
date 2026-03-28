@@ -193,9 +193,18 @@ def _deep_merge(base, override):
             base[key] = val
     return base
 
+_config_cache = None
+_config_cache_mtime = 0
+_config_cache_lock = threading.Lock()
+
 def load_config():
+    global _config_cache, _config_cache_mtime
     if os.path.exists(CONFIG_FILE):
         try:
+            mtime = os.path.getmtime(CONFIG_FILE)
+            with _config_cache_lock:
+                if _config_cache is not None and mtime == _config_cache_mtime:
+                    return copy.deepcopy(_config_cache)
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f)
                 if isinstance(cfg, dict):
@@ -207,16 +216,26 @@ def load_config():
                     # Deep-merge saved config into defaults so new keys are always present
                     merged = copy.deepcopy(DEFAULT_CONFIG)
                     _deep_merge(merged, cfg)
+                    with _config_cache_lock:
+                        _config_cache = copy.deepcopy(merged)
+                        _config_cache_mtime = mtime
                     return merged
         except Exception as e:
             logging.error(f"Failed to load config: {e}")
     return copy.deepcopy(DEFAULT_CONFIG)
+
+def invalidate_config_cache():
+    global _config_cache, _config_cache_mtime
+    with _config_cache_lock:
+        _config_cache = None
+        _config_cache_mtime = 0
 
 def save_config(config):
     tmp = CONFIG_FILE + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
     os.replace(tmp, CONFIG_FILE)
+    invalidate_config_cache()
 
 def _format_duration(seconds):
     """Format seconds into human-readable duration like '1 hour and 27 minutes'."""
@@ -277,6 +296,7 @@ scan_start_time = None
 _queue_processor_started = False
 _queue_active_job = None
 _queue_file_lock = threading.Lock()
+_queue_processor_lock = threading.Lock()
 
 # File-based state sharing for multi-worker gunicorn
 SCAN_STATE_FILE = os.path.join(tempfile.gettempdir(), 'geo_ip_scan_state.json')
@@ -344,7 +364,7 @@ def _state_flusher():
         except Exception:
             pass
         _flush_scan_state()
-        time.sleep(1)
+        time.sleep(3)
     _flush_scan_state()
 
 # ============================================================
@@ -409,9 +429,10 @@ def _queue_clear_all():
 def _ensure_queue_processor():
     """Start the queue processor thread if not already running."""
     global _queue_processor_started
-    if _queue_processor_started:
-        return
-    _queue_processor_started = True
+    with _queue_processor_lock:
+        if _queue_processor_started:
+            return
+        _queue_processor_started = True
     t = threading.Thread(target=_queue_processor_loop, daemon=True)
     t.start()
 

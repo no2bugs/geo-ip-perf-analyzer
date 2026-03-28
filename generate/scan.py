@@ -1,7 +1,8 @@
 """Latency scanning and GeoIP enrichment for target endpoints."""
 
+import json
 import os
-from validate.file import exists as file_exists
+from pathlib import Path
 from format.colors import Format
 from datetime import datetime, timedelta, timezone
 from collections import OrderedDict
@@ -9,8 +10,6 @@ from subprocess import run, PIPE
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional, Tuple
 import threading
-from json import dump
-from pathlib import Path
 import logging
 import geoip2.database
 import platform
@@ -39,12 +38,12 @@ class Scanner:
         print("Creating json file:", json_file)
         tmp = json_file + '.tmp'
         with Path(tmp).open('w', encoding='utf-8') as outfile:
-            dump(data, outfile, indent=2)
+            json.dump(data, outfile, indent=2)
         os.replace(tmp, json_file)
         print("DONE")
 
     def get_servers_list(self) -> Optional[List[str]]:
-        if not file_exists(self.targets_file):
+        if not Path(self.targets_file).is_file():
             return None
 
         logger.info("Reading targets from: %s", self.targets_file)
@@ -93,7 +92,6 @@ class Scanner:
         existing_results = {}
         if self.results_json and os.path.exists(self.results_json):
             try:
-                import json
                 with open(self.results_json, 'r', encoding='utf-8') as f:
                     existing_results = json.load(f)
                     # Handle old list format conversion

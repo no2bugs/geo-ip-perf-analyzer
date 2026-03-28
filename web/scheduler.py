@@ -29,19 +29,19 @@ DAY_MAP = {
 
 
 def _resolve_scheduled_domains():
-    """Resolve the domain list for the scheduled VPN speedtest. Returns list or None on error."""
+    """Resolve the domain list for the scheduled VPN speedtest. Returns (domains, results_dict) or (None, None) on error."""
     if not os.path.exists(state.RESULTS_FILE):
         logging.error("Scheduled VPN speedtest skipped: no results.json (run a scan first)")
         state.send_ntfy('vpn_speedtest_error', 'VPN Speedtest Failed',
                         'No results.json found. Run a scan first.', priority='high')
-        return None
+        return None, None
     try:
         with open(state.RESULTS_FILE, 'r', encoding='utf-8') as f:
             results = json.load(f)
         all_domains = list(results.keys()) if isinstance(results, dict) else []
         if not all_domains:
             logging.error("Scheduled VPN speedtest skipped: no domains in results")
-            return None
+            return None, None
         config = state.load_config()
         vpn_countries = config.get('schedule', {}).get('vpn_speedtest', {}).get('countries', [])
         if vpn_countries:
@@ -49,15 +49,15 @@ def _resolve_scheduled_domains():
             all_domains = [d for d in all_domains if isinstance(results.get(d), dict) and results[d].get('country', '').casefold() in country_set]
             if not all_domains:
                 logging.error("Scheduled VPN speedtest skipped: no servers match selected countries")
-                return None
-        return all_domains
+                return None, None
+        return all_domains, results
     except Exception as e:
         logging.error(f"Scheduled VPN speedtest failed to resolve domains: {e}")
-        return None
+        return None, None
 
 
 def scheduled_vpn_speedtest():
-    all_domains = _resolve_scheduled_domains()
+    all_domains, results = _resolve_scheduled_domains()
     if not all_domains:
         return
 
@@ -69,8 +69,6 @@ def scheduled_vpn_speedtest():
         return
 
     try:
-        with open(state.RESULTS_FILE, 'r', encoding='utf-8') as f:
-            results = json.load(f)
         logging.info(f"Starting scheduled VPN speedtest on {len(all_domains)} servers...")
         state.scan_logger.info(f'Scheduled VPN speedtest started: {len(all_domains)} servers')
         vpn_start_time = time.time()
@@ -95,10 +93,6 @@ def scheduled_vpn_speedtest():
             selected_domains=all_domains, stop_event=state.stop_event,
             results_file=state.RESULTS_FILE, source='scheduled'
         ) or {}
-        _tmp = state.RESULTS_FILE + '.tmp'
-        with open(_tmp, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=2)
-        os.replace(_tmp, state.RESULTS_FILE)
         duration = state._format_duration(time.time() - vpn_start_time)
         report_msg = f"{report.get('succeeded', 0)} succeeded, {report.get('vpn_failed', 0)} VPN failed, {report.get('speedtest_failed', 0)} speedtest failed"
         if state.stop_event.is_set():

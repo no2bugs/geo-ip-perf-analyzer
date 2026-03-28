@@ -7,8 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-import validate.python_version
-from validate.file import exists as file_exists
 from generate.scan import Scanner
 from generate.report import Analyze
 from format.colors import Format
@@ -231,7 +229,7 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, in
     """Run a full scan and write results."""
     from dotenv import dotenv_values
     
-    if not (file_exists('GeoLite2-City.mmdb') and file_exists('GeoLite2-Country.mmdb')):
+    if not (Path('GeoLite2-City.mmdb').is_file() and Path('GeoLite2-Country.mmdb').is_file()):
         formatting.output('bold', 'red')
         logger.error("Error: GeoLite DB files not found in project root.")
         logger.error("Download them from:")
@@ -239,7 +237,7 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, in
         formatting.output('reset')
         sys.exit(1)
 
-    if not file_exists(targets_fle):
+    if not Path(targets_fle).is_file():
         formatting.output('bold', 'red')
         logger.error('Error: Nothing to scan. Targets list file "%s" not found', targets_fle)
         logger.error('Create "%s" with one domain or IP per line', targets_fle)
@@ -258,7 +256,7 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, in
     vpn_username = ''
     vpn_password = ''
     if args.vpn_speedtest:
-        if file_exists(args.vpn_env_file):
+        if Path(args.vpn_env_file).is_file():
             env_config = dotenv_values(args.vpn_env_file)
             vpn_username = env_config.get('VPN_USERNAME', '')
             vpn_password = env_config.get('VPN_PASSWORD', '')
@@ -281,7 +279,7 @@ def perform_scan(args, targets_fle, results_fle, country_exclusions, pings=1, in
 
 def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_fld, mn_latency, mx_latency):
     """Render report output based on results.json and CLI flags."""
-    if not file_exists(results_file):
+    if not Path(results_file).is_file():
         formatting.output('bold', 'red')
         logger.error('Error: Unable to produce report. Latency scan results file "%s" is missing', results_file)
         logger.error('Perform --scan to generate new IP/domain performance report (%s)', results_file)
@@ -305,6 +303,10 @@ def produce_report(args, results_file, records_limit, stats_sort_fld, res_sort_f
 
 if __name__ == "__main__":
     """Entry point."""
+    if sys.version_info < (3,):
+        print('Error: Python 3 is required')
+        sys.exit(1)
+
     res_file = 'results.json'
     excl_file = 'exclude_countries.list'
 
