@@ -292,6 +292,7 @@
             if (s.lat == null || s.lon == null) return;
             if (!bounds.contains([s.lat, s.lon])) return;
             if (isFailed(s)) return;
+            if (s._isBest) return; // skip already-highlighted best-per-country
             const val = getValue(s, metric);
             if (val == null || val <= 0) return;
             if (!best || (isSpeed ? val > best.val : val < best.val)) {

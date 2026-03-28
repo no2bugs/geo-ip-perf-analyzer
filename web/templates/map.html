@@ -223,8 +223,7 @@
         .fs-controls {
             position: absolute;
             top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 10px;
             z-index: 1000;
             background: rgba(15, 23, 42, 0.9);
             border: 1px solid rgba(148, 163, 184, 0.2);
@@ -291,25 +290,25 @@
 
         <main>
             <div class="map-controls">
-                <label style="font-size:0.85rem; color: var(--text-secondary);">Color by:</label>
+                <label style="font-size:0.85rem; color: var(--text-secondary);" title="Choose which metric determines marker colors on the map">Color by:</label>
                 <select id="metricSelect" class="metric-select">
                     <option value="latency">Latency (ms)</option>
                     <option value="rx_speed">Download (Mbps)</option>
                     <option value="tx_speed">Upload (Mbps)</option>
                 </select>
-                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;">
+                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;" title="Show servers that haven't been speed-tested yet (latency-only results)">
                     <input type="checkbox" id="showAllServers" style="accent-color:var(--accent-color,#3b82f6);">
                     Show all servers
+                </label>
+                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;" title="Highlight the single best server currently visible on the map (recalculates on zoom/pan)">
+                    <input type="checkbox" id="bestVisibleServer" style="accent-color:#fbbf24;">
+                    Best visible
                 </label>
                 <div class="map-legend">
                     <span id="legendLow">Fast</span>
                     <div class="legend-bar" id="legendBar"></div>
                     <span id="legendHigh">Slow</span>
                 </div>
-                <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;">
-                    <input type="checkbox" id="bestVisibleServer" style="accent-color:#fbbf24;">
-                    Best visible
-                </label>
                 <span class="map-stats" id="mapStats"></span>
             </div>
             <div class="map-container" id="mapContainer">
