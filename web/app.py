@@ -2367,9 +2367,16 @@ _clear_stale_state()
 # Detect vantage point once at startup (before VPN tunnels)
 _init_origin()
 
-# Initialize scheduler on startup
-apply_schedules()
-scheduler.start()
+# Initialize scheduler on startup — use file lock so only one gunicorn worker runs it
+import fcntl as _fcntl
+_sched_lock_file = open('/tmp/.geo-ip-scheduler.lock', 'w')
+try:
+    _fcntl.flock(_sched_lock_file, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+    apply_schedules()
+    scheduler.start()
+    logging.info('Scheduler started (this worker owns the lock)')
+except OSError:
+    logging.info('Scheduler skipped (another worker owns the lock)')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
