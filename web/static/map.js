@@ -183,7 +183,12 @@
                 const el = marker.getElement();
                 if (el) el.classList.add('best-marker');
                 const bestLabel = isSpeed ? 'Fastest' : 'Lowest latency';
-                marker.bindTooltip(`⭐ ${bestLabel} server in ${s.country}`, {
+                const metricVal = getValue(s, metric);
+                let metricStr = '';
+                if (metric === 'latency' && metricVal != null) metricStr = ' — ' + metricVal.toFixed(2) + ' ms';
+                else if (metric === 'rx_speed' && metricVal != null) metricStr = ' — ' + metricVal.toFixed(1) + ' Mbps ↓';
+                else if (metric === 'tx_speed' && metricVal != null) metricStr = ' — ' + metricVal.toFixed(1) + ' Mbps ↑';
+                marker.bindTooltip(`⭐ ${bestLabel} server in ${s.country}${metricStr}`, {
                     permanent: false, direction: 'top', className: 'best-tooltip'
                 });
             }
@@ -301,6 +306,13 @@
         });
 
         if (!best) return;
+
+        // Don't show best-visible if a best-per-country marker is visible in the same city
+        const visibleBestCountries = serverData.filter(s =>
+            s._isBest && s.lat != null && s.lon != null && bounds.contains([s.lat, s.lon])
+        );
+        if (visibleBestCountries.some(b => b.city === best.server.city)) return;
+
         const s = best.server;
         const label = isSpeed ? 'Fastest' : 'Lowest latency';
         const valStr = isSpeed
