@@ -347,7 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         rx_speed: entry.rx_speed_mbps,
                         tx_speed: entry.tx_speed_mbps,
                         scan_timestamp: entry.scan_timestamp || null,
-                        speedtest_timestamp: entry.speedtest_timestamp || null
+                        speedtest_timestamp: entry.speedtest_timestamp || null,
+                        speedtest_failed_timestamp: entry.speedtest_failed_timestamp || null
                     };
                 }
                 // Old format (array)
@@ -433,13 +434,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const scanTitle = item.scan_timestamp ? formatTimestamp(item.scan_timestamp) : '';
             const speedTitle = item.speedtest_timestamp ? formatTimestamp(item.speedtest_timestamp) : '';
+            const failedTitle = item.speedtest_failed_timestamp ? formatTimestamp(item.speedtest_failed_timestamp) : '';
+            const hasRecentFailure = failedTitle && (!speedTitle || item.speedtest_failed_timestamp > item.speedtest_timestamp);
 
             // Build cells safely using textContent to prevent XSS
             const domainTd = document.createElement('td');
             const domainStrong = document.createElement('strong');
             domainStrong.className = 'domain-link';
             domainStrong.dataset.domain = item.domain;
-            domainStrong.textContent = item.domain;
+            if (hasRecentFailure) {
+                domainStrong.textContent = '⚠ ' + item.domain;
+                domainStrong.style.color = '#f0c040';
+                let tip = 'Last failure: ' + failedTitle;
+                if (speedTitle) tip = 'Last success: ' + speedTitle + '\n' + tip;
+                domainTd.title = tip;
+            } else {
+                domainStrong.textContent = item.domain;
+            }
             domainTd.appendChild(domainStrong);
             row.appendChild(domainTd);
 
@@ -464,13 +475,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const dlTd = document.createElement('td');
             dlTd.className = 'ts-cell';
-            if (speedTitle) dlTd.title = 'Tested: ' + speedTitle;
+            if (speedTitle) {
+                dlTd.title = 'Successfully tested: ' + speedTitle;
+            } else if (failedTitle) {
+                dlTd.title = 'Last failure: ' + failedTitle;
+            }
             dlTd.textContent = dlSpeed;
             row.appendChild(dlTd);
 
             const ulTd = document.createElement('td');
             ulTd.className = 'ts-cell';
-            if (speedTitle) ulTd.title = 'Tested: ' + speedTitle;
+            if (speedTitle) {
+                ulTd.title = 'Successfully tested: ' + speedTitle;
+            } else if (failedTitle) {
+                ulTd.title = 'Last failure: ' + failedTitle;
+            }
             ulTd.textContent = ulSpeed;
             row.appendChild(ulTd);
             resultsBody.appendChild(row);

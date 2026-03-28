@@ -260,15 +260,18 @@ class Scanner:
                     if rx_speed is None: rx_speed = old_data.get('rx_speed_mbps')
                     if tx_speed is None: tx_speed = old_data.get('tx_speed_mbps')
             
-            # Preserve existing speedtest timestamp if carrying over old speed values
+            # Preserve existing speedtest timestamps if carrying over old speed values
             speedtest_ts = None
+            speedtest_failed_ts = None
             if domain in existing_results and isinstance(existing_results[domain], dict):
                 old_ts = existing_results[domain].get('speedtest_timestamp')
                 if old_ts:
-                    # Preserve timestamp for both succeeded (speed carried over) and failed tests
                     speedtest_ts = old_ts
+                old_failed_ts = existing_results[domain].get('speedtest_failed_timestamp')
+                if old_failed_ts:
+                    speedtest_failed_ts = old_failed_ts
 
-            endpoints_dict[domain] = {
+            entry = {
                 'latency_ms': item[1],
                 'ip': item[2],
                 'country': item[3],
@@ -278,6 +281,9 @@ class Scanner:
                 'scan_timestamp': datetime.now(timezone.utc).isoformat(),
                 'speedtest_timestamp': speedtest_ts
             }
+            if speedtest_failed_ts:
+                entry['speedtest_failed_timestamp'] = speedtest_failed_ts
+            endpoints_dict[domain] = entry
 
         if endpoints_list:
             # Merge new results into existing, preserving servers not in this scan
