@@ -172,3 +172,31 @@ class TestScheduleNext:
         resp = client.get("/api/schedule/next")
         assert resp.status_code == 200
         assert isinstance(resp.get_json(), dict)
+
+
+# ===================================================================
+# Config robustness
+# ===================================================================
+
+class TestConfigRobustness:
+
+    def test_missing_new_schedule_key_default(self, client, paths):
+        """If saved config is missing a new schedule key, defaults fill in."""
+        import yaml
+        partial = {"schedule": {"vpn_speedtest": {"enabled": True, "interval": "daily", "time": "05:00"}}}
+        with open(paths["config"], "w") as f:
+            yaml.dump(partial, f)
+        resp = client.get("/api/config")
+        cfg = resp.get_json()
+        # latency_scan should exist with defaults even though not in saved config
+        assert "latency_scan" in cfg["schedule"]
+        assert cfg["schedule"]["latency_scan"]["enabled"] is False
+
+    def test_corrupt_config_falls_back(self, client, paths):
+        """A corrupt YAML file should fall back to defaults gracefully."""
+        with open(paths["config"], "w") as f:
+            f.write(": invalid: yaml: {{{\n")
+        resp = client.get("/api/config")
+        assert resp.status_code == 200
+        cfg = resp.get_json()
+        assert "schedule" in cfg

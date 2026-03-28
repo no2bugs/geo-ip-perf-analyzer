@@ -193,8 +193,8 @@ class TestVideoWallpaper:
 class TestOrigin:
 
     def test_origin_auto_cached(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setitem(app_mod._origin_cache, "auto", {
+        import web.state as state_mod
+        monkeypatch.setitem(state_mod._origin_cache, "auto", {
             "ip": "1.2.3.4",
             "lat": 52.52,
             "lon": 13.405,
@@ -209,8 +209,8 @@ class TestOrigin:
         assert data["lat"] == 52.52
 
     def test_origin_no_cache_error(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setitem(app_mod._origin_cache, "auto", None)
-        monkeypatch.setitem(app_mod._origin_cache, "manual", None)
+        import web.state as state_mod
+        monkeypatch.setitem(state_mod._origin_cache, "auto", None)
+        monkeypatch.setitem(state_mod._origin_cache, "manual", None)
         resp = client.get("/api/origin")
         assert resp.status_code == 500

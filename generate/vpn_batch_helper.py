@@ -1,5 +1,7 @@
 """VPN speedtest helper - batch processing logic."""
 
+MAX_HISTORY = 50  # Keep last N history entries per server
+
 def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, progress, batch_size=20, interactive=True, selected_domains=None, formatting=None, stop_event=None, results_file=None, source='user'):
     """Perform VPN speedtests on endpoints that have matching .ovpn files with batch processing."""
     import os
@@ -56,8 +58,6 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
 
     sorted_endpoints = sorted(matched_endpoints.items(), key=lambda x: get_latency(x[1]))
     
-    if formatting:
-        formatting.enabled = False
     print(f"Performing VPN speedtests on {len(sorted_endpoints)} endpoints...", file=sys.stderr, flush=True)
     logger.info(f"Performing VPN speedtests on {len(sorted_endpoints)} endpoints...")
     
@@ -111,6 +111,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                             history = endpoints_dict[domain].setdefault('history', [])
                             history.append({'timestamp': now_iso, 'event': 'success', 'source': source,
                                             'download_mbps': result['download_mbps'], 'upload_mbps': result['upload_mbps']})
+                            del history[:-MAX_HISTORY]
                         
                         print(f"\u2713 {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps", file=sys.stderr, flush=True)
                         logger.info(f"\u2713 {domain}: DL={result['download_mbps']} Mbps, UL={result['upload_mbps']} Mbps")
@@ -121,6 +122,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                             endpoints_dict[domain]['speedtest_failed_reason'] = 'speedtest_failed'
                             history = endpoints_dict[domain].setdefault('history', [])
                             history.append({'timestamp': now_iso, 'event': 'speedtest_failed', 'source': source})
+                            del history[:-MAX_HISTORY]
                         logger.info(f"\u2717 {domain}: Speedtest failed (no result)")
                         speedtest_failed += 1
                 else:
@@ -129,6 +131,7 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         endpoints_dict[domain]['speedtest_failed_reason'] = 'vpn_failed'
                         history = endpoints_dict[domain].setdefault('history', [])
                         history.append({'timestamp': now_iso, 'event': 'vpn_failed', 'source': source})
+                        del history[:-MAX_HISTORY]
                     logger.info(f"\u2717 {domain}: VPN connection failed")
                     vpn_failed += 1
                     
@@ -144,6 +147,13 @@ def _perform_vpn_speedtests_batch(endpoints_dict, ovpn_dir, username, password, 
                         pass
                 
             except Exception as e:
+                if isinstance(endpoints_dict.get(domain), dict):
+                    now_err = datetime.now(timezone.utc).isoformat()
+                    endpoints_dict[domain]['speedtest_failed_timestamp'] = now_err
+                    endpoints_dict[domain]['speedtest_failed_reason'] = 'error'
+                    history = endpoints_dict[domain].setdefault('history', [])
+                    history.append({'timestamp': now_err, 'event': 'error', 'source': source, 'detail': str(e)[:200]})
+                    del history[:-MAX_HISTORY]
                 errors += 1
                 vpn_manager.disconnect()
         

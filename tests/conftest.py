@@ -45,31 +45,31 @@ def _isolated_workspace(tmp_path, monkeypatch):
     Path(city_db).touch()
     Path(country_db).touch()
 
-    import web.app as app_mod
+    import web.state as state_mod
 
-    monkeypatch.setattr(app_mod, "RESULTS_FILE", results_file)
-    monkeypatch.setattr(app_mod, "SERVERS_FILE", servers_file)
-    monkeypatch.setattr(app_mod, "CONFIG_FILE", config_file)
-    monkeypatch.setattr(app_mod, "ENV_FILE", env_file)
-    monkeypatch.setattr(app_mod, "GEOIP_CITY", city_db)
-    monkeypatch.setattr(app_mod, "GEOIP_COUNTRY", country_db)
-    monkeypatch.setattr(app_mod, "VPN_OVPN_DIR", ovpn_dir)
-    monkeypatch.setattr(app_mod, "WALLPAPER_DIR", wallpaper_dir)
-    monkeypatch.setattr(app_mod, "LOG_DIR", log_dir)
-    monkeypatch.setattr(app_mod, "SCAN_STATE_FILE", scan_state)
-    monkeypatch.setattr(app_mod, "QUEUE_STATE_FILE", queue_state)
+    monkeypatch.setattr(state_mod, "RESULTS_FILE", results_file)
+    monkeypatch.setattr(state_mod, "SERVERS_FILE", servers_file)
+    monkeypatch.setattr(state_mod, "CONFIG_FILE", config_file)
+    monkeypatch.setattr(state_mod, "ENV_FILE", env_file)
+    monkeypatch.setattr(state_mod, "GEOIP_CITY", city_db)
+    monkeypatch.setattr(state_mod, "GEOIP_COUNTRY", country_db)
+    monkeypatch.setattr(state_mod, "VPN_OVPN_DIR", ovpn_dir)
+    monkeypatch.setattr(state_mod, "WALLPAPER_DIR", wallpaper_dir)
+    monkeypatch.setattr(state_mod, "LOG_DIR", log_dir)
+    monkeypatch.setattr(state_mod, "SCAN_STATE_FILE", scan_state)
+    monkeypatch.setattr(state_mod, "QUEUE_STATE_FILE", queue_state)
 
     # Reset global scan state between tests
-    monkeypatch.setattr(app_mod, "scan_active", False)
-    monkeypatch.setattr(app_mod, "scan_progress", {"done": 0, "total": 0, "status": "idle", "message": ""})
-    monkeypatch.setattr(app_mod, "last_error", None)
-    monkeypatch.setattr(app_mod, "scan_start_time", None)
-    app_mod.stop_event.clear()
-    monkeypatch.setattr(app_mod, "_queue_processor_started", False)
-    monkeypatch.setattr(app_mod, "_queue_active_job", None)
+    monkeypatch.setattr(state_mod, "scan_active", False)
+    monkeypatch.setattr(state_mod, "scan_progress", {"done": 0, "total": 0, "status": "idle", "message": ""})
+    monkeypatch.setattr(state_mod, "last_error", None)
+    monkeypatch.setattr(state_mod, "scan_start_time", None)
+    state_mod.stop_event.clear()
+    monkeypatch.setattr(state_mod, "_queue_processor_started", False)
+    monkeypatch.setattr(state_mod, "_queue_active_job", None)
 
     # Expose paths for use by individual tests
-    monkeypatch.setattr(app_mod, "_test_paths", {
+    monkeypatch.setattr(state_mod, "_test_paths", {
         "results": results_file,
         "servers": servers_file,
         "config": config_file,
@@ -100,8 +100,8 @@ def client():
 @pytest.fixture()
 def paths():
     """Return the redirected path dict (set by _isolated_workspace)."""
-    import web.app as app_mod
-    return app_mod._test_paths
+    import web.state as state_mod
+    return state_mod._test_paths
 
 
 @pytest.fixture()

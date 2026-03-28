@@ -134,8 +134,9 @@ class Scanner:
         failed_domains = set()
         lock = threading.Lock()
 
-        if self.exclude_countries():
-            excl_countries = sorted(self.exclude_countries())
+        loaded_excludes = self.exclude_countries()
+        if loaded_excludes:
+            excl_countries = sorted(loaded_excludes)
             logger.info("Excluding results from: %s", excl_countries)
         excl_countries_norm = {c.strip().casefold() for c in excl_countries} if excl_countries else None
         include_countries_norm = {c.strip().casefold() for c in include_countries} if include_countries else None

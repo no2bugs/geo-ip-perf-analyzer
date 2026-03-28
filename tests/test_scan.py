@@ -37,8 +37,8 @@ class TestScanStart:
         assert resp.get_json()["status"] == "started"
 
     def test_scan_already_running(self, client, sample_servers, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "scan_active", True)
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "scan_active", True)
         resp = client.post("/api/scan/start", json={})
         assert resp.status_code == 409
 
@@ -67,9 +67,9 @@ class TestScanStatus:
         assert data["active"] is False
 
     def test_active_status(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "scan_active", True)
-        monkeypatch.setattr(app_mod, "scan_progress", {
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "scan_active", True)
+        monkeypatch.setattr(state_mod, "scan_progress", {
             "done": 5, "total": 10, "status": "running", "message": "Scanning..."
         })
         resp = client.get("/api/scan/status")
@@ -88,8 +88,8 @@ class TestScanStop:
         assert resp.status_code == 400
 
     def test_stop_active_scan(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "scan_active", True)
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "scan_active", True)
         resp = client.post("/api/scan/stop")
         assert resp.status_code == 200
         assert resp.get_json()["status"] == "stopping"
@@ -102,8 +102,8 @@ class TestScanStop:
 class TestVpnSpeedtest:
 
     def test_conflict_when_scan_running(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "scan_active", True)
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "scan_active", True)
         resp = client.post("/api/vpn-speedtest", json={"domains": ["a.com"]})
         assert resp.status_code == 409
 
@@ -132,8 +132,8 @@ class TestQueue:
 
     def test_queue_add(self, client, monkeypatch):
         # Prevent the queue processor from actually starting
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "_ensure_queue_processor", lambda: None)
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "_ensure_queue_processor", lambda: None)
 
         resp = client.post("/api/queue/add", json={
             "domains": ["a.com", "b.com"],
@@ -150,8 +150,8 @@ class TestQueue:
         assert resp.status_code == 400
 
     def test_queue_clear(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "_ensure_queue_processor", lambda: None)
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "_ensure_queue_processor", lambda: None)
 
         # Add jobs
         client.post("/api/queue/add", json={"domains": ["x.com"], "type": "test", "label": "a"})
@@ -167,11 +167,45 @@ class TestQueue:
         assert resp.get_json()["pending"] == 0
 
     def test_queue_status_after_add(self, client, monkeypatch):
-        import web.app as app_mod
-        monkeypatch.setattr(app_mod, "_ensure_queue_processor", lambda: None)
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "_ensure_queue_processor", lambda: None)
 
         client.post("/api/queue/add", json={"domains": ["a.com", "b.com", "c.com"], "type": "untested", "label": "Batch"})
         resp = client.get("/api/queue/status")
         data = resp.get_json()
         assert data["pending"] == 1
         assert data["total_domains"] == 3
+
+    def test_queue_fifo_order(self, client, monkeypatch):
+        """Jobs are returned in FIFO (insertion) order."""
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "_ensure_queue_processor", lambda: None)
+
+        client.post("/api/queue/add", json={"domains": ["a.com"], "type": "t", "label": "first"})
+        client.post("/api/queue/add", json={"domains": ["b.com", "c.com"], "type": "t", "label": "second"})
+        resp = client.get("/api/queue/status")
+        jobs = resp.get_json()["jobs"]
+        assert len(jobs) == 2
+        assert jobs[0]["label"] == "first"
+        assert jobs[1]["label"] == "second"
+
+    def test_queue_add_while_scan_active(self, client, monkeypatch):
+        """Adding to queue should work even if a scan is active."""
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "scan_active", True)
+        monkeypatch.setattr(state_mod, "_ensure_queue_processor", lambda: None)
+
+        resp = client.post("/api/queue/add", json={"domains": ["x.com"], "type": "t", "label": "L"})
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "queued"
+
+    def test_queue_clear_does_not_stop_active(self, client, monkeypatch):
+        """Clear should remove pending items but not affect scan_active."""
+        import web.state as state_mod
+        monkeypatch.setattr(state_mod, "scan_active", True)
+        monkeypatch.setattr(state_mod, "_ensure_queue_processor", lambda: None)
+
+        client.post("/api/queue/add", json={"domains": ["a.com"], "type": "t", "label": "L"})
+        resp = client.post("/api/queue/clear")
+        assert resp.status_code == 200
+        assert state_mod.scan_active is True

@@ -202,3 +202,99 @@ class TestEdgeCases:
             }, f)
         resp = client.get("/api/countries")
         assert resp.status_code == 200
+
+
+# ===================================================================
+# Smoke tests — every endpoint responds without 500
+# ===================================================================
+
+class TestSmokeEndpoints:
+    """Minimal reachability checks for every API endpoint."""
+
+    def test_get_results_no_file(self, client):
+        assert client.get("/api/results").status_code == 200
+
+    def test_export_json_with_data(self, client, sample_results):
+        resp = client.get("/api/results/export/json")
+        assert resp.status_code == 200
+        assert "attachment" in resp.headers.get("Content-Disposition", "")
+
+    def test_export_csv_with_data(self, client, sample_results):
+        resp = client.get("/api/results/export/csv")
+        assert resp.status_code == 200
+        assert "text/csv" in resp.content_type
+
+    def test_prune_stale_get_not_allowed(self, client):
+        resp = client.get("/api/prune-stale")
+        assert resp.status_code == 405
+
+    def test_statistics_domains_with_data(self, client, sample_results):
+        resp = client.get("/api/statistics/domains")
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert "untested" in body
+        assert "failed" in body
+
+    def test_server_history_endpoint(self, client, sample_results):
+        resp = client.get("/api/server/server1.example.com/history")
+        assert resp.status_code == 200
+
+    def test_geolite_status(self, client):
+        resp = client.get("/api/geolite/status")
+        assert resp.status_code == 200
+
+    def test_ovpn_status(self, client):
+        resp = client.get("/api/ovpn/status")
+        assert resp.status_code == 200
+
+    def test_servers_get(self, client):
+        resp = client.get("/api/servers")
+        assert resp.status_code == 200
+
+    def test_config_get(self, client):
+        resp = client.get("/api/config")
+        assert resp.status_code == 200
+
+    def test_credentials_get(self, client):
+        resp = client.get("/api/credentials")
+        assert resp.status_code == 200
+
+    def test_theme_get(self, client):
+        resp = client.get("/api/theme")
+        assert resp.status_code == 200
+
+    def test_schedule_next(self, client):
+        resp = client.get("/api/schedule/next")
+        assert resp.status_code == 200
+
+    def test_logs_get(self, client):
+        resp = client.get("/api/logs")
+        assert resp.status_code == 200
+
+    def test_logs_files(self, client):
+        resp = client.get("/api/logs/files")
+        assert resp.status_code == 200
+
+    def test_logs_file_general(self, client, paths):
+        import os
+        # Create a log file so the endpoint can read it
+        with open(os.path.join(paths["log_dir"], "general.log"), "w") as f:
+            f.write("2026-03-28 10:00:00 [INFO] test line\n")
+        resp = client.get("/api/logs/file/general")
+        assert resp.status_code == 200
+
+    def test_logs_file_unknown(self, client):
+        resp = client.get("/api/logs/file/nonexistent")
+        assert resp.status_code == 404
+
+    def test_queue_status_empty(self, client):
+        resp = client.get("/api/queue/status")
+        assert resp.status_code == 200
+
+    def test_origin_endpoint(self, client, monkeypatch):
+        import web.state as state_mod
+        monkeypatch.setitem(state_mod._origin_cache, "auto", {
+            "ip": "1.2.3.4", "lat": 0, "lon": 0, "country": "US", "city": "NYC", "source": "auto"
+        })
+        resp = client.get("/api/origin")
+        assert resp.status_code == 200

@@ -302,3 +302,115 @@ class TestV1TopUpload:
         data = resp.get_json()
         speeds = [d["tx_speed_mbps"] for d in data]
         assert speeds == sorted(speeds, reverse=True)
+
+
+# ===================================================================
+# /api/server/<domain>/history
+# ===================================================================
+
+class TestServerHistory:
+
+    def test_valid_domain_with_history(self, client, paths):
+        data = {
+            "server1.example.com": {
+                "latency_ms": 25,
+                "ip": "1.2.3.4",
+                "country": "US",
+                "history": [
+                    {"event": "success", "timestamp": "2026-03-20T10:00:00"},
+                    {"event": "success", "timestamp": "2026-03-21T10:00:00"},
+                ]
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+        resp = client.get("/api/server/server1.example.com/history")
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["status"] == "ok"
+        assert len(body["history"]) == 2
+
+    def test_unknown_domain_empty(self, client, sample_results):
+        resp = client.get("/api/server/no-such-server.example.com/history")
+        assert resp.status_code == 200
+        assert resp.get_json()["history"] == []
+
+    def test_invalid_domain_chars(self, client):
+        resp = client.get("/api/server/bad;domain/history")
+        assert resp.status_code == 400
+
+    def test_no_results_file(self, client):
+        resp = client.get("/api/server/any.example.com/history")
+        assert resp.status_code == 200
+        assert resp.get_json()["history"] == []
+
+    def test_domain_without_history_key(self, client, sample_results):
+        resp = client.get("/api/server/server1.example.com/history")
+        assert resp.status_code == 200
+        assert resp.get_json()["history"] == []
+
+
+# ===================================================================
+# Status classification edge cases
+# ===================================================================
+
+class TestStatusClassification:
+    """Test that /api/statistics/domains classifies servers correctly
+    based on speedtest_timestamp, speedtest_failed_timestamp, and speed data."""
+
+    def test_old_success_newer_failure_is_failed(self, client, paths):
+        data = {
+            "s1.example.com": {
+                "ip": "1.1.1.1", "country": "US",
+                "rx_speed_mbps": 50, "tx_speed_mbps": 10,
+                "speedtest_timestamp": "2026-03-20T10:00:00",
+                "speedtest_failed_timestamp": "2026-03-21T10:00:00",
+                "speedtest_failed_reason": "vpn_failed"
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+        resp = client.get("/api/statistics/domains")
+        body = resp.get_json()
+        assert "s1.example.com" in body["failed"]
+        assert "s1.example.com" not in body["untested"]
+
+    def test_newer_success_after_old_failure_is_succeeded(self, client, paths):
+        data = {
+            "s1.example.com": {
+                "ip": "1.1.1.1", "country": "US",
+                "rx_speed_mbps": 100, "tx_speed_mbps": 20,
+                "speedtest_timestamp": "2026-03-22T10:00:00",
+                "speedtest_failed_timestamp": "2026-03-21T10:00:00",
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+        resp = client.get("/api/statistics/domains")
+        body = resp.get_json()
+        assert "s1.example.com" not in body["failed"]
+        assert "s1.example.com" not in body["untested"]
+
+    def test_no_speedtest_at_all_is_untested(self, client, paths):
+        data = {
+            "s1.example.com": {
+                "ip": "1.1.1.1", "country": "US",
+                "latency_ms": 10,
+                "rx_speed_mbps": None,
+                "tx_speed_mbps": None,
+                "speedtest_timestamp": None,
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+        resp = client.get("/api/statistics/domains")
+        body = resp.get_json()
+        assert "s1.example.com" in body["untested"]
+
+    def test_statistics_counts_match(self, client, sample_results):
+        """succeeded + failed + untested should sum to total servers for each country."""
+        resp_stats = client.get("/api/statistics")
+        stats = resp_stats.get_json()["countries"]
+        for c in stats:
+            assert c["succeeded"] + c["failed"] + c["untested"] == c["servers"], \
+                f"Counts don't sum for {c['country']}"

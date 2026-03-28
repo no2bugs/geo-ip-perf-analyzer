@@ -1,6 +1,6 @@
 # End-to-End Tests
 
-140 tests covering every API endpoint, HTML page, input validation, and security boundary.
+177 tests covering every API endpoint, HTML page, input validation, and security boundary.
 
 ## Quick Start
 
@@ -26,14 +26,14 @@ The script automatically creates a virtualenv and installs dependencies on first
 | File | Tests | What it covers |
 |------|------:|----------------|
 | `test_pages.py` | 7 | HTML page rendering + 404 |
-| `test_results.py` | 27 | `/api/results`, `/api/countries`, `/api/results/geo`, `/api/top-servers`, `/api/statistics`, `/api/prune-stale`, `/api/v1/top/*` |
+| `test_results.py` | 40 | `/api/results`, `/api/countries`, `/api/results/geo`, `/api/top-servers`, `/api/statistics`, `/api/statistics/domains`, `/api/prune-stale`, `/api/v1/top/*`, `/api/server/<domain>/history`, status classification edge cases |
 | `test_servers.py` | 6 | `/api/servers` GET/POST, dedup, normalization |
-| `test_config.py` | 16 | `/api/config`, `/api/credentials`, `/api/config/test-notification`, `/api/schedule/*` |
-| `test_scan.py` | 14 | `/api/scan/start`, `/api/scan/status`, `/api/scan/stop`, `/api/vpn-speedtest`, `/api/queue/*` |
+| `test_config.py` | 18 | `/api/config`, `/api/credentials`, `/api/config/test-notification`, `/api/schedule/*`, config robustness (missing keys, corrupt YAML) |
+| `test_scan.py` | 18 | `/api/scan/start`, `/api/scan/status`, `/api/scan/stop`, `/api/vpn-speedtest`, `/api/queue/*` (FIFO, add-while-active, clear-safety) |
 | `test_theme.py` | 17 | `/api/theme`, `/api/wallpaper/*`, `/api/origin` |
 | `test_ovpn.py` | 12 | `/api/ovpn/*`, `/api/geolite/*` |
 | `test_logs.py` | 11 | `/api/logs`, `/api/logs/clear`, `/api/logs/files`, `/api/logs/file/<name>` |
-| `test_security.py` | 14 | Parameter clamping, credential leaks, path traversal, ZIP bombs, file extension validation |
+| `test_security.py` | 32 | Parameter clamping, credential leaks, path traversal, ZIP bombs, file extension validation, smoke tests for every endpoint |
 
 ## How It Works
 
