@@ -441,12 +441,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.style.background = 'rgba(240, 192, 64, 0.08)';
             }
 
-            // # Counter column - with warning icon for failed
+            // # Counter column - with failure dot for failed
             const indexTd = document.createElement('td');
             indexTd.className = 'text-secondary mono';
             if (hasRecentFailure) {
-                indexTd.textContent = '\u26a0 ' + (actualIndex + 1);
+                indexTd.style.whiteSpace = 'nowrap';
                 indexTd.style.color = '#f0c040';
+                const dot = document.createElement('span');
+                dot.innerHTML = '&#x25cf;';
+                dot.style.fontSize = '0.55em';
+                dot.style.verticalAlign = 'middle';
+                dot.style.marginRight = '4px';
+                indexTd.appendChild(dot);
+                indexTd.appendChild(document.createTextNode(actualIndex + 1));
                 const reasonMap = {vpn_failed: 'VPN connection failed', speedtest_failed: 'Speedtest failed'};
                 const reason = reasonMap[item.speedtest_failed_reason] || 'Failed';
                 indexTd.title = reason + '\n' + failedTitle;
