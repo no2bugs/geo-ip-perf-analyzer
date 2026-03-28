@@ -269,7 +269,11 @@ class TestV1TopLatency:
     def test_country_filter_multi(self, client, sample_results):
         resp = client.get("/api/v1/top/latency?country=Germany,United States")
         data = resp.get_json()
-        assert len(data) == 4
+        # server4 (Germany) is excluded because it has a recent failure
+        assert len(data) == 3
+        # include_failed=true should return all 4
+        resp2 = client.get("/api/v1/top/latency?country=Germany,United States&include_failed=true")
+        assert len(resp2.get_json()) == 4
 
 
 # ===================================================================

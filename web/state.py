@@ -921,3 +921,12 @@ def _parse_countries(args):
             if part:
                 countries.add(part.lower())
     return countries
+
+
+def _is_failed_server(entry):
+    """Return True if the server's most recent speedtest failed."""
+    fts = entry.get('speedtest_failed_timestamp')
+    if not fts:
+        return False
+    ts = entry.get('speedtest_timestamp')
+    return not ts or fts > ts

@@ -162,6 +162,162 @@ class TestTopServers:
         resp = client.get('/api/top-servers?n=999')
         assert resp.status_code == 200
 
+    def test_excludes_failed_by_default(self, client, paths):
+        """Failed servers should be excluded from top results by default."""
+        data = {
+            "good.example.com": {
+                "latency_ms": 20, "ip": "1.1.1.1",
+                "country": "Switzerland", "city": "Zurich",
+                "rx_speed_mbps": 100, "tx_speed_mbps": 40,
+                "speedtest_timestamp": "2026-03-20T12:00:00"
+            },
+            "failed.example.com": {
+                "latency_ms": 10, "ip": "2.2.2.2",
+                "country": "Germany", "city": "Berlin",
+                "rx_speed_mbps": 200, "tx_speed_mbps": 80,
+                "speedtest_timestamp": "2026-03-20T11:00:00",
+                "speedtest_failed_timestamp": "2026-03-20T12:00:00"
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+        resp = client.get('/api/top-servers')
+        result = resp.get_json()
+        domains = [s['domain'] for s in result]
+        assert "good.example.com" in domains
+        assert "failed.example.com" not in domains
+
+    def test_include_failed_param(self, client, paths):
+        """include_failed=true should return failed servers too."""
+        data = {
+            "good.example.com": {
+                "latency_ms": 20, "ip": "1.1.1.1",
+                "country": "Switzerland", "city": "Zurich",
+                "rx_speed_mbps": 100, "tx_speed_mbps": 40,
+                "speedtest_timestamp": "2026-03-20T12:00:00"
+            },
+            "failed.example.com": {
+                "latency_ms": 10, "ip": "2.2.2.2",
+                "country": "Germany", "city": "Berlin",
+                "rx_speed_mbps": 200, "tx_speed_mbps": 80,
+                "speedtest_timestamp": "2026-03-20T11:00:00",
+                "speedtest_failed_timestamp": "2026-03-20T12:00:00"
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+        resp = client.get('/api/top-servers?include_failed=true')
+        result = resp.get_json()
+        domains = [s['domain'] for s in result]
+        assert "good.example.com" in domains
+        assert "failed.example.com" in domains
+
+
+class TestTopV1ExcludesFailed:
+    """Test that /api/v1/top/* endpoints exclude failed servers by default."""
+
+    @pytest.fixture(autouse=True)
+    def _write_results(self, paths):
+        data = {
+            "fast.example.com": {
+                "latency_ms": 30, "ip": "1.1.1.1",
+                "country": "Switzerland", "city": "Zurich",
+                "rx_speed_mbps": 150, "tx_speed_mbps": 60,
+                "speedtest_timestamp": "2026-03-20T12:00:00"
+            },
+            "failed-fast.example.com": {
+                "latency_ms": 5, "ip": "2.2.2.2",
+                "country": "Switzerland", "city": "Geneva",
+                "rx_speed_mbps": 300, "tx_speed_mbps": 120,
+                "speedtest_timestamp": "2026-03-20T11:00:00",
+                "speedtest_failed_timestamp": "2026-03-20T12:00:00"
+            },
+            "slow.example.com": {
+                "latency_ms": 50, "ip": "3.3.3.3",
+                "country": "Germany", "city": "Berlin",
+                "rx_speed_mbps": 50, "tx_speed_mbps": 20,
+                "speedtest_timestamp": "2026-03-20T12:00:00"
+            }
+        }
+        with open(paths["results"], "w") as f:
+            json.dump(data, f)
+
+    def test_download_excludes_failed(self, client):
+        resp = client.get('/api/v1/top/download?n=10')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "fast.example.com" in domains
+        assert "failed-fast.example.com" not in domains
+
+    def test_download_include_failed(self, client):
+        resp = client.get('/api/v1/top/download?n=10&include_failed=true')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "failed-fast.example.com" in domains
+        # Failed server should be first (highest speed)
+        assert domains[0] == "failed-fast.example.com"
+
+    def test_upload_excludes_failed(self, client):
+        resp = client.get('/api/v1/top/upload?n=10')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "fast.example.com" in domains
+        assert "failed-fast.example.com" not in domains
+
+    def test_upload_include_failed(self, client):
+        resp = client.get('/api/v1/top/upload?n=10&include_failed=1')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "failed-fast.example.com" in domains
+
+    def test_latency_excludes_failed(self, client):
+        resp = client.get('/api/v1/top/latency?n=10')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "fast.example.com" in domains
+        assert "failed-fast.example.com" not in domains
+
+    def test_latency_include_failed(self, client):
+        resp = client.get('/api/v1/top/latency?n=10&include_failed=yes')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "failed-fast.example.com" in domains
+        # Failed server has lowest latency (5ms), should be first
+        assert domains[0] == "failed-fast.example.com"
+
+    def test_country_filter_with_exclude_failed(self, client):
+        resp = client.get('/api/v1/top/download?n=10&country=Switzerland')
+        domains = [s['domain'] for s in resp.get_json()]
+        assert "fast.example.com" in domains
+        assert "failed-fast.example.com" not in domains
+        assert "slow.example.com" not in domains  # Germany, filtered out
+
+
+class TestIsFailedServer:
+    """Test the _is_failed_server helper function."""
+
+    def test_no_failed_timestamp(self):
+        import web.state as state_mod
+        assert state_mod._is_failed_server({"speedtest_timestamp": "2026-03-20T12:00:00"}) is False
+
+    def test_failed_no_success(self):
+        import web.state as state_mod
+        assert state_mod._is_failed_server({"speedtest_failed_timestamp": "2026-03-20T12:00:00"}) is True
+
+    def test_failed_after_success(self):
+        import web.state as state_mod
+        entry = {
+            "speedtest_timestamp": "2026-03-20T11:00:00",
+            "speedtest_failed_timestamp": "2026-03-20T12:00:00"
+        }
+        assert state_mod._is_failed_server(entry) is True
+
+    def test_success_after_failure(self):
+        import web.state as state_mod
+        entry = {
+            "speedtest_timestamp": "2026-03-20T13:00:00",
+            "speedtest_failed_timestamp": "2026-03-20T12:00:00"
+        }
+        assert state_mod._is_failed_server(entry) is False
+
+    def test_empty_entry(self):
+        import web.state as state_mod
+        assert state_mod._is_failed_server({}) is False
+
 
 class TestConfigCacheInvalidation:
     """Test that the config cache is properly invalidated on save."""

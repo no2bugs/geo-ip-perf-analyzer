@@ -888,9 +888,12 @@ def get_top_servers():
     except Exception:
         return jsonify([])
     n = max(1, min(100, request.args.get('n', 5, type=int)))
+    include_failed = request.args.get('include_failed', 'false').lower() in ('true', '1', 'yes')
     best_map = {}
     for domain, entry in data.items():
         if not isinstance(entry, dict):
+            continue
+        if not include_failed and state._is_failed_server(entry):
             continue
         rx = entry.get('rx_speed_mbps')
         if rx and rx > 0:
@@ -1101,6 +1104,7 @@ def get_ovpn_config(domain):
 def top_latency():
     n = request.args.get('n', 5, type=int)
     countries = state._parse_countries(request.args)
+    include_failed = request.args.get('include_failed', 'false').lower() in ('true', '1', 'yes')
     if not os.path.exists(state.RESULTS_FILE):
         return jsonify([])
     with open(state.RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -1108,6 +1112,8 @@ def top_latency():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict):
+            if not include_failed and state._is_failed_server(entry):
+                continue
             if countries and entry.get('country', '').lower() not in countries:
                 continue
             items.append({
@@ -1126,6 +1132,7 @@ def top_latency():
 def top_download():
     n = request.args.get('n', 5, type=int)
     countries = state._parse_countries(request.args)
+    include_failed = request.args.get('include_failed', 'false').lower() in ('true', '1', 'yes')
     if not os.path.exists(state.RESULTS_FILE):
         return jsonify([])
     with open(state.RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -1133,6 +1140,8 @@ def top_download():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict) and entry.get('rx_speed_mbps') is not None:
+            if not include_failed and state._is_failed_server(entry):
+                continue
             if countries and entry.get('country', '').lower() not in countries:
                 continue
             items.append({
@@ -1151,6 +1160,7 @@ def top_download():
 def top_upload():
     n = request.args.get('n', 5, type=int)
     countries = state._parse_countries(request.args)
+    include_failed = request.args.get('include_failed', 'false').lower() in ('true', '1', 'yes')
     if not os.path.exists(state.RESULTS_FILE):
         return jsonify([])
     with open(state.RESULTS_FILE, 'r', encoding='utf-8') as f:
@@ -1158,6 +1168,8 @@ def top_upload():
     items = []
     for domain, entry in data.items():
         if isinstance(entry, dict) and entry.get('tx_speed_mbps') is not None:
+            if not include_failed and state._is_failed_server(entry):
+                continue
             if countries and entry.get('country', '').lower() not in countries:
                 continue
             items.append({
