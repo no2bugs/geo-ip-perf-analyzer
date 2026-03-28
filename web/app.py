@@ -2098,8 +2098,10 @@ def scheduled_vpn_speedtest():
         report = scanner._perform_vpn_speedtests(
             results, VPN_OVPN_DIR, VPN_USERNAME, VPN_PASSWORD,
             scan_progress, batch_size=999, interactive=False,
-            selected_domains=all_domains, stop_event=stop_event
+            selected_domains=all_domains, stop_event=stop_event,
+            results_file=RESULTS_FILE
         ) or {}
+        # Final save (results_file handles incremental saves already)
         _tmp = RESULTS_FILE + '.tmp'
         with open(_tmp, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)

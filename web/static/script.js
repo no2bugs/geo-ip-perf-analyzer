@@ -179,6 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let lastResultsRefresh = 0;
+
     async function fetchStatus() {
         try {
             const response = await fetch('/api/scan/status');
@@ -188,6 +190,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.active) {
                 if (!pollInterval) startPolling();
+                // Refresh results every 10s while a scan/test is running
+                const now = Date.now();
+                if (now - lastResultsRefresh > 10000) {
+                    lastResultsRefresh = now;
+                    fetchResults();
+                }
             } else if (pollInterval) {
                 stopPolling();
                 fetchResults(); // Refresh results when done
