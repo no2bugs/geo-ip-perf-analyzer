@@ -273,32 +273,42 @@ def _build_cron_kwargs(cfg):
 
 def apply_schedules():
     config = state.load_config()
-    scheduler.remove_all_jobs()
+
+    active_ids = set()
 
     vpn_cfg = config.get('schedule', {}).get('vpn_speedtest', {})
     if vpn_cfg.get('enabled'):
         kw = _build_cron_kwargs(vpn_cfg)
         scheduler.add_job(scheduled_vpn_speedtest, CronTrigger(**kw), id='vpn_speedtest', replace_existing=True)
+        active_ids.add('vpn_speedtest')
 
     lat_cfg = config.get('schedule', {}).get('latency_scan', {})
     if lat_cfg.get('enabled'):
         kw = _build_cron_kwargs(lat_cfg)
         scheduler.add_job(scheduled_latency_scan, CronTrigger(**kw), id='latency_scan', replace_existing=True)
+        active_ids.add('latency_scan')
 
     geo_cfg = config.get('schedule', {}).get('geolite_update', {})
     if geo_cfg.get('enabled'):
         kw = _build_cron_kwargs(geo_cfg)
         scheduler.add_job(scheduled_geolite_update, CronTrigger(**kw), id='geolite', replace_existing=True)
+        active_ids.add('geolite')
 
     ovpn_cfg = config.get('schedule', {}).get('ovpn_update', {})
     if ovpn_cfg.get('enabled'):
         kw = _build_cron_kwargs(ovpn_cfg)
         scheduler.add_job(scheduled_ovpn_update, CronTrigger(**kw), id='ovpn', replace_existing=True)
+        active_ids.add('ovpn')
 
     srv_cfg = config.get('schedule', {}).get('servers_update', {})
     if srv_cfg.get('enabled') and state._get_servers_commands(config):
         kw = _build_cron_kwargs(srv_cfg)
         scheduler.add_job(scheduled_servers_update, CronTrigger(**kw), id='servers_update', replace_existing=True)
+        active_ids.add('servers_update')
+
+    for job in scheduler.get_jobs():
+        if job.id not in active_ids:
+            job.remove()
 
     jobs = scheduler.get_jobs()
     logging.info(f"Scheduler updated: {len(jobs)} job(s) active")
