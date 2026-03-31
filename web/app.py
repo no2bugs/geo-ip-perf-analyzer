@@ -24,7 +24,7 @@ import geoip2.database
 import web.state as state
 from web.state import Scanner
 from web.scheduler import (
-    scheduler, apply_schedules,
+    scheduler, apply_schedules, _build_cron_kwargs,
     scheduled_vpn_speedtest, scheduled_latency_scan,
     scheduled_geolite_update, scheduled_ovpn_update, scheduled_servers_update,
 )
@@ -748,12 +748,36 @@ def run_schedule_now():
 
 @app.route('/api/schedule/next')
 def get_schedule_next_runs():
-    """Return next scheduled run times for all active jobs."""
+    """Return next scheduled run times for all active jobs.
+
+    Computed from config on disk so every gunicorn worker returns
+    consistent results (only one worker owns the APScheduler lock).
+    """
+    from apscheduler.triggers.cron import CronTrigger
+    from datetime import datetime, timezone
+
+    config = state.load_config()
+    schedule_cfg = config.get('schedule', {})
+    job_keys = {
+        'vpn_speedtest': 'vpn_speedtest',
+        'latency_scan': 'latency_scan',
+        'geolite_update': 'geolite',
+        'ovpn_update': 'ovpn',
+        'servers_update': 'servers_update',
+    }
     result = {}
-    for job in scheduler.get_jobs():
-        nrt = job.next_run_time
-        if nrt:
-            result[job.id] = nrt.strftime('%Y-%m-%d %H:%M')
+    now = datetime.now(timezone.utc)
+    for cfg_key, job_id in job_keys.items():
+        cfg = schedule_cfg.get(cfg_key, {})
+        if not cfg.get('enabled'):
+            continue
+        try:
+            trigger = CronTrigger(**_build_cron_kwargs(cfg))
+            nrt = trigger.get_next_fire_time(None, now)
+            if nrt:
+                result[job_id] = nrt.strftime('%Y-%m-%d %H:%M')
+        except Exception:
+            pass
     return jsonify(result)
 
 
