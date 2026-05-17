@@ -1,5 +1,13 @@
 FROM python:3.9-slim
 
+ARG APP_VERSION=v1.0
+ARG APP_REVISION=unknown
+ARG APP_CREATED=unknown
+
+LABEL org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${APP_REVISION}" \
+      org.opencontainers.image.created="${APP_CREATED}"
+
 # Install system dependencies (ping, openvpn, speedtest, networking tools)
 RUN apt-get update && apt-get install -y \
     curl \
